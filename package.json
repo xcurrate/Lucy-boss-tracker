@@ -1,0 +1,19 @@
+{
+  "name": "lucy-boss-tracker",
+  "version": "1.0.0",
+  "description": "Discord bot to track Lucy guild boss respawn timestamps.",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "deploy-commands": "node src/deploy-commands.js",
+    "check": "node --check src/index.js && node --check src/deploy-commands.js && node --check src/services/bossTracker.js && node --check src/utils/storage.js"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.4.7"
+  }
+}
