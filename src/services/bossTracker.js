@@ -55,9 +55,9 @@ class BossTracker {
       try {
         const channel = await guild.channels.fetch(s.channelId);
         if (channel?.isTextBased() && channel.send) await channel.send({
-          content: (s.roleId ? '<@&' + s.roleId + '>\\n' : '') +
-            '🐉 **Boss baru sudah muncul!**\\n' +
-            'Waktu perkiraan: <t:' + ts + ':F>\\n' +
+          content: (s.roleId ? '<@&' + s.roleId + '>\n' : '') +
+            '🐉 **Boss baru sudah muncul!**\n' +
+            'Waktu perkiraan: <t:' + ts + ':F>\n' +
             'Hitung mundur: <t:' + ts + ':R>',
           allowedMentions: { parse: [], roles: s.roleId ? [s.roleId] : [] }
         });
@@ -70,8 +70,8 @@ class BossTracker {
       if (mode === 'channel') continue;
       try {
         await (await this.client.users.fetch(userId)).send({
-          content: '🐉 **Boss baru sudah muncul!**\\n' +
-            'Waktu perkiraan: <t:' + ts + ':F>\\n' +
+          content: '🐉 **Boss baru sudah muncul!**\n' +
+            'Waktu perkiraan: <t:' + ts + ':F>\n' +
             'Hitung mundur: <t:' + ts + ':R>'
         });
       }
