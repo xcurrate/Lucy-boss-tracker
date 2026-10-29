@@ -5,18 +5,19 @@ const data = new SlashCommandBuilder()
   .setName('boss').setDescription('Atur notifikasi Lucy Boss Tracker')
   .addSubcommand(s => s.setName('help').setDescription('Lihat panduan penggunaan'))
   .addSubcommand(s => s.setName('status').setDescription('Lihat status Boss Tracker'))
-  .addSubcommand(s => s.setName('enable').setDescription('Aktifkan tracker server').setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild))
-  .addSubcommand(s => s.setName('disable').setDescription('Nonaktifkan tracker server').setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild))
+  .addSubcommand(s => s.setName('enable').setDescription('Aktifkan tracker server'))
+  .addSubcommand(s => s.setName('disable').setDescription('Nonaktifkan tracker server'))
   .addSubcommand(s => s.setName('setup').setDescription('Atur channel dan role notifikasi')
     .addChannelOption(o => o.setName('channel').setDescription('Channel notifikasi boss').setRequired(true))
     .addRoleOption(o => o.setName('role').setDescription('Role yang ditag, misalnya Boss slayer').setRequired(true))
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild))
+    )
   .addSubcommand(s => s.setName('dm').setDescription('Atur DM notifikasi untuk dirimu')
     .addBooleanOption(o => o.setName('aktif').setDescription('True untuk aktif, false untuk nonaktif').setRequired(true)));
 
 async function execute(i, tracker) {
   if (!i.guildId) return i.reply({ content: 'Gunakan perintah ini di server.', ephemeral: true });
   const sub = i.options.getSubcommand();
+  if (['setup', 'enable', 'disable'].includes(sub) && !i.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) return i.reply({ content: 'Perintah ini memerlukan izin Manage Server.', ephemeral: true });
   if (sub === 'help') {
     const e = new EmbedBuilder().setColor(0x5865F2).setTitle('📖 Lucy Boss Tracker — Bantuan')
       .setDescription('Bot membaca timestamp pada baris **Boss baru** dari pesan **Guild Boss Telah Dikalahkan!** milik Lucy.')
