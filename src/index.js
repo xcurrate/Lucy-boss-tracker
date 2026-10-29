@@ -17,9 +17,23 @@ const tracker = new BossTracker(client);
 function isAdmin(message) {
   return Boolean(message.member?.permissions?.has(PermissionFlagsBits.ManageGuild));
 }
-
 function send(message, content) {
   return message.reply({ content, allowedMentions: { repliedUser: false, parse: [] } });
+}
+function getMode(settings, userId) {
+  return settings.userModes?.[userId] || ((settings.dmUsers || []).includes(userId) ? 'both' : 'channel');
+}
+function setMode(guildId, userId, mode) {
+  updateGuildSettings(guildId, s => {
+    const userModes = { ...(s.userModes || {}), [userId]: mode };
+    const dmUsers = new Set(s.dmUsers || []);
+    if (mode === 'dm' || mode === 'both') dmUsers.add(userId);
+    else dmUsers.delete(userId);
+    return { ...s, userModes, dmUsers: [...dmUsers] };
+  });
+}
+function modeLabel(mode) {
+  return ({ dm: 'DM pribadi (channel server tetap aktif)', channel: 'Channel server tanpa DM', both: 'DM pribadi + channel server' })[mode] || 'Channel server tanpa DM';
 }
 
 async function handlePrefixCommand(message) {
@@ -27,7 +41,6 @@ async function handlePrefixCommand(message) {
   const settings = getGuildSettings(message.guildId);
   const prefix = settings.prefix || '!';
   if (!message.content.startsWith(prefix)) return;
-
   const input = message.content.slice(prefix.length).trim();
   const [root, ...args] = input.split(/\s+/);
   if ((root || '').toLowerCase() !== 'boss') return;
@@ -37,25 +50,29 @@ async function handlePrefixCommand(message) {
   if (sub === 'help') {
     return send(message, [
       '**🐉 Boss Tracker — Bantuan**',
-      '• `' + prefix + 'boss on` — aktifkan pengingat pribadi lewat DM',
-      '• `' + prefix + 'boss off` — matikan pengingat pribadi',
+      '• `' + prefix + 'boss notify dm` — aktifkan DM pribadi',
+      '• `' + prefix + 'boss notify channel` — matikan DM dan pantau channel server',
+      '• `' + prefix + 'boss notify both` — aktifkan DM pribadi dan pantau channel server',
       '• `' + prefix + 'boss status` — lihat status dan jadwal boss',
       '• `' + prefix + 'boss help` — tampilkan bantuan ini',
       '',
-      'Pengaturan server dikelola moderator/admin.'
+      'Notifikasi channel berlaku untuk seluruh server dan dikelola moderator/admin.'
     ].join('\n'));
   }
 
+  if (sub === 'notify') {
+    const mode = (rest[0] || '').toLowerCase();
+    if (!['dm', 'channel', 'both'].includes(mode)) {
+      return send(message, 'Pilih mode: `' + prefix + 'boss notify dm`, `channel`, atau `both`.');
+    }
+    setMode(message.guildId, message.author.id, mode);
+    return send(message, '✅ Pilihan notifikasi kamu: **' + modeLabel(mode) + '**. Notifikasi channel server tetap berlaku untuk semua anggota.');
+  }
+
   if (sub === 'on' || sub === 'off') {
-    const enabled = sub === 'on';
-    updateGuildSettings(message.guildId, s => {
-      const users = new Set(s.dmUsers || []);
-      enabled ? users.add(message.author.id) : users.delete(message.author.id);
-      return { ...s, dmUsers: [...users] };
-    });
-    return send(message, enabled
-      ? '✅ Pengingat pribadi aktif. Kamu akan menerima DM saat boss muncul.'
-      : '🔕 Pengingat pribadi dimatikan.');
+    const mode = sub === 'on' ? 'both' : 'channel';
+    setMode(message.guildId, message.author.id, mode);
+    return send(message, sub === 'on' ? '✅ DM pribadi aktif. Notifikasi channel server tetap tersedia.' : '🔕 DM pribadi dimatikan.');
   }
 
   if (sub === 'status') {
@@ -64,7 +81,7 @@ async function handlePrefixCommand(message) {
     return send(message, [
       '**🐉 Status Boss Tracker**',
       'Notifikasi server: ' + (s.enabled ? '✅ Aktif' : '🔕 Nonaktif'),
-      'Pengingat DM kamu: ' + ((s.dmUsers || []).includes(message.author.id) ? '✅ Aktif' : '🔕 Nonaktif'),
+      'Pilihan notifikasi kamu: ' + modeLabel(getMode(s, message.author.id)),
       'Boss berikutnya: ' + (ts ? '<t:' + ts + ':F> (<t:' + ts + ':R>)' : 'Belum terdeteksi dari pesan Lucy.')
     ].join('\n'));
   }
@@ -98,14 +115,10 @@ async function handlePrefixCommand(message) {
   if (sub === 'setup') {
     const channelId = (rest[0] || '').match(/^<#?(\d+)>?$/)?.[1];
     const roleId = (rest[1] || '').match(/^<@&?(\d+)>?$/)?.[1];
-    if (!channelId || !roleId) {
-      return send(message, 'Format: `' + prefix + 'boss setup #channel @role`');
-    }
+    if (!channelId || !roleId) return send(message, 'Format: `' + prefix + 'boss setup #channel @role`');
     const channel = await message.guild.channels.fetch(channelId).catch(() => null);
     const role = await message.guild.roles.fetch(roleId).catch(() => null);
-    if (!channel?.isTextBased() || !channel.send || !role) {
-      return send(message, 'Channel teks atau role tidak ditemukan. Pastikan pilihan benar.');
-    }
+    if (!channel?.isTextBased() || !channel.send || !role) return send(message, 'Channel teks atau role tidak ditemukan. Pastikan pilihan benar.');
     updateGuildSettings(message.guildId, s => ({ ...s, channelId, roleId }));
     return send(message, '✅ Channel dan role notifikasi tersimpan. Aktifkan dengan `' + prefix + 'boss server on`.');
   }
@@ -114,16 +127,13 @@ async function handlePrefixCommand(message) {
     const action = sub === 'server-on' ? 'on' : sub === 'server-off' ? 'off' : (rest[0] || '').toLowerCase();
     if (!['on', 'off'].includes(action)) return send(message, 'Format: `' + prefix + 'boss server on` atau `' + prefix + 'boss server off`.');
     const current = getGuildSettings(message.guildId);
-    if (action === 'on' && (!current.channelId || !current.roleId)) {
-      return send(message, 'Atur channel dan role terlebih dahulu dengan `' + prefix + 'boss setup #channel @role`.');
-    }
+    if (action === 'on' && (!current.channelId || !current.roleId)) return send(message, 'Atur channel dan role terlebih dahulu dengan `' + prefix + 'boss setup #channel @role`.');
     const enabled = action === 'on';
     const s = updateGuildSettings(message.guildId, old => ({ ...old, enabled }));
     if (enabled && s.lastBossTimestamp) tracker.scheduleGuild(message.guildId, s.lastBossTimestamp);
     else if (!enabled) tracker.stopGuild(message.guildId);
     return send(message, enabled ? '✅ Tracker aktif untuk seluruh server.' : '🔕 Tracker server dimatikan.');
   }
-
   return send(message, 'Perintah tidak dikenal. Gunakan `' + prefix + 'boss help`.');
 }
 
