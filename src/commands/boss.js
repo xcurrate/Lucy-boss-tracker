@@ -107,13 +107,14 @@ async function execute(i, tracker) {
     const ts = s.lastBossTimestamp;
     const mode = getMode(s, i.user.id);
     const modeLabel = { dm: 'DM pribadi', channel: 'Channel server (tanpa DM)', both: 'DM pribadi + channel server' }[mode];
-    const embed = new EmbedBuilder().setColor(s.enabled ? 0x57F287 : 0xED4245).setTitle('🐉 Status Boss Tracker')
-      .addFields(
-        { name: 'Notifikasi server', value: s.enabled ? '✅ Aktif' : '🔕 Nonaktif', inline: true },
-        { name: 'Pilihan notifikasi kamu', value: modeLabel, inline: true },
-        { name: 'Boss berikutnya', value: ts ? '<t:' + ts + ':F> (<t:' + ts + ':R>)' : 'Belum terdeteksi dari pesan Lucy.', inline: false }
-      );
-    return i.reply({ embeds: [embed], ephemeral: true });
+    return i.reply({
+      content: [
+        '**🐉 Status Boss Tracker**',
+        'Notifikasi server: ' + (s.enabled ? '✅ Aktif' : '🔕 Nonaktif'),
+        'Pilihan notifikasi kamu: ' + modeLabel,
+        'Boss berikutnya: ' + (ts ? '<t:' + ts + ':F> (<t:' + ts + ':R>)' : 'Belum terdeteksi dari pesan Lucy.')
+      ].join('\\n')
+    });
   }
 
   if (sub === 'admin-help') {
