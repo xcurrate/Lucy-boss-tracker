@@ -9,7 +9,8 @@ const defaults = () => ({
   prefix: '!',
   lastBossTimestamp: null,
   lastNotifiedTimestamp: null,
-  dmUsers: []
+  dmUsers: [],
+  userModes: {}
 });
 function readAll() {
   fs.mkdirSync(dir, { recursive: true });
@@ -22,10 +23,19 @@ function writeAll(data) {
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n');
   fs.renameSync(tmp, file);
 }
-function getGuildSettings(id) { return { ...defaults(), ...(readAll()[id] || {}) }; }
+function getGuildSettings(id) {
+  const saved = readAll()[id] || {};
+  return { ...defaults(), ...saved, userModes: { ...(saved.userModes || {}) }, dmUsers: [...(saved.dmUsers || [])] };
+}
 function updateGuildSettings(id, fn) {
   const all = readAll();
-  all[id] = fn({ ...defaults(), ...(all[id] || {}), dmUsers: [...((all[id] || {}).dmUsers || [])] });
+  const old = all[id] || {};
+  all[id] = fn({
+    ...defaults(),
+    ...old,
+    userModes: { ...(old.userModes || {}) },
+    dmUsers: [...(old.dmUsers || [])]
+  });
   writeAll(all);
   return all[id];
 }
