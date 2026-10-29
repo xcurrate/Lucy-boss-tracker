@@ -113,7 +113,7 @@ async function execute(i, tracker) {
         'Notifikasi server: ' + (s.enabled ? '✅ Aktif' : '🔕 Nonaktif'),
         'Pilihan notifikasi kamu: ' + modeLabel,
         'Boss berikutnya: ' + (ts ? '<t:' + ts + ':F> (<t:' + ts + ':R>)' : 'Belum terdeteksi dari pesan Lucy.')
-      ].join('\\n')
+      ].join('\n')
     });
   }
 
