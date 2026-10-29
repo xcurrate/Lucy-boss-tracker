@@ -2,14 +2,22 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
+const MODES = ['dm', 'channel', 'both'];
 
 const data = new SlashCommandBuilder()
   .setName('boss')
   .setDescription('Notifikasi boss Lucy')
   .addSubcommand(s => s.setName('help').setDescription('Panduan singkat untuk pengguna'))
   .addSubcommand(s => s.setName('status').setDescription('Lihat status notifikasi boss'))
-  .addSubcommand(s => s.setName('on').setDescription('Aktifkan DM boss untuk akunmu'))
-  .addSubcommand(s => s.setName('off').setDescription('Matikan DM boss untuk akunmu'))
+  .addSubcommand(s => s.setName('notify').setDescription('Pilih pengingat pribadi: DM, channel, atau keduanya')
+    .addStringOption(o => o.setName('mode').setDescription('Cara kamu ingin menerima pengingat pribadi').setRequired(true)
+      .addChoices(
+        { name: 'DM saja (plus notifikasi channel server)', value: 'dm' },
+        { name: 'Tanpa DM (pantau channel server)', value: 'channel' },
+        { name: 'DM dan channel server', value: 'both' }
+      )))
+  .addSubcommand(s => s.setName('on').setDescription('Aktifkan pengingat pribadi lewat DM'))
+  .addSubcommand(s => s.setName('off').setDescription('Matikan pengingat pribadi lewat DM'))
   .addSubcommand(s => s.setName('setup').setDescription('Atur channel dan role notifikasi server')
     .addChannelOption(o => o.setName('channel').setDescription('Channel notifikasi boss').setRequired(true))
     .addRoleOption(o => o.setName('role').setDescription('Role yang akan ditag').setRequired(true)))
@@ -23,29 +31,44 @@ function isAdmin(i) {
   return Boolean(i.memberPermissions?.has(ADMIN));
 }
 
+function getMode(settings, userId) {
+  return settings.userModes?.[userId] || ((settings.dmUsers || []).includes(userId) ? 'both' : 'channel');
+}
+
+function setMode(guildId, userId, mode) {
+  updateGuildSettings(guildId, s => {
+    const userModes = { ...(s.userModes || {}), [userId]: mode };
+    const dmUsers = new Set(s.dmUsers || []);
+    if (mode === 'dm' || mode === 'both') dmUsers.add(userId);
+    else dmUsers.delete(userId);
+    return { ...s, userModes, dmUsers: [...dmUsers] };
+  });
+}
+
 function helpEmbed() {
   return new EmbedBuilder().setColor(0x5865F2).setTitle('🐉 Bantuan Boss Tracker')
-    .setDescription('Boss Tracker akan mengirim pengingat saat boss Lucy diperkirakan muncul.')
+    .setDescription('Boss Tracker memberi pengingat saat boss Lucy diperkirakan muncul.')
     .addFields(
-      { name: '/boss on', value: 'Aktifkan pengingat pribadi lewat DM.', inline: false },
-      { name: '/boss off', value: 'Matikan pengingat pribadi lewat DM.', inline: false },
+      { name: '/boss notify mode:DM saja', value: 'Pilih pengingat DM pribadi. Notifikasi channel server tetap dikirim sesuai pengaturan moderator.', inline: false },
+      { name: '/boss notify mode:Tanpa DM', value: 'Matikan DM pribadi dan pantau channel notifikasi server.', inline: false },
+      { name: '/boss notify mode:DM dan channel', value: 'Aktifkan DM pribadi sekaligus pantau channel notifikasi server.', inline: false },
       { name: '/boss status', value: 'Cek status tracker dan waktu boss berikutnya.', inline: false },
       { name: '/boss help', value: 'Tampilkan panduan ini.', inline: false }
     )
-    .setFooter({ text: 'Pengaturan server dikelola moderator/admin.' });
+    .setFooter({ text: 'Channel notifikasi berlaku untuk seluruh server; pilihan anggota mengatur DM pribadi.' });
 }
 
 function adminHelpEmbed(prefix) {
   return new EmbedBuilder().setColor(0xFEE75C).setTitle('⚙️ Pengaturan Moderator/Admin')
-    .setDescription('Perintah ini hanya untuk moderator dengan izin Manage Server atau administrator.')
+    .setDescription('Khusus moderator dengan izin Manage Server atau administrator.')
     .addFields(
       { name: '/boss setup channel:#channel role:@role', value: 'Pilih channel notifikasi dan role yang akan ditag.', inline: false },
-      { name: '/boss server-on', value: 'Aktifkan tracker untuk semua anggota server. Setup harus selesai terlebih dahulu.', inline: false },
+      { name: '/boss server-on', value: 'Aktifkan tracker untuk semua anggota server.', inline: false },
       { name: '/boss server-off', value: 'Matikan notifikasi server tanpa menghapus konfigurasi.', inline: false },
-      { name: '/boss prefix nilai:?', value: 'Lihat prefix saat ini. Isi nilai untuk menggantinya (1–5 karakter tanpa spasi).', inline: false },
+      { name: '/boss prefix', value: 'Lihat atau ubah prefix server (1–5 karakter tanpa spasi).', inline: false },
       { name: prefix + 'boss setup #channel @role', value: 'Contoh pengaturan melalui prefix.', inline: false },
-      { name: prefix + 'boss server on / off', value: 'Aktifkan atau matikan tracker server melalui prefix.', inline: false },
-      { name: prefix + 'boss prefix ?', value: 'Lihat prefix; gunakan ' + prefix + 'boss prefix ! untuk mengubahnya menjadi !.', inline: false }
+      { name: prefix + 'boss server on / off', value: 'Aktifkan atau matikan tracker server.', inline: false },
+      { name: prefix + 'boss prefix ?', value: 'Lihat prefix; tambahkan nilai baru untuk mengubahnya.', inline: false }
     );
 }
 
@@ -59,15 +82,22 @@ async function execute(i, tracker) {
 
   if (sub === 'help') return i.reply({ embeds: [helpEmbed()], ephemeral: true });
 
+  if (sub === 'notify') {
+    const mode = i.options.getString('mode', true);
+    setMode(i.guildId, i.user.id, mode);
+    const descriptions = {
+      dm: 'DM pribadi aktif. Notifikasi channel server juga tetap tersedia.',
+      channel: 'DM pribadi dimatikan. Pantau channel notifikasi server.',
+      both: 'DM pribadi aktif. Kamu juga bisa memantau channel notifikasi server.'
+    };
+    return i.reply({ content: '✅ ' + descriptions[mode], ephemeral: true });
+  }
+
   if (sub === 'on' || sub === 'off') {
-    const enabled = sub === 'on';
-    updateGuildSettings(i.guildId, s => {
-      const users = new Set(s.dmUsers || []);
-      enabled ? users.add(i.user.id) : users.delete(i.user.id);
-      return { ...s, dmUsers: [...users] };
-    });
+    const mode = sub === 'on' ? 'both' : 'channel';
+    setMode(i.guildId, i.user.id, mode);
     return i.reply({
-      content: enabled ? '✅ Pengingat pribadi aktif. Kamu akan menerima DM saat boss muncul.' : '🔕 Pengingat pribadi dimatikan.',
+      content: sub === 'on' ? '✅ DM pribadi aktif. Notifikasi channel server tetap tersedia.' : '🔕 DM pribadi dimatikan.',
       ephemeral: true
     });
   }
@@ -75,10 +105,12 @@ async function execute(i, tracker) {
   if (sub === 'status') {
     const s = getGuildSettings(i.guildId);
     const ts = s.lastBossTimestamp;
+    const mode = getMode(s, i.user.id);
+    const modeLabel = { dm: 'DM pribadi', channel: 'Channel server (tanpa DM)', both: 'DM pribadi + channel server' }[mode];
     const embed = new EmbedBuilder().setColor(s.enabled ? 0x57F287 : 0xED4245).setTitle('🐉 Status Boss Tracker')
       .addFields(
         { name: 'Notifikasi server', value: s.enabled ? '✅ Aktif' : '🔕 Nonaktif', inline: true },
-        { name: 'Pengingat DM kamu', value: (s.dmUsers || []).includes(i.user.id) ? '✅ Aktif' : '🔕 Nonaktif', inline: true },
+        { name: 'Pilihan notifikasi kamu', value: modeLabel, inline: true },
         { name: 'Boss berikutnya', value: ts ? '<t:' + ts + ':F> (<t:' + ts + ':R>)' : 'Belum terdeteksi dari pesan Lucy.', inline: false }
       );
     return i.reply({ embeds: [embed], ephemeral: true });
@@ -100,10 +132,7 @@ async function execute(i, tracker) {
       return i.reply({ content: 'Pilih channel teks yang bisa dikirimi pesan.', ephemeral: true });
     }
     updateGuildSettings(i.guildId, s => ({ ...s, channelId: channel.id, roleId: role.id }));
-    return i.reply({
-      content: '✅ Channel notifikasi dan role tag berhasil disimpan. Aktifkan dengan /boss server-on.',
-      ephemeral: true
-    });
+    return i.reply({ content: '✅ Channel notifikasi dan role tag berhasil disimpan. Aktifkan dengan /boss server-on.', ephemeral: true });
   }
 
   if (sub === 'server-on' || sub === 'server-off') {
@@ -128,4 +157,4 @@ async function execute(i, tracker) {
   }
 }
 
-module.exports = { data, execute, helpEmbed, adminHelpEmbed, validPrefix };
+module.exports = { data, execute, helpEmbed, adminHelpEmbed, validPrefix, getMode, setMode };
