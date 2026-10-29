@@ -1,0 +1,1 @@
+// Prefix command handling lives in src/index.js so it can share the same tracker instance.
