@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/index.js",
     "deploy-commands": "node src/deploy-commands.js",
-    "check": "node --check src/index.js && node --check src/deploy-commands.js && node --check src/services/bossTracker.js && node --check src/utils/storage.js"
+    "check": "node --check src/index.js && node --check src/deploy-commands.js && node --check src/commands/boss.js && node --check src/services/bossTracker.js && node --check src/utils/storage.js"
   },
   "engines": {
     "node": ">=20.11.0"
