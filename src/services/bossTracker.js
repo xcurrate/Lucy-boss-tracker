@@ -54,9 +54,9 @@ class BossTracker {
   async notifyBoss(id, ts) {
     const s = getGuildSettings(id);
     if (!s.enabled || s.lastNotifiedTimestamp === ts) return;
-    updateGuildSettings(id, v => ({ ...v, lastNotifiedTimestamp: ts }));
     const guild = this.client.guilds.cache.get(id);
     if (!guild) return;
+    updateGuildSettings(id, v => ({ ...v, lastNotifiedTimestamp: ts }));
     if (s.channelId) {
       try {
         const channel = await guild.channels.fetch(s.channelId);
@@ -67,7 +67,11 @@ class BossTracker {
         });
       } catch (e) { console.error('[BossTracker] Channel notification failed:', e.message); }
     }
-    for (const userId of s.dmUsers || []) {
+    const userIds = new Set([...(s.dmUsers || []), ...Object.entries(s.userModes || {})
+      .filter(([, mode]) => mode === 'dm' || mode === 'both').map(([userId]) => userId)]);
+    for (const userId of userIds) {
+      const mode = s.userModes?.[userId];
+      if (mode === 'channel') continue;
       try { await (await this.client.users.fetch(userId)).send({ embeds: [embed(ts)] }); }
       catch (e) { console.warn('[BossTracker] DM failed for', userId, e.message); }
     }
