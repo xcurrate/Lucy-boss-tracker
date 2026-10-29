@@ -1,4 +1,3 @@
-const { EmbedBuilder } = require('discord.js');
 const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
 const TITLE = 'Guild Boss Telah Dikalahkan!';
 function collect(value, out = []) {
@@ -15,11 +14,6 @@ function extractNextBossTimestamp(message) {
   const line = text.split('\n').find(s => /Boss baru/i.test(s));
   const match = line && line.match(/<t:(\d{9,12})(?::[tTdDfFR])?>/);
   return match ? Number(match[1]) : null;
-}
-function embed(timestamp) {
-  return new EmbedBuilder().setColor(0x5865F2).setTitle('🐉 Boss baru sudah muncul!')
-    .setDescription('Boss Lucy diperkirakan muncul <t:' + timestamp + ':R>\nWaktu: <t:' + timestamp + ':F>')
-    .setFooter({ text: 'Lucy Boss Tracker' });
 }
 class BossTracker {
   constructor(client) { this.client = client; this.timers = new Map(); }
@@ -61,8 +55,10 @@ class BossTracker {
       try {
         const channel = await guild.channels.fetch(s.channelId);
         if (channel?.isTextBased() && channel.send) await channel.send({
-          content: (s.roleId ? '<@&' + s.roleId + '> ' : '') + '🐉 **Boss baru sudah muncul!**',
-          embeds: [embed(ts)],
+          content: (s.roleId ? '<@&' + s.roleId + '>\\n' : '') +
+            '🐉 **Boss baru sudah muncul!**\\n' +
+            'Waktu perkiraan: <t:' + ts + ':F>\\n' +
+            'Hitung mundur: <t:' + ts + ':R>',
           allowedMentions: { parse: [], roles: s.roleId ? [s.roleId] : [] }
         });
       } catch (e) { console.error('[BossTracker] Channel notification failed:', e.message); }
@@ -72,7 +68,13 @@ class BossTracker {
     for (const userId of userIds) {
       const mode = s.userModes?.[userId];
       if (mode === 'channel') continue;
-      try { await (await this.client.users.fetch(userId)).send({ embeds: [embed(ts)] }); }
+      try {
+        await (await this.client.users.fetch(userId)).send({
+          content: '🐉 **Boss baru sudah muncul!**\\n' +
+            'Waktu perkiraan: <t:' + ts + ':F>\\n' +
+            'Hitung mundur: <t:' + ts + ':R>'
+        });
+      }
       catch (e) { console.warn('[BossTracker] DM failed for', userId, e.message); }
     }
   }
