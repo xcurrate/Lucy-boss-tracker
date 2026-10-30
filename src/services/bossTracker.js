@@ -9,8 +9,16 @@ function collect(value, out = []) {
   return out;
 }
 function extractNextBossTimestamp(message) {
-  const text = [message.content || '', ...collect(message.embeds), ...collect(message.components)].join('\n');
+  const raw = typeof message?.toJSON === 'function' ? message.toJSON() : message;
+
+  const text = [
+    raw.content || '',
+    ...collect(raw.embeds),
+    ...collect(raw.components),
+  ].join('\n');
+
   if (!text.toLowerCase().includes(TITLE.toLowerCase())) return null;
+
   const line = text.split('\n').find(s => /Boss baru/i.test(s));
   const match = line && line.match(/<t:(\d{9,12})(?::[tTdDfFR])?>/);
   return match ? Number(match[1]) : null;
@@ -54,7 +62,7 @@ class BossTracker {
     if (s.channelId) {
       try {
         const channel = await guild.channels.fetch(s.channelId);
-        if (channel?.isTextBased() && channel.send) await channel.send({
+        if (typeof channel?.send === 'function') await channel.send({
           content: (s.roleId ? '<@&' + s.roleId + '>\n' : '') +
             '🐉 **Boss baru sudah muncul!**\n' +
             'Waktu perkiraan: <t:' + ts + ':F>\n' +
@@ -81,3 +89,4 @@ class BossTracker {
   stopGuild(id) { if (this.timers.has(id)) clearTimeout(this.timers.get(id)); this.timers.delete(id); }
 }
 module.exports = { BossTracker, extractNextBossTimestamp };
+  
