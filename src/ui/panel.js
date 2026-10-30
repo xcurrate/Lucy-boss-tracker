@@ -109,30 +109,79 @@ function personalPanel(settings, userId, extra = {}) {
   return { embeds: [panelEmbed(settings, userId, extra)], components: rows };
 }
 
-function statusEmbed(settings, userId) {
+function statusText(settings, userId) {
   const ts = settings.lastBossTimestamp;
   const mode = settings.userModes?.[userId] ||
     ((settings.dmUsers || []).includes(userId) ? 'both' : 'channel');
   const warnSeconds = settings.userWarnSeconds?.[userId] ?? 0;
-  return new EmbedBuilder().setColor(0x5865F2).setTitle('📡 Status Boss Tracker')
-    .setDescription([
-      '**Notifikasi server:** ' + (settings.enabled ? '✅ Aktif' : '🔕 Nonaktif'),
-      '**Bos berikutnya:** ' + (ts ? '<t:' + ts + ':F> (<t:' + ts + ':R>)' : 'Belum terdeteksi dari pesan Lucy.'),
-      '',
-      modeLabel(mode) + (warnSeconds ? ' · ⏰ DM peringatan ' + warnLabel(warnSeconds) : '')
-    ].join('\n'));
+  return [
+    '**Notifikasi server:** ' + (settings.enabled ? '✅ Aktif' : '🔕 Nonaktif'),
+    '**Bos berikutnya:** ' + (ts ? '<t:' + ts + ':F> (<t:' + ts + ':R>)' : 'Belum terdeteksi dari pesan Lucy.'),
+    '',
+    modeLabel(mode) + (warnSeconds ? ' · ⏰ DM peringatan ' + warnLabel(warnSeconds) : '')
+  ].join('\n');
 }
 
-function helpEmbed(prefix) {
-  return new EmbedBuilder().setColor(0x5865F2).setTitle('🐉 Bantuan Boss Tracker')
+function statusEmbed(settings, userId) {
+  return new EmbedBuilder().setColor(0x5865F2).setTitle('📡 Status Boss Tracker')
+    .setDescription(statusText(settings, userId));
+}
+
+function helpEmbed(prefix, { isAdmin = false } = {}) {
+  const fields = [
+    // 👤 Pengguna — daftar perintah slash yang bisa dipakai semua anggota.
+    { name: '👤 Pengguna — Slash Command', value: [
+      '`/boss menu` — panel pengaturan pribadi (dropdown + tombol)',
+      '`/boss notify mode:` — pilih DM, channel, atau keduanya',
+      '`/boss warn detik:` — peringatan DM sebelum boss muncul',
+      '`/boss on` / `/boss off` — aktifkan/matikan DM pribadi',
+      '`/boss status` — cek status tracker & waktu boss berikutnya',
+      '`/boss help` — panduan ini'
+    ].join('\n'), inline: false },
+
+    // 👤 Pengguna — padanan prefix, prefix server diambil dari settings.
+    { name: '📝 Pengguna — Prefix Command', value: [
+      '`' + prefix + 'boss menu` — panel pengaturan pribadi',
+      '`' + prefix + 'boss notify dm|channel|both` — pilih mode notifikasi',
+      '`' + prefix + 'boss warn <detik>` — peringatan DM (0 = matikan)',
+      '`' + prefix + 'boss on` / `' + prefix + 'boss off` — aktifkan/matikan DM',
+      '`' + prefix + 'boss status` — cek status tracker',
+      '`' + prefix + 'boss help` — panduan ini'
+    ].join('\n'), inline: false },
+
+    // ⚙️ Admin — daftar perintah slash admin, hanya tampil jika isAdmin.
+    { name: '⚙️ Admin — Slash Command', value: [
+      '`/boss setup channel:#channel role:@role` — atur channel & role tag',
+      '`/boss server-on` — aktifkan tracker seluruh server',
+      '`/boss server-off` — matikan tracker server',
+      '`/boss prefix` — lihat prefix server',
+      '`/boss admin-help` — panduan moderator'
+    ].join('\n'), inline: false },
+
+    // ⚙️ Admin — padanan prefix untuk perintah admin, hanya tampil jika isAdmin.
+    { name: '⚙️ Admin — Prefix Command', value: [
+      '`' + prefix + 'boss setup #channel @role` — atur channel & role tag',
+      '`' + prefix + 'boss server on` — aktifkan tracker seluruh server',
+      '`' + prefix + 'boss server off` — matikan tracker server',
+      '`' + prefix + 'boss prefix` — lihat/ubah prefix server',
+      '`' + prefix + 'boss admin-help` — panduan moderator'
+    ].join('\n'), inline: false },
+
+    // 🎛️ Panel — menjelaskan elemen interaktif pada panel /boss menu.
+    { name: '🎛️ Panel Interaktif', value: [
+      '**Dropdown notifikasi** — pilih DM saja, tanpa DM, atau DM + channel.',
+      '**Dropdown peringatan** — atur berapa detik sebelum boss kamu diingatkan via DM.',
+      '**Tombol DM ON/OFF** — nyalakan atau matikan DM pribadi dengan cepat.',
+      '**Tombol bawah** — Status, Bantuan, Admin Help, dan tombol 🔄 untuk memperbarui panel.'
+    ].join('\n'), inline: false }
+  ];
+  const embed = new EmbedBuilder().setColor(0x5865F2)
+    .setTitle('🐉 Bantuan Boss Tracker')
     .setDescription('Boss Tracker memberi pengingat saat boss Lucy diperkirakan muncul.')
-    .addFields(
-      { name: 'Mode notifikasi', value: 'Pilih **DM saja**, **Tanpa DM**, atau **DM dan channel** pada panel.', inline: false },
-      { name: 'DM peringatan', value: 'Atur pengingat DM dikirim **beberapa detik sebelum** boss muncul.', inline: false },
-      { name: 'Status', value: 'Cek status tracker dan waktu boss berikutnya.', inline: false },
-      { name: 'Prefix', value: 'Prefix server kamu: `' + prefix + '`. Gunakan `' + prefix + 'boss help` untuk panduan teks.', inline: false }
-    )
-    .setFooter({ text: 'Channel notifikasi berlaku untuk seluruh server; panel ini hanya mengubah pengaturan pribadimu.' });
+    .addFields(isAdmin ? fields : fields.filter(f => !f.name.startsWith('⚙️')));
+  // Footer: jelaskan bahwa pengaturan server bersifat global, panel hanya pribadi.
+  embed.setFooter({ text: 'Mode channel server berlaku untuk seluruh server; panel ini hanya mengubah pengaturan pribadimu.' });
+  return embed;
 }
 
 module.exports = {
@@ -150,5 +199,6 @@ module.exports = {
   footerRow,
   personalPanel,
   statusEmbed,
+  statusText,
   helpEmbed
 };
