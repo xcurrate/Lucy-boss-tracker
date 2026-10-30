@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, EmbedBuilder } = require('discord.js');
 const { getGuildSettings, updateGuildSettings, setUserMode, setUserWarnSeconds } = require('../utils/storage');
 const {
-  IDS, MODE_VALUES, WARN_VALUES, modeLabel, warnLabel, personalPanel, statusEmbed, statusText, helpEmbed
+  IDS, MODE_VALUES, WARN_VALUES, modeLabel, warnLabel, personalPanel, statusEmbed, statusText, helpEmbed, parseCustomId
 } = require('../ui/panel');
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
@@ -176,7 +176,17 @@ async function handleComponent(i, tracker) {
   const settings = getGuildSettings(i.guildId);
   const prefix = settings.prefix || '!';
 
-  if (i.isStringSelectMenu() && i.customId === IDS.notifyMode) {
+  // Setiap komponen panel di-scope ke pemiliknya (customId berisi userId).
+  const p = parseCustomId(i.customId);
+  const known = p.ok && Object.values(IDS).includes(p.base);
+  if (!known) {
+    return i.reply({ content: 'Komponen kedaluwarsa. Jalankan /boss menu lagi.', flags: MessageFlags.Ephemeral });
+  }
+  if (p.userId !== i.user.id) {
+    return i.reply({ content: 'Panel ini hanya bisa digunakan oleh pemiliknya. Jalankan /boss menu untuk panel kamu sendiri.', flags: MessageFlags.Ephemeral });
+  }
+
+  if (i.isStringSelectMenu() && p.base === IDS.notifyMode) {
     const mode = i.values[0];
     if (!MODE_VALUES.includes(mode)) return i.reply({ content: 'Mode tidak dikenal.', flags: MessageFlags.Ephemeral });
     setMode(i.guildId, i.user.id, mode);
@@ -184,7 +194,7 @@ async function handleComponent(i, tracker) {
     return i.followUp({ content: '✅ Pilihan notifikasi kamu: **' + modeLabel(mode) + '**.', flags: MessageFlags.Ephemeral });
   }
 
-  if (i.isStringSelectMenu() && i.customId === IDS.warn) {
+  if (i.isStringSelectMenu() && p.base === IDS.warn) {
     const seconds = Number(i.values[0]);
     if (!WARN_VALUES.includes(String(seconds))) return i.reply({ content: 'Nilai peringatan tidak dikenal.', flags: MessageFlags.Ephemeral });
     setUserWarnSeconds(i.guildId, i.user.id, seconds);
@@ -198,8 +208,8 @@ async function handleComponent(i, tracker) {
     });
   }
 
-  if (i.isButton() && (i.customId === IDS.on || i.customId === IDS.off)) {
-    const mode = i.customId === IDS.on ? 'both' : 'channel';
+  if (i.isButton() && (p.base === IDS.on || p.base === IDS.off)) {
+    const mode = p.base === IDS.on ? 'both' : 'channel';
     setMode(i.guildId, i.user.id, mode);
     await i.update(refreshView(i));
     return i.followUp({
@@ -208,20 +218,20 @@ async function handleComponent(i, tracker) {
     });
   }
 
-  if (i.isButton() && i.customId === IDS.status) {
+  if (i.isButton() && p.base === IDS.status) {
     return i.reply({ embeds: [statusEmbed(getGuildSettings(i.guildId), i.user.id)], flags: MessageFlags.Ephemeral });
   }
 
-  if (i.isButton() && i.customId === IDS.help) {
+  if (i.isButton() && p.base === IDS.help) {
     return i.reply({ embeds: [helpEmbed(prefix, { isAdmin: isAdmin(i) })], flags: MessageFlags.Ephemeral });
   }
 
-  if (i.isButton() && i.customId === IDS.adminHelp) {
+  if (i.isButton() && p.base === IDS.adminHelp) {
     if (!isAdmin(i)) return i.reply({ content: 'Perintah ini khusus moderator/admin server.', flags: MessageFlags.Ephemeral });
     return i.reply({ embeds: [adminHelpEmbed(prefix)], flags: MessageFlags.Ephemeral });
   }
 
-  if (i.isButton() && i.customId === IDS.refresh) {
+  if (i.isButton() && p.base === IDS.refresh) {
     await i.update(refreshView(i));
     return i.followUp({ content: '🔄 Panel diperbarui.', flags: MessageFlags.Ephemeral });
   }

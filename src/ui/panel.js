@@ -13,6 +13,23 @@ const IDS = {
 
 const MODE_VALUES = ['dm', 'channel', 'both'];
 const WARN_VALUES = ['0', '10', '30', '60', '120', '300', '600', '900'];
+const ID_SEP = ':';
+
+// Scoped customId → "base:userId", sehingga komponen hanya sah untuk pemilik panel.
+function scopedCustomId(base, userId) {
+  return base + ID_SEP + userId;
+}
+
+// Baca balik customId. Return { base, userId, ok } ; ok=false jika format invalid.
+function parseCustomId(customId) {
+  if (typeof customId !== 'string') return { ok: false, base: null, userId: null };
+  const idx = customId.lastIndexOf(ID_SEP);
+  if (idx <= 0) return { ok: false, base: null, userId: null };
+  const base = customId.slice(0, idx);
+  const userId = customId.slice(idx + 1);
+  if (!base || !userId) return { ok: false, base: null, userId: null };
+  return { ok: true, base, userId };
+}
 
 function modeLabel(mode) {
   return {
@@ -41,7 +58,7 @@ function notifySelect(settings, userId) {
     .setDescription(o.desc)
     .setDefault(o.value === current));
   return new StringSelectMenuBuilder()
-    .setCustomId(IDS.notifyMode)
+    .setCustomId(scopedCustomId(IDS.notifyMode, userId))
     .setPlaceholder('Pilih pengingat pribadi')
     .setMinValues(1)
     .setMaxValues(1)
@@ -55,7 +72,7 @@ function warnSelect(settings, userId) {
     .setValue(v)
     .setDefault(v === current));
   return new StringSelectMenuBuilder()
-    .setCustomId(IDS.warn)
+    .setCustomId(scopedCustomId(IDS.warn, userId))
     .setPlaceholder('DM peringatan berapa detik sebelum boss muncul?')
     .setMinValues(1)
     .setMaxValues(1)
@@ -79,10 +96,10 @@ function panelEmbed(settings, userId, extra = {}) {
   return embed;
 }
 
-function dmRow() {
+function dmRow(userId) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(IDS.on).setLabel('DM ON').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(IDS.off).setLabel('DM OFF').setStyle(ButtonStyle.Danger)
+    new ButtonBuilder().setCustomId(scopedCustomId(IDS.on, userId)).setLabel('DM ON').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(scopedCustomId(IDS.off, userId)).setLabel('DM OFF').setStyle(ButtonStyle.Danger)
   );
 }
 
@@ -94,18 +111,18 @@ function notifyRow(settings, userId) {
   return new ActionRowBuilder().addComponents(notifySelect(settings, userId));
 }
 
-function footerRow() {
+function footerRow(userId) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(IDS.status).setLabel('Status').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(IDS.help).setLabel('Bantuan').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(IDS.adminHelp).setLabel('Admin Help').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(IDS.refresh).setLabel('🔄 Perbarui').setStyle(ButtonStyle.Primary)
+    new ButtonBuilder().setCustomId(scopedCustomId(IDS.status, userId)).setLabel('Status').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(scopedCustomId(IDS.help, userId)).setLabel('Bantuan').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(scopedCustomId(IDS.adminHelp, userId)).setLabel('Admin Help').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(scopedCustomId(IDS.refresh, userId)).setLabel('🔄 Perbarui').setStyle(ButtonStyle.Primary)
   );
 }
 
 function personalPanel(settings, userId, extra = {}) {
-  const rows = [notifyRow(settings, userId), warnRow(settings, userId), dmRow()];
-  if (extra.includeFooter) rows.push(footerRow());
+  const rows = [notifyRow(settings, userId), warnRow(settings, userId), dmRow(userId)];
+  if (extra.includeFooter) rows.push(footerRow(userId));
   return { embeds: [panelEmbed(settings, userId, extra)], components: rows };
 }
 
@@ -200,5 +217,7 @@ module.exports = {
   personalPanel,
   statusEmbed,
   statusText,
-  helpEmbed
+  helpEmbed,
+  scopedCustomId,
+  parseCustomId
 };
