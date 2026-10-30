@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Events, PermissionFlagsBits } = require('discord.js');
+const { Client, GatewayIntentBits, Events, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const command = require('./commands/boss');
 const { BossTracker } = require('./services/bossTracker');
 const { getGuildSettings, updateGuildSettings } = require('./utils/storage');
@@ -118,7 +118,7 @@ async function handlePrefixCommand(message) {
     if (!channelId || !roleId) return send(message, 'Format: `' + prefix + 'boss setup #channel @role`');
     const channel = await message.guild.channels.fetch(channelId).catch(() => null);
     const role = await message.guild.roles.fetch(roleId).catch(() => null);
-    if (!channel?.isTextBased() || !channel.send || !role) return send(message, 'Channel teks atau role tidak ditemukan. Pastikan pilihan benar.');
+    if (typeof channel?.send !== 'function' || !role) return send(message, 'Channel teks atau role tidak ditemukan. Pastikan pilihan benar.');
     updateGuildSettings(message.guildId, s => ({ ...s, channelId, roleId }));
     return send(message, '✅ Channel dan role notifikasi tersimpan. Aktifkan dengan `' + prefix + 'boss server on`.');
   }
@@ -162,10 +162,11 @@ client.on(Events.InteractionCreate, async i => {
     await command.execute(i, tracker);
   } catch (e) {
     console.error(e);
-    const data = { content: 'Terjadi kesalahan saat menjalankan perintah.', ephemeral: true };
+    const data = { content: 'Terjadi kesalahan saat menjalankan perintah.', flags: MessageFlags.Ephemeral };
     if (i.replied || i.deferred) await i.followUp(data).catch(() => {});
     else await i.reply(data).catch(() => {});
   }
 });
 client.on(Events.Error, console.error);
 client.login(process.env.DISCORD_TOKEN);
+  
