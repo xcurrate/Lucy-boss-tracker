@@ -1,13 +1,18 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js');
-const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, EmbedBuilder } = require('discord.js');
+const { getGuildSettings, updateGuildSettings, setUserMode, setUserWarnSeconds } = require('../utils/storage');
+const {
+  IDS, MODE_VALUES, WARN_VALUES, modeLabel, warnLabel, personalPanel, panelEmbed, statusEmbed, helpEmbed
+} = require('../ui/panel');
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
-const MODES = ['dm', 'channel', 'both'];
+
+const WARN_CHOICES = WARN_VALUES.map(v => ({ name: warnLabel(Number(v)), value: v }));
 
 const data = new SlashCommandBuilder()
   .setName('boss')
   .setDescription('Notifikasi boss Lucy')
   .addSubcommand(s => s.setName('help').setDescription('Panduan singkat untuk pengguna'))
+  .addSubcommand(s => s.setName('menu').setDescription('Panel pengaturan pribadi (v2 components)'))
   .addSubcommand(s => s.setName('status').setDescription('Lihat status notifikasi boss'))
   .addSubcommand(s => s.setName('notify').setDescription('Pilih pengingat pribadi: DM, channel, atau keduanya')
     .addStringOption(o => o.setName('mode').setDescription('Cara kamu ingin menerima pengingat pribadi').setRequired(true)
@@ -16,6 +21,9 @@ const data = new SlashCommandBuilder()
         { name: 'Tanpa DM (pantau channel server)', value: 'channel' },
         { name: 'DM dan channel server', value: 'both' }
       )))
+  .addSubcommand(s => s.setName('warn').setDescription('DM peringatan berapa detik sebelum boss muncul')
+    .addStringOption(o => o.setName('detik').setDescription('Detik sebelum boss untuk menerima DM (0 = matikan)').setRequired(true)
+      .addChoices(...WARN_CHOICES)))
   .addSubcommand(s => s.setName('on').setDescription('Aktifkan pengingat pribadi lewat DM'))
   .addSubcommand(s => s.setName('off').setDescription('Matikan pengingat pribadi lewat DM'))
   .addSubcommand(s => s.setName('setup').setDescription('Atur channel dan role notifikasi server')
@@ -36,26 +44,7 @@ function getMode(settings, userId) {
 }
 
 function setMode(guildId, userId, mode) {
-  updateGuildSettings(guildId, s => {
-    const userModes = { ...(s.userModes || {}), [userId]: mode };
-    const dmUsers = new Set(s.dmUsers || []);
-    if (mode === 'dm' || mode === 'both') dmUsers.add(userId);
-    else dmUsers.delete(userId);
-    return { ...s, userModes, dmUsers: [...dmUsers] };
-  });
-}
-
-function helpEmbed() {
-  return new EmbedBuilder().setColor(0x5865F2).setTitle('🐉 Bantuan Boss Tracker')
-    .setDescription('Boss Tracker memberi pengingat saat boss Lucy diperkirakan muncul.')
-    .addFields(
-      { name: '/boss notify mode:DM saja', value: 'Pilih pengingat DM pribadi. Notifikasi channel server tetap dikirim sesuai pengaturan moderator.', inline: false },
-      { name: '/boss notify mode:Tanpa DM', value: 'Matikan DM pribadi dan pantau channel notifikasi server.', inline: false },
-      { name: '/boss notify mode:DM dan channel', value: 'Aktifkan DM pribadi sekaligus pantau channel notifikasi server.', inline: false },
-      { name: '/boss status', value: 'Cek status tracker dan waktu boss berikutnya.', inline: false },
-      { name: '/boss help', value: 'Tampilkan panduan ini.', inline: false }
-    )
-    .setFooter({ text: 'Channel notifikasi berlaku untuk seluruh server; pilihan anggota mengatur DM pribadi.' });
+  setUserMode(guildId, userId, mode);
 }
 
 function adminHelpEmbed(prefix) {
@@ -79,8 +68,18 @@ function validPrefix(value) {
 async function execute(i, tracker) {
   if (!i.guildId) return i.reply({ content: 'Gunakan perintah ini di server.', flags: MessageFlags.Ephemeral });
   const sub = i.options.getSubcommand();
+  const settings = getGuildSettings(i.guildId);
+  const prefix = settings.prefix || '!';
 
-  if (sub === 'help') return i.reply({ embeds: [helpEmbed()], flags: MessageFlags.Ephemeral });
+  if (sub === 'help') return i.reply({
+    embeds: [helpEmbed(prefix), statusEmbed(settings, i.user.id)],
+    flags: MessageFlags.Ephemeral
+  });
+
+  if (sub === 'menu') return i.reply({
+    ...personalPanel(settings, i.user.id, { includeFooter: true }),
+    flags: MessageFlags.Ephemeral
+  });
 
   if (sub === 'notify') {
     const mode = i.options.getString('mode', true);
@@ -93,6 +92,18 @@ async function execute(i, tracker) {
     return i.reply({ content: '✅ ' + descriptions[mode], flags: MessageFlags.Ephemeral });
   }
 
+  if (sub === 'warn') {
+    const seconds = Number(i.options.getString('detik', true));
+    setUserWarnSeconds(i.guildId, i.user.id, seconds);
+    if (tracker) tracker.refreshWarns(i.guildId, settings.lastBossTimestamp);
+    return i.reply({
+      content: seconds === 0
+        ? '🔕 DM peringatan dimatikan.'
+        : '✅ DM peringatan disetel: **' + warnLabel(seconds) + '**. Kamu akan menerima DM pengingat saat waktunya tiba.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
   if (sub === 'on' || sub === 'off') {
     const mode = sub === 'on' ? 'both' : 'channel';
     setMode(i.guildId, i.user.id, mode);
@@ -103,23 +114,12 @@ async function execute(i, tracker) {
   }
 
   if (sub === 'status') {
-    const s = getGuildSettings(i.guildId);
-    const ts = s.lastBossTimestamp;
-    const mode = getMode(s, i.user.id);
-    const modeLabel = { dm: 'DM pribadi', channel: 'Channel server (tanpa DM)', both: 'DM pribadi + channel server' }[mode];
-    return i.reply({
-      content: [
-        '**🐉 Status Boss Tracker**',
-        'Notifikasi server: ' + (s.enabled ? '✅ Aktif' : '🔕 Nonaktif'),
-        'Pilihan notifikasi kamu: ' + modeLabel,
-        'Boss berikutnya: ' + (ts ? '<t:' + ts + ':F> (<t:' + ts + ':R>)' : 'Belum terdeteksi dari pesan Lucy.')
-      ].join('\n')
-    });
+    return i.reply({ embeds: [statusEmbed(settings, i.user.id)], flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'admin-help') {
     if (!isAdmin(i)) return i.reply({ content: 'Perintah ini khusus moderator/admin server.', flags: MessageFlags.Ephemeral });
-    return i.reply({ embeds: [adminHelpEmbed(getGuildSettings(i.guildId).prefix || '!')], flags: MessageFlags.Ephemeral });
+    return i.reply({ embeds: [adminHelpEmbed(prefix)], flags: MessageFlags.Ephemeral });
   }
 
   if (['setup', 'server-on', 'server-off', 'prefix'].includes(sub) && !isAdmin(i)) {
@@ -158,4 +158,75 @@ async function execute(i, tracker) {
   }
 }
 
-module.exports = { data, execute, helpEmbed, adminHelpEmbed, validPrefix, getMode, setMode };
+async function handleComponent(i, tracker) {
+  if (!i.guildId) return i.reply({ content: 'Gunakan perintah ini di server.', flags: MessageFlags.Ephemeral });
+  const settings = getGuildSettings(i.guildId);
+  const prefix = settings.prefix || '!';
+
+  if (i.isStringSelectMenu() && i.customId === IDS.notifyMode) {
+    const mode = i.values[0];
+    if (!MODE_VALUES.includes(mode)) return i.reply({ content: 'Mode tidak dikenal.', flags: MessageFlags.Ephemeral });
+    setMode(i.guildId, i.user.id, mode);
+    await i.update({
+      embeds: [panelEmbed(getGuildSettings(i.guildId), i.user.id),
+        statusEmbed(getGuildSettings(i.guildId), i.user.id)],
+      components: personalPanel(getGuildSettings(i.guildId), i.user.id).components
+    });
+    return i.followUp({ content: '✅ Pilihan notifikasi kamu: **' + modeLabel(mode) + '**.', flags: MessageFlags.Ephemeral });
+  }
+
+  if (i.isStringSelectMenu() && i.customId === IDS.warn) {
+    const seconds = Number(i.values[0]);
+    setUserWarnSeconds(i.guildId, i.user.id, seconds);
+    if (tracker) tracker.refreshWarns(i.guildId, settings.lastBossTimestamp);
+    await i.update({
+      embeds: [panelEmbed(getGuildSettings(i.guildId), i.user.id),
+        statusEmbed(getGuildSettings(i.guildId), i.user.id)],
+      components: personalPanel(getGuildSettings(i.guildId), i.user.id).components
+    });
+    return i.followUp({
+      content: seconds === 0
+        ? '🔕 DM peringatan dimatikan.'
+        : '✅ DM peringatan disetel: **' + warnLabel(seconds) + '**.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  if (i.isButton() && (i.customId === IDS.on || i.customId === IDS.off)) {
+    const mode = i.customId === IDS.on ? 'both' : 'channel';
+    setMode(i.guildId, i.user.id, mode);
+    await i.update({
+      embeds: [panelEmbed(getGuildSettings(i.guildId), i.user.id),
+        statusEmbed(getGuildSettings(i.guildId), i.user.id)],
+      components: personalPanel(getGuildSettings(i.guildId), i.user.id).components
+    });
+    return i.followUp({
+      content: mode === 'both' ? '✅ DM pribadi aktif. Notifikasi channel server tetap tersedia.' : '🔕 DM pribadi dimatikan.',
+      flags: MessageFlags.Ephemeral
+    });
+  }
+
+  if (i.isButton() && i.customId === IDS.status) {
+    return i.reply({ embeds: [statusEmbed(getGuildSettings(i.guildId), i.user.id)], flags: MessageFlags.Ephemeral });
+  }
+
+  if (i.isButton() && i.customId === IDS.help) {
+    return i.reply({ embeds: [helpEmbed(prefix)], flags: MessageFlags.Ephemeral });
+  }
+
+  if (i.isButton() && i.customId === IDS.adminHelp) {
+    if (!isAdmin(i)) return i.reply({ content: 'Perintah ini khusus moderator/admin server.', flags: MessageFlags.Ephemeral });
+    return i.reply({ embeds: [adminHelpEmbed(prefix)], flags: MessageFlags.Ephemeral });
+  }
+
+  if (i.isButton() && i.customId === IDS.refresh) {
+    await i.update({
+      embeds: [panelEmbed(getGuildSettings(i.guildId), i.user.id),
+        statusEmbed(getGuildSettings(i.guildId), i.user.id)],
+      components: personalPanel(getGuildSettings(i.guildId), i.user.id).components
+    });
+    return i.followUp({ content: '🔄 Panel diperbarui.', flags: MessageFlags.Ephemeral });
+  }
+}
+
+module.exports = { data, execute, handleComponent, helpEmbed, adminHelpEmbed, validPrefix, getMode, setMode, WARN_CHOICES };

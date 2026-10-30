@@ -7,22 +7,42 @@ Bot Discord Node.js untuk memantau pesan Components V2 dari bot Lucy, membaca ti
 - Memantau pesan baru dan pesan yang diperbarui dari Lucy.
 - Notifikasi channel server dengan role mention yang dikonfigurasi moderator/admin.
 - Preferensi DM pribadi per anggota: DM, channel (tanpa DM), atau keduanya.
-- Perintah slash dan prefix; prefix tersimpan terpisah untuk setiap server.
+- **DM peringatan** — setiap anggota dapat mengatur berapa detik/menit sebelum boss muncul untuk menerima pengingat pribadi.
+- UI panel **Components v2** (select menu, tombol) untuk mengatur preferensi pribadi.
+- Perintah slash dan prefix; prefix tersimpan terpisah untuk setiap server, dengan **alias** untuk setiap subperintah.
 - Konfigurasi tersimpan dan jadwal dipulihkan setelah restart.
 
 ## Untuk semua anggota
-- `/boss notify` — pilih mode pengingat: DM, channel (tanpa DM pribadi), atau keduanya.
+- `/boss menu` — **panel Components v2**: atur mode notifikasi, DM peringatan, dan tombol DM ON/OFF.
+- `/boss notify mode:...` — pilih mode pengingat: DM, channel (tanpa DM pribadi), atau keduanya.
+- `/boss warn detik:60` — atur **DM peringatan** beberapa detik/menit sebelum boss muncul (`0` = matikan).
 - `/boss on` — aktifkan DM pribadi.
 - `/boss off` — matikan DM pribadi.
 - `/boss status` — lihat status tracker dan waktu boss berikutnya.
 - `/boss help` — panduan singkat.
 
-Versi prefix (prefix default `!`):
-- `!boss notify dm`
-- `!boss notify channel`
-- `!boss notify both`
+Versi prefix (prefix default `!`, semua subperintah punya alias — misal `!boss notif dm`, `!boss cek`, `!boss peringatan 60`):
+- `!boss notify dm` / `!boss notify channel` / `!boss notify both`
+- `!boss warn <detik>` — DM peringatan sebelum boss muncul (`0` untuk matikan)
+- `!boss menu` — tampilkan panel Components v2
 - `!boss status`
 - `!boss help`
+
+Daftar alias:
+| Perintah | Alias |
+| --- | --- |
+| `help` | `bantuan` |
+| `notify` | `notif`, `pengingat` |
+| `on` | `nyalakan`, `aktifkan`, `enable` |
+| `off` | `matikan`, `nonaktifkan`, `disable` |
+| `status` | `cek`, `info`, `state` |
+| `warn` | `peringatan`, `ingatkan` |
+| `menu` | `panel`, `pengaturan` |
+| `setup` | `set`, `atur`, `config`, `konfigurasi` |
+| `server-on` | `server-nyalakan`, `aktif` |
+| `server-off` | `server-matikan`, `nonaktif` |
+| `prefix` | `awalan` |
+| `admin-help` | `bantuan-admin` |
 
 **Penting:** notifikasi di channel adalah notifikasi bersama untuk server, dikelola moderator/admin, dan tetap terlihat oleh anggota yang memiliki akses ke channel. Preferensi `dm` mengaktifkan DM pribadi; `channel` mematikan DM pribadi; `both` mengaktifkan DM pribadi sambil tetap menggunakan channel bersama. Bot tidak bisa menyembunyikan pesan channel hanya untuk satu anggota tanpa mengubah izin akses Discord mereka.
 
@@ -49,6 +69,7 @@ Persyaratan: Node.js 20.11 atau lebih baru.
    cp .env.example .env
    npm run deploy-commands
    npm run check
+   npm test
    npm start
    ```
 

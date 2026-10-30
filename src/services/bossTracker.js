@@ -1,4 +1,5 @@
-const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
+const { getGuildSettings, updateGuildSettings, getUserSettings } = require('../utils/storage');
+const { warnLabel } = require('../ui/panel');
 const TITLE = 'Guild Boss Telah Dikalahkan!';
 function collect(value, out = []) {
   if (typeof value === 'string') out.push(value);
@@ -24,7 +25,11 @@ function extractNextBossTimestamp(message) {
   return match ? Number(match[1]) : null;
 }
 class BossTracker {
-  constructor(client) { this.client = client; this.timers = new Map(); }
+  constructor(client) {
+    this.client = client;
+    this.timers = new Map();
+    this.warnTimers = new Map();
+  }
   async handleMessage(message) {
     if (!message.guildId || message.author?.id !== process.env.LUCY_BOT_ID) return;
     if (process.env.LUCY_CHANNEL_ID && message.channelId !== process.env.LUCY_CHANNEL_ID) return;
@@ -52,6 +57,46 @@ class BossTracker {
       else fire();
     }, Math.min(remaining, 2_147_000_000));
     this.timers.set(id, timer);
+    this.refreshWarns(id, ts);
+  }
+
+  refreshWarns(id, ts) {
+    const s = getGuildSettings(id);
+    if (!s.enabled || !ts) return;
+    this.stopWarns(id);
+    const fireAt = ts * 1000 - Date.now();
+    for (const [userId, seconds] of Object.entries(s.userWarnSeconds || {})) {
+      if (!seconds || seconds <= 0) continue;
+      if (!getUserSettings(id, userId).dmEnabled) continue;
+      const key = id + ':' + userId + ':' + ts;
+      const delay = fireAt - seconds * 1000;
+      if (delay < 0) continue;
+      this.warnTimers.set(key, setTimeout(() => {
+        this.warnTimers.delete(key);
+        this.sendWarn(id, userId, ts, seconds).catch(console.error);
+      }, Math.min(delay, 2_147_000_000)));
+    }
+  }
+
+  async sendWarn(id, userId, ts, seconds) {
+    const s = getGuildSettings(id);
+    if (!s.enabled) return;
+    try {
+      const user = await this.client.users.fetch(userId);
+      await user.send({
+        content: '⏰ **Boss akan muncul ' + warnLabel(seconds) + '!**\n' +
+          'Waktu perkiraan: <t:' + ts + ':F>\n' +
+          'Hitung mundur: <t:' + ts + ':R>'
+      });
+    } catch (e) {
+      console.warn('[BossTracker] Warn DM failed for', userId, e.message);
+    }
+  }
+
+  stopWarns(id) {
+    for (const [key, timer] of [...this.warnTimers.entries()]) {
+      if (key.startsWith(id + ':')) { clearTimeout(timer); this.warnTimers.delete(key); }
+    }
   }
   async notifyBoss(id, ts) {
     const s = getGuildSettings(id);
@@ -86,7 +131,11 @@ class BossTracker {
       catch (e) { console.warn('[BossTracker] DM failed for', userId, e.message); }
     }
   }
-  stopGuild(id) { if (this.timers.has(id)) clearTimeout(this.timers.get(id)); this.timers.delete(id); }
+  stopGuild(id) {
+    if (this.timers.has(id)) clearTimeout(this.timers.get(id));
+    this.timers.delete(id);
+    this.stopWarns(id);
+  }
 }
 module.exports = { BossTracker, extractNextBossTimestamp };
   
