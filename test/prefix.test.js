@@ -74,8 +74,8 @@ describe('prefix command handler', () => {
     const payload = deps.calls[0];
     assert.ok(payload.components.length > 0, 'should include component rows');
     const ids = payload.components.flatMap(r => r.components.map(c => c.data.custom_id));
-    assert.ok(ids.includes('boss_notify_mode'));
-    assert.ok(ids.includes('boss_warn_select'));
+    assert.ok(ids.some(id => id.startsWith('boss_notify_mode:')));
+    assert.ok(ids.some(id => id.startsWith('boss_warn_select:')));
   });
 
   it('rejects non-admin for setup alias', async () => {
