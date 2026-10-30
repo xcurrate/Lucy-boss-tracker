@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, MessageFlags } = require('discord.js');
 const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
 
 const ADMIN = PermissionFlagsBits.ManageGuild;
@@ -77,10 +77,10 @@ function validPrefix(value) {
 }
 
 async function execute(i, tracker) {
-  if (!i.guildId) return i.reply({ content: 'Gunakan perintah ini di server.', ephemeral: true });
+  if (!i.guildId) return i.reply({ content: 'Gunakan perintah ini di server.', flags: MessageFlags.Ephemeral });
   const sub = i.options.getSubcommand();
 
-  if (sub === 'help') return i.reply({ embeds: [helpEmbed()], ephemeral: true });
+  if (sub === 'help') return i.reply({ embeds: [helpEmbed()], flags: MessageFlags.Ephemeral });
 
   if (sub === 'notify') {
     const mode = i.options.getString('mode', true);
@@ -90,7 +90,7 @@ async function execute(i, tracker) {
       channel: 'DM pribadi dimatikan. Pantau channel notifikasi server.',
       both: 'DM pribadi aktif. Kamu juga bisa memantau channel notifikasi server.'
     };
-    return i.reply({ content: '✅ ' + descriptions[mode], ephemeral: true });
+    return i.reply({ content: '✅ ' + descriptions[mode], flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'on' || sub === 'off') {
@@ -98,7 +98,7 @@ async function execute(i, tracker) {
     setMode(i.guildId, i.user.id, mode);
     return i.reply({
       content: sub === 'on' ? '✅ DM pribadi aktif. Notifikasi channel server tetap tersedia.' : '🔕 DM pribadi dimatikan.',
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   }
 
@@ -118,43 +118,43 @@ async function execute(i, tracker) {
   }
 
   if (sub === 'admin-help') {
-    if (!isAdmin(i)) return i.reply({ content: 'Perintah ini khusus moderator/admin server.', ephemeral: true });
-    return i.reply({ embeds: [adminHelpEmbed(getGuildSettings(i.guildId).prefix || '!')], ephemeral: true });
+    if (!isAdmin(i)) return i.reply({ content: 'Perintah ini khusus moderator/admin server.', flags: MessageFlags.Ephemeral });
+    return i.reply({ embeds: [adminHelpEmbed(getGuildSettings(i.guildId).prefix || '!')], flags: MessageFlags.Ephemeral });
   }
 
   if (['setup', 'server-on', 'server-off', 'prefix'].includes(sub) && !isAdmin(i)) {
-    return i.reply({ content: 'Pengaturan ini hanya bisa digunakan moderator/admin dengan izin Manage Server.', ephemeral: true });
+    return i.reply({ content: 'Pengaturan ini hanya bisa digunakan moderator/admin dengan izin Manage Server.', flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'setup') {
     const channel = i.options.getChannel('channel', true);
     const role = i.options.getRole('role', true);
-    if (!channel.isTextBased() || !channel.send) {
-      return i.reply({ content: 'Pilih channel teks yang bisa dikirimi pesan.', ephemeral: true });
+    if (typeof channel?.send !== 'function') {
+      return i.reply({ content: 'Pilih channel teks yang bisa dikirimi pesan.', flags: MessageFlags.Ephemeral });
     }
     updateGuildSettings(i.guildId, s => ({ ...s, channelId: channel.id, roleId: role.id }));
-    return i.reply({ content: '✅ Channel notifikasi dan role tag berhasil disimpan. Aktifkan dengan /boss server-on.', ephemeral: true });
+    return i.reply({ content: '✅ Channel notifikasi dan role tag berhasil disimpan. Aktifkan dengan /boss server-on.', flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'server-on' || sub === 'server-off') {
     const enabled = sub === 'server-on';
     const current = getGuildSettings(i.guildId);
     if (enabled && (!current.channelId || !current.roleId)) {
-      return i.reply({ content: 'Atur channel dan role terlebih dahulu dengan /boss setup.', ephemeral: true });
+      return i.reply({ content: 'Atur channel dan role terlebih dahulu dengan /boss setup.', flags: MessageFlags.Ephemeral });
     }
     const s = updateGuildSettings(i.guildId, old => ({ ...old, enabled }));
     if (enabled && s.lastBossTimestamp) tracker.scheduleGuild(i.guildId, s.lastBossTimestamp);
     else if (!enabled) tracker.stopGuild(i.guildId);
-    return i.reply({ content: enabled ? '✅ Tracker aktif untuk seluruh server.' : '🔕 Tracker server dimatikan.', ephemeral: true });
+    return i.reply({ content: enabled ? '✅ Tracker aktif untuk seluruh server.' : '🔕 Tracker server dimatikan.', flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'prefix') {
     const value = i.options.getString('nilai');
     const current = getGuildSettings(i.guildId).prefix || '!';
-    if (value === null) return i.reply({ content: 'Prefix server saat ini: `' + current + '`', ephemeral: true });
-    if (!validPrefix(value)) return i.reply({ content: 'Prefix harus 1–5 karakter dan tidak boleh mengandung spasi.', ephemeral: true });
+    if (value === null) return i.reply({ content: 'Prefix server saat ini: `' + current + '`', flags: MessageFlags.Ephemeral });
+    if (!validPrefix(value)) return i.reply({ content: 'Prefix harus 1–5 karakter dan tidak boleh mengandung spasi.', flags: MessageFlags.Ephemeral });
     updateGuildSettings(i.guildId, s => ({ ...s, prefix: value }));
-    return i.reply({ content: '✅ Prefix server diubah menjadi `' + value + '`. Contoh: `' + value + 'boss help`', ephemeral: true });
+    return i.reply({ content: '✅ Prefix server diubah menjadi `' + value + '`. Contoh: `' + value + 'boss help`', flags: MessageFlags.Ephemeral });
   }
 }
 
