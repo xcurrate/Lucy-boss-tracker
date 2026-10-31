@@ -104,6 +104,11 @@ async function pollLogs() {
 }
 async function boot() {
   try {
+    if (!dashboardToken) {
+      dashboardToken = window.prompt('Masukkan DASHBOARD_TOKEN dari environment Pterodactyl:') || '';
+      if (!dashboardToken) throw new Error('Token dashboard wajib diisi.');
+      sessionStorage.setItem('lucy-dashboard-token', dashboardToken);
+    }
     const data = await api('/api/me');
     $('app-view').classList.remove('hidden');
     $('user-name').textContent = 'Developer lokal';
