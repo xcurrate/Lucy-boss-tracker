@@ -50,7 +50,6 @@ function cleanSession(req) {
     if (id) sessions.delete(id);
     return null;
   }
-  session.expiresAt = Date.now() + SESSION_TTL;
   return session;
 }
 async function discordFetch(url, options = {}) {
@@ -134,6 +133,7 @@ function startDashboard(client, tracker) {
       if (req.method === 'GET' && url.pathname === '/auth/login') {
         const state = crypto.randomBytes(24).toString('hex');
         states.set(state, Date.now() + STATE_TTL);
+        res.setHeader('Set-Cookie', 'lucy_oauth_state=' + state + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=600' + (process.env.DASHBOARD_COOKIE_SECURE === 'false' ? '' : '; Secure'));
         const params = new URLSearchParams({
           client_id: clientId,
           redirect_uri: redirectUri,
@@ -146,8 +146,10 @@ function startDashboard(client, tracker) {
       if (req.method === 'GET' && url.pathname === '/auth/callback') {
         const state = url.searchParams.get('state');
         const expiresAt = states.get(state);
+        const cookieState = readCookie(req, 'lucy_oauth_state');
         states.delete(state);
-        if (!state || !expiresAt || expiresAt < Date.now() || !url.searchParams.get('code')) {
+        const clearStateCookie = 'lucy_oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0' + (process.env.DASHBOARD_COOKIE_SECURE === 'false' ? '' : '; Secure');
+        if (!state || state !== cookieState || !expiresAt || expiresAt < Date.now() || !url.searchParams.get('code')) {
           return redirect(res, '/?error=oauth_state');
         }
         const tokenResponse = await fetch('https://discord.com/api/v10/oauth2/token', {
@@ -169,7 +171,7 @@ function startDashboard(client, tracker) {
         ]);
         const sessionId = crypto.randomBytes(32).toString('hex');
         sessions.set(sessionId, { user: { id: user.id, username: user.username, global_name: user.global_name, avatar: user.avatar }, guilds, expiresAt: Date.now() + SESSION_TTL });
-        res.setHeader('Set-Cookie', 'lucy_dashboard=' + sessionId + '; ' + cookieOptions());
+        res.setHeader('Set-Cookie', [clearStateCookie, 'lucy_dashboard=' + sessionId + '; ' + cookieOptions()]);
         return redirect(res, '/');
       }
       if (req.method === 'POST' && url.pathname === '/auth/logout') {
