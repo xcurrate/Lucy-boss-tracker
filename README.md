@@ -10,30 +10,25 @@ Bot Discord Node.js untuk memantau pesan Components V2 dari bot Lucy, membaca ti
 - DM peringatan sebelum boss muncul.
 - Panel Components v2 untuk preferensi pribadi.
 - Perintah slash dan prefix dengan alias per subperintah.
-- Auto Thread Rep: membuat thread dari pesan *rep dengan mention target yang benar; instruksi rep dikirim sebagai teks untuk disalin, bukan dieksekusi.
-- Web Control Dashboard untuk mengatur fitur dan melihat runtime logs.
+- Auto Thread Rep: membuat thread dari pesan *rep dengan mention target yang benar pada channel yang dipilih; instruksi rep dikirim sebagai teks untuk disalin, bukan dieksekusi.
+- Web Control Dashboard lokal untuk konfigurasi fitur dan runtime logs.
 - Konfigurasi tersimpan dan jadwal dipulihkan setelah restart.
 
 ## Web Control Dashboard
+
 Dashboard memiliki kategori Overview, Boss Tracker, Auto Thread Rep, dan System Logs.
 
 Pengaturan Boss Tracker: ON/OFF, channel notifikasi, role mention, prefix server, dan status waktu boss berikutnya.
 
-Pengaturan Auto Thread Rep: ON/OFF, target Discord user ID, nominal rep, awalan nama thread, dan durasi auto-archive.
+Pengaturan Auto Thread Rep: ON/OFF, **channel pemicu khusus**, target Discord user ID, nominal rep, awalan nama thread, dan durasi auto-archive. Fitur hanya memproses pesan *rep yang dikirim di channel Auto Thread Rep yang dipilih. Channel ini terpisah dari channel notifikasi Boss Tracker.
 
 Kotak log menampilkan log runtime terbaru secara otomatis. Buffer menyimpan maksimal 300 entri terakhir di memori proses.
 
 Pengaturan pribadi per anggota (mode DM dan waktu DM peringatan) tetap dikelola oleh masing-masing anggota melalui perintah /boss menu. Dashboard mengatur konfigurasi fitur pada tingkat server dan tidak menimpa preferensi pribadi tersebut.
 
-### Menyiapkan OAuth2
-1. Buka Discord Developer Portal → aplikasi bot → OAuth2.
-2. Tambahkan Redirect URL yang sama persis dengan DASHBOARD_REDIRECT_URI, misalnya http://localhost:3000/auth/callback untuk pengembangan lokal.
-3. Salin OAuth2 Client Secret ke DISCORD_CLIENT_SECRET. Jangan commit secret atau file .env.
-4. Atur CLIENT_ID, DISCORD_CLIENT_SECRET, dan DASHBOARD_REDIRECT_URI di .env.
-5. Jalankan bot. Dashboard tersedia di http://localhost:3000 jika DASHBOARD_HOST=127.0.0.1.
-6. Login dengan Discord. Hanya pengguna dengan izin Manage Server atau Administrator pada server tempat bot terpasang yang dapat melihat dan mengubah pengaturan server tersebut.
+### Akses dashboard developer
 
-Dashboard nonaktif dengan aman jika konfigurasi OAuth belum lengkap. Gunakan HTTPS pada deployment publik dan pertahankan cookie Secure aktif. DASHBOARD_COOKIE_SECURE=false hanya untuk pengembangan lokal HTTP. Untuk akses dari perangkat lain, atur host/bind dan reverse proxy HTTPS sesuai lingkungan deployment.
+Tidak menggunakan OAuth atau login Discord. Dashboard hanya bind ke `127.0.0.1` dan hanya menerima koneksi loopback pada komputer yang menjalankan bot. Buka `http://127.0.0.1:3000` di komputer tersebut. Dashboard sengaja tidak dapat diakses dari perangkat lain di LAN atau internet. Jangan mengubah bind server menjadi `0.0.0.0` atau mengekspos port ini melalui reverse proxy/tunnel.
 
 ## Untuk semua anggota
 - /boss menu — panel pengaturan pribadi.
@@ -70,7 +65,7 @@ Persyaratan: Node.js 20.11 atau lebih baru.
    npm test
    npm start
 
-Isi .env: DISCORD_TOKEN, CLIENT_ID, LUCY_BOT_ID, dan untuk dashboard DISCORD_CLIENT_SECRET serta DASHBOARD_REDIRECT_URI. GUILD_ID dan LUCY_CHANNEL_ID opsional. Jangan unggah token atau file .env ke GitHub.
+Isi `.env`: `DISCORD_TOKEN`, `CLIENT_ID`, dan `LUCY_BOT_ID`. `GUILD_ID` dan `LUCY_CHANNEL_ID` opsional. Jangan unggah token atau file `.env` ke GitHub.
 
 ## Catatan
 - Bot menjadwalkan waktu setelah menerima timestamp boss dari Lucy. Pastikan bot dapat membaca channel sumber.
