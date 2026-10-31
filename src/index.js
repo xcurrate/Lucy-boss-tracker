@@ -19,7 +19,7 @@ async function handleAutoThreadRep(message) {
   // Hindari log untuk setiap pesan biasa; diagnostik hanya untuk pesan yang tampak
   // mencoba menjalankan *rep atau menyebut target Auto Thread Rep.
   const content = message.content || '';
-  const hasRepCommand = /\\*rep\\b/i.test(content);
+  const hasRepCommand = /\*rep\b/i.test(content);
   if (!hasRepCommand) return;
 
   const context = {
@@ -52,7 +52,7 @@ async function handleAutoThreadRep(message) {
     return skip('Channel tidak cocok. Pesan harus dikirim di channel pemicu yang dipilih.');
   }
 
-  const commandMatch = content.match(/\\*rep\\s+<@!?(\\d+)>/i);
+  const commandMatch = content.match(/\*rep\s+<@!?(\d+)>/i);
   if (!commandMatch) {
     return skip('Format tidak cocok. Gunakan *rep lalu mention target Discord.');
   }
