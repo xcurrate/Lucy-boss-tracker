@@ -87,7 +87,7 @@ function validateSettings(input) {
 function startDashboard(client, tracker) {
   const port = Number(process.env.DASHBOARD_PORT || process.env.SERVER_PORT || process.env.PORT || 4002);
   const host = process.env.DASHBOARD_HOST || '0.0.0.0';
-  const token = process.env.DASHBOARD_TOKEN || '';
+  const token = (process.env.DASHBOARD_TOKEN || '').trim();
   if (token.length < 24) {
     console.error('[Dashboard] DASHBOARD_TOKEN wajib diisi (minimal 24 karakter). Dashboard tidak dijalankan tanpa token.');
     return null;
