@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10131b">
+  <title>Lucy Control Center</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">L</div><div><strong>Lucy</strong><span>CONTROL CENTER</span></div></div>
+      <div class="side-label">WORKSPACE</div>
+      <a class="nav active" href="#overview">◈ <span>Overview</span></a>
+      <a class="nav" href="#boss">🐉 <span>Boss Tracker</span></a>
+      <a class="nav" href="#rep">🧵 <span>Auto Thread Rep</span></a>
+      <a class="nav" href="#logs">▤ <span>System Logs</span></a>
+      <div class="sidebar-bottom"><span class="live-dot"></span> Local runtime monitor <span class="muted">●</span></div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div><div class="eyebrow">LOCAL DEVELOPER / ADMINISTRATION</div><h1>Control dashboard</h1></div>
+        <div class="user-area"><span id="user-name">Developer lokal</span></div>
+      </header>
+      <div id="app-view">
+        <section id="overview" class="overview-grid">
+          <div class="welcome"><div class="eyebrow">OVERVIEW</div><h2>Semua kontrol, satu dashboard.</h2><p>Pilih server untuk mengelola fitur Lucy. Perubahan disimpan ke konfigurasi server.</p>
+            <label for="guild-select">SERVER DISCORD</label><select id="guild-select"></select>
+          </div>
+          <div class="stat-card"><span class="stat-icon">🐉</span><span class="stat-label">BOSS TRACKER</span><strong id="boss-state">—</strong><small id="boss-detail">Status fitur</small></div>
+          <div class="stat-card"><span class="stat-icon">🧵</span><span class="stat-label">AUTO THREAD REP</span><strong id="rep-state">—</strong><small id="rep-detail">Status otomatisasi</small></div>
+        </section>
+        <section class="panel" id="boss">
+          <div class="panel-heading"><div><div class="eyebrow">CATEGORY 01 / NOTIFICATIONS</div><h2>🐉 Boss Tracker</h2><p>Atur pemantauan boss dan notifikasi server.</p></div><label class="switch"><input id="boss-enabled" type="checkbox"><span></span></label></div>
+          <div class="form-grid">
+            <div class="field"><label for="channel-id">CHANNEL NOTIFIKASI</label><select id="channel-id"></select><small>Channel teks tujuan pengumuman boss.</small></div>
+            <div class="field"><label for="role-id">ROLE YANG DI-TAG</label><select id="role-id"></select><small>Role yang disebut saat boss muncul.</small></div>
+            <div class="field"><label for="prefix">PREFIX PERINTAH</label><input id="prefix" maxlength="5" value="!"><small>1–5 karakter, tanpa spasi.</small></div>
+            <div class="field"><label>WAKTU BOSS BERIKUTNYA</label><div class="readout" id="next-boss">Belum terdeteksi</div><small>Terbaca otomatis dari pesan Lucy.</small></div>
+          </div>
+        </section>
+        <section class="panel" id="rep">
+          <div class="panel-heading"><div><div class="eyebrow">CATEGORY 02 / AUTOMATION</div><h2>🧵 Auto Thread Rep</h2><p>Buat thread otomatis dari pesan *rep dengan mention target yang benar.</p></div><label class="switch"><input id="rep-enabled" type="checkbox"><span></span></label></div>
+          <div class="form-grid">
+            <div class="field"><label for="rep-channel-id">CHANNEL AUTO THREAD REP</label><select id="rep-channel-id"></select><small>Hanya pesan *rep di channel ini yang akan memicu pembuatan thread.</small></div>
+            <div class="field"><label for="rep-target">TARGET USER ID</label><input id="rep-target" inputmode="numeric" placeholder="Discord user ID"><small>Target mention yang memicu otomatisasi.</small></div>
+            <div class="field"><label for="rep-amount">NOMINAL REP</label><input id="rep-amount" maxlength="12" placeholder="50k"><small>Contoh format: 50k, 100k, 1m.</small></div>
+            <div class="field"><label for="thread-prefix">AWALAN NAMA THREAD</label><input id="thread-prefix" maxlength="40" placeholder="Rep"><small>Nama thread menjadi awalan + nama pengirim.</small></div>
+            <div class="field"><label for="archive-duration">AUTO-ARCHIVE</label><select id="archive-duration"><option value="60">1 jam</option><option value="1440">24 jam</option><option value="4320">3 hari</option><option value="10080">7 hari</option></select><small>Durasi arsip otomatis thread.</small></div>
+          </div>
+        </section>
+        <section class="panel logs-panel" id="logs">
+          <div class="panel-heading"><div><div class="eyebrow">CATEGORY 03 / DIAGNOSTICS</div><h2>▤ System logs</h2><p>Log runtime terbaru, diperbarui otomatis.</p></div><button id="clear-logs" class="ghost">Bersihkan tampilan</button></div>
+          <div class="log-toolbar"><span><i class="live-dot"></i> LIVE STREAM</span><span id="log-count">0 entries</span></div>
+          <div id="log-box" class="log-box"><div class="empty-log">Menunggu aktivitas runtime…</div></div>
+        </section>
+        <div class="savebar"><span id="save-status">Perubahan lokal belum disimpan.</span><button id="save" class="primary">Simpan semua perubahan <span>→</span></button></div>
+      </div>
+      <footer>Lucy Control Center <span>•</span> Local-only developer dashboard</footer>
+    </main>
+  </div>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>
