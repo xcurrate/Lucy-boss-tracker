@@ -28,7 +28,7 @@ Pengaturan pribadi per anggota (mode DM dan waktu DM peringatan) tetap dikelola 
 
 ### Akses dashboard developer
 
-Tidak menggunakan OAuth atau login Discord. Dashboard hanya bind ke `127.0.0.1` dan hanya menerima koneksi loopback pada komputer yang menjalankan bot. Buka `http://127.0.0.1:3000` di komputer tersebut. Dashboard sengaja tidak dapat diakses dari perangkat lain di LAN atau internet. Jangan mengubah bind server menjadi `0.0.0.0` atau mengekspos port ini melalui reverse proxy/tunnel.
+Tidak menggunakan OAuth atau login Discord. Untuk hosting Pterodactyl, dashboard bind ke `0.0.0.0` agar dapat menerima koneksi dari allocation port container. Atur `DASHBOARD_PORT` ke port allocation di panel (contoh `4002`), `DASHBOARD_HOST=0.0.0.0`, dan isi `DASHBOARD_TOKEN` dengan secret acak minimal 24 karakter melalui Environment Variables di panel. Buka `http://bt1.luckystore.id:4002` (ganti host/port sesuai allocation). Saat pertama dibuka, masukkan token tersebut; token disimpan hanya di session browser. API dashboard menolak request tanpa token. Jangan pernah memasukkan token ke source code atau membagikannya. Jika panel memakai proxy HTTPS, akses melalui URL HTTPS yang disediakan panel.
 
 ## Untuk semua anggota
 - /boss menu — panel pengaturan pribadi.
