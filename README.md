@@ -23,6 +23,8 @@ Pengaturan Auto Thread Rep: ON/OFF, target Discord user ID, nominal rep, awalan 
 
 Kotak log menampilkan log runtime terbaru secara otomatis. Buffer menyimpan maksimal 300 entri terakhir di memori proses.
 
+Pengaturan pribadi per anggota (mode DM dan waktu DM peringatan) tetap dikelola oleh masing-masing anggota melalui perintah /boss menu. Dashboard mengatur konfigurasi fitur pada tingkat server dan tidak menimpa preferensi pribadi tersebut.
+
 ### Menyiapkan OAuth2
 1. Buka Discord Developer Portal → aplikasi bot → OAuth2.
 2. Tambahkan Redirect URL yang sama persis dengan DASHBOARD_REDIRECT_URI, misalnya http://localhost:3000/auth/callback untuk pengembangan lokal.
