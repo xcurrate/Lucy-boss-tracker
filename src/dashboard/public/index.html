@@ -16,20 +16,14 @@
       <a class="nav" href="#boss">🐉 <span>Boss Tracker</span></a>
       <a class="nav" href="#rep">🧵 <span>Auto Thread Rep</span></a>
       <a class="nav" href="#logs">▤ <span>System Logs</span></a>
-      <div class="sidebar-bottom"><span class="live-dot"></span> Runtime monitor <span class="muted">●</span></div>
+      <div class="sidebar-bottom"><span class="live-dot"></span> Local runtime monitor <span class="muted">●</span></div>
     </aside>
     <main class="main">
       <header class="topbar">
-        <div><div class="eyebrow">DISCORD BOT / ADMINISTRATION</div><h1>Control dashboard</h1></div>
-        <div class="user-area"><span id="user-name">Belum login</span><button id="logout" class="ghost hidden">Keluar</button></div>
+        <div><div class="eyebrow">LOCAL DEVELOPER / ADMINISTRATION</div><h1>Control dashboard</h1></div>
+        <div class="user-area"><span id="user-name">Developer lokal</span></div>
       </header>
-      <section id="login-view" class="login-card">
-        <div class="hero-icon">✦</div><h2>Kelola Lucy dalam satu tempat.</h2>
-        <p>Masuk dengan Discord. Hanya anggota dengan izin Manage Server atau Administrator pada server tempat bot terpasang yang dapat mengubah konfigurasi.</p>
-        <a class="primary button-link" href="/auth/login">Login dengan Discord <span>↗</span></a>
-        <small id="login-error"></small>
-      </section>
-      <div id="app-view" class="hidden">
+      <div id="app-view">
         <section id="overview" class="overview-grid">
           <div class="welcome"><div class="eyebrow">OVERVIEW</div><h2>Semua kontrol, satu dashboard.</h2><p>Pilih server untuk mengelola fitur Lucy. Perubahan disimpan ke konfigurasi server.</p>
             <label for="guild-select">SERVER DISCORD</label><select id="guild-select"></select>
@@ -49,6 +43,7 @@
         <section class="panel" id="rep">
           <div class="panel-heading"><div><div class="eyebrow">CATEGORY 02 / AUTOMATION</div><h2>🧵 Auto Thread Rep</h2><p>Buat thread otomatis dari pesan *rep dengan mention target yang benar.</p></div><label class="switch"><input id="rep-enabled" type="checkbox"><span></span></label></div>
           <div class="form-grid">
+            <div class="field"><label for="rep-channel-id">CHANNEL AUTO THREAD REP</label><select id="rep-channel-id"></select><small>Hanya pesan *rep di channel ini yang akan memicu pembuatan thread.</small></div>
             <div class="field"><label for="rep-target">TARGET USER ID</label><input id="rep-target" inputmode="numeric" placeholder="Discord user ID"><small>Target mention yang memicu otomatisasi.</small></div>
             <div class="field"><label for="rep-amount">NOMINAL REP</label><input id="rep-amount" maxlength="12" placeholder="50k"><small>Contoh format: 50k, 100k, 1m.</small></div>
             <div class="field"><label for="thread-prefix">AWALAN NAMA THREAD</label><input id="thread-prefix" maxlength="40" placeholder="Rep"><small>Nama thread menjadi awalan + nama pengirim.</small></div>
@@ -62,7 +57,7 @@
         </section>
         <div class="savebar"><span id="save-status">Perubahan lokal belum disimpan.</span><button id="save" class="primary">Simpan semua perubahan <span>→</span></button></div>
       </div>
-      <footer>Lucy Control Center <span>•</span> Configuration is server-scoped</footer>
+      <footer>Lucy Control Center <span>•</span> Local-only developer dashboard</footer>
     </main>
   </div>
   <script src="/assets/app.js" defer></script>
