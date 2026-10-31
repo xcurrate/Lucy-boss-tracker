@@ -115,7 +115,8 @@ async function execute(i, tracker) {
   }
 
   if (sub === 'status') {
-    return i.reply({ embeds: [statusEmbed(settings, i.user.id)], flags: MessageFlags.Ephemeral });
+    // statusEmbed() sekarang mengembalikan teks biasa (string), bukan EmbedBuilder.
+    return i.reply({ content: statusEmbed(settings, i.user.id), flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'admin-help') {
@@ -219,7 +220,8 @@ async function handleComponent(i, tracker) {
   }
 
   if (i.isButton() && p.base === IDS.status) {
-    return i.reply({ embeds: [statusEmbed(getGuildSettings(i.guildId), i.user.id)], flags: MessageFlags.Ephemeral });
+    // statusEmbed() sekarang mengembalikan teks biasa (string).
+    return i.reply({ content: statusEmbed(getGuildSettings(i.guildId), i.user.id), flags: MessageFlags.Ephemeral });
   }
 
   if (i.isButton() && p.base === IDS.help) {

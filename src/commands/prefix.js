@@ -64,8 +64,11 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   const current = getGuildSettings(message.guildId);
 
   if (sub === 'help') {
+    // statusEmbed() sekarang string biasa → dipindah ke `content`,
+    // helpEmbed() tetap EmbedBuilder → tetap di `embeds`.
     return _send(message, {
-      embeds: [helpEmbed(prefix), statusEmbed(settings, message.author.id)]
+      content: statusEmbed(settings, message.author.id),
+      embeds: [helpEmbed(prefix)]
     });
   }
 
@@ -101,7 +104,8 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   }
 
   if (sub === 'status') {
-    return _send(message, { embeds: [statusEmbed(current, message.author.id)] });
+    // statusEmbed() sekarang string biasa.
+    return _send(message, { content: statusEmbed(current, message.author.id) });
   }
 
   if (sub === 'prefix') {

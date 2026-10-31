@@ -131,17 +131,18 @@ function statusText(settings, userId) {
   const mode = settings.userModes?.[userId] ||
     ((settings.dmUsers || []).includes(userId) ? 'both' : 'channel');
   const warnSeconds = settings.userWarnSeconds?.[userId] ?? 0;
+  // Timestamp pakai :t → hanya menampilkan jam (tanpa tanggal/bulan/tahun).
   return [
     '**Notifikasi server:** ' + (settings.enabled ? '✅ Aktif' : '🔕 Nonaktif'),
-    '**Bos berikutnya:** ' + (ts ? '<t:' + ts + ':F> (<t:' + ts + ':R>)' : 'Belum terdeteksi dari pesan Lucy.'),
+    '**Bos berikutnya:** ' + (ts ? '<t:' + ts + ':t> (<t:' + ts + ':R>)' : 'Belum terdeteksi dari pesan Lucy.'),
     '',
     modeLabel(mode) + (warnSeconds ? ' · ⏰ DM peringatan ' + warnLabel(warnSeconds) : '')
   ].join('\n');
 }
 
+// Status ditampilkan sebagai teks biasa (bukan embed).
 function statusEmbed(settings, userId) {
-  return new EmbedBuilder().setColor(0x5865F2).setTitle('📡 Status Boss Tracker')
-    .setDescription(statusText(settings, userId));
+  return '📡 **Status Boss Tracker**\n' + statusText(settings, userId);
 }
 
 function helpEmbed(prefix, { isAdmin = false } = {}) {
