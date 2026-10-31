@@ -9,10 +9,36 @@ if (!process.env.DISCORD_TOKEN || !process.env.LUCY_BOT_ID) {
   process.exit(1);
 }
 
+const REP_TARGET_ID = '1515658233174294569';
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 const tracker = new BossTracker(client);
+
+async function handleAutoThreadRep(message) {
+  if (message.author?.bot) return;
+  if (!message.content?.match(/\\*rep\\s+<@!?1515658233174294569>/)) return;
+  // A textual lookalike is not enough: Discord must parse this as a real user mention.
+  if (!message.mentions.users.has(REP_TARGET_ID)) return;
+  // A message can only own one thread; avoid attempting to create it again.
+  if (message.hasThread) return;
+
+  try {
+    const thread = await message.startThread({
+      name: `Rep - ${message.author.username}`,
+      autoArchiveDuration: 1440
+    });
+
+    // This is intentionally plain text for the user to copy; never execute it.
+    await thread.send({
+      content: `lucy give 50k ${message.author.id}`,
+      allowedMentions: { parse: [] }
+    });
+  } catch (error) {
+    console.error('[AutoThreadRep] Gagal membuat thread atau mengirim command teks:', error);
+  }
+}
 
 async function handlePrefixMessage(message) {
   return handlePrefixCommand(message, tracker, {
@@ -29,6 +55,9 @@ client.on(Events.MessageCreate, async message => {
   handlePrefixMessage(message).catch(e => {
     console.error('[PrefixCommand]', e);
     message.reply({ content: 'Terjadi kesalahan saat menjalankan perintah.' }).catch(() => {});
+  });
+  handleAutoThreadRep(message).catch(e => {
+    console.error('[AutoThreadRep]', e);
   });
 });
 client.on(Events.MessageUpdate, async (_old, message) => {
@@ -58,4 +87,3 @@ client.on(Events.InteractionCreate, async i => {
 });
 client.on(Events.Error, console.error);
 client.login(process.env.DISCORD_TOKEN);
-  
