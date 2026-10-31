@@ -20,7 +20,7 @@ async function handleAutoThreadRep(message) {
   const config = getGuildSettings(message.guildId).autoThreadRep;
   if (!config.enabled) return;
   const targetId = config.targetUserId;
-  if (!targetId || !message.content?.match(new RegExp('\\\\*rep\\\\s+<@!?' + targetId + '>'))) return;
+  if (!targetId || !message.content?.match(new RegExp('\\*rep\\s+<@!?' + targetId + '>') return;
   if (!message.mentions.users.has(targetId) || message.hasThread) return;
   try {
     const thread = await message.startThread({
