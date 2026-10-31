@@ -1,31 +1,25 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const crypto = require('node:crypto');
 const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
 const logBuffer = require('../utils/logBuffer');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const sessions = new Map();
-const states = new Map();
-const SESSION_TTL = 8 * 60 * 60 * 1000;
-const STATE_TTL = 10 * 60 * 1000;
 
 function json(res, status, value) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(value));
 }
-function redirect(res, location) {
-  res.writeHead(302, { Location: location, 'Cache-Control': 'no-store' });
-  res.end();
+function isLoopback(address = '') {
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
 }
-function cookieOptions() {
-  return `Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL / 1000}${process.env.DASHBOARD_COOKIE_SECURE === 'false' ? '' : '; Secure'}`;
-}
-function readCookie(req, name) {
-  const raw = req.headers.cookie || '';
-  const item = raw.split(';').map(v => v.trim()).find(v => v.startsWith(name + '='));
-  return item ? decodeURIComponent(item.slice(name.length + 1)) : null;
+function isLocalHost(host = '') {
+  try {
+    const hostname = new URL('http://' + host).hostname.replace(/^\[|\]$/g, '');
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  } catch {
+    return false;
+  }
 }
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -43,35 +37,10 @@ function readBody(req) {
     req.on('error', reject);
   });
 }
-function cleanSession(req) {
-  const id = readCookie(req, 'lucy_dashboard');
-  const session = id && sessions.get(id);
-  if (!session || session.expiresAt < Date.now()) {
-    if (id) sessions.delete(id);
-    return null;
-  }
-  return session;
-}
-async function discordFetch(url, options = {}) {
-  const response = await fetch('https://discord.com/api/v10' + url, options);
-  if (!response.ok) throw new Error('Discord API: ' + response.status);
-  return response.json();
-}
-function manageableGuilds(session, client) {
-  return session.guilds.filter(g => {
-    const permissions = BigInt(g.permissions || '0');
-    return (permissions & 0x8n) === 0x8n || (permissions & 0x20n) === 0x20n;
-  }).filter(g => client.guilds.cache.has(g.id)).map(g => ({
-    id: g.id,
-    name: g.name,
-    icon: g.icon,
-    botPresent: true
-  }));
-}
-function requireGuild(session, client, guildId) {
-  const allowed = manageableGuilds(session, client).some(g => g.id === guildId);
-  if (!allowed) throw Object.assign(new Error('Akses Manage Server diperlukan dan bot harus ada di server.'), { status: 403 });
-  return client.guilds.cache.get(guildId);
+function getGuild(client, guildId) {
+  const guild = guildId && client.guilds.cache.get(guildId);
+  if (!guild) throw Object.assign(new Error('Server tidak ditemukan atau bot belum bergabung.'), { status: 404 });
+  return guild;
 }
 function publicSettings(settings) {
   return {
@@ -80,7 +49,7 @@ function publicSettings(settings) {
     roleId: settings.roleId || '',
     prefix: settings.prefix || '!',
     lastBossTimestamp: settings.lastBossTimestamp,
-    autoThreadRep: { ...settings.autoThreadRep }
+    autoThreadRep: { ...settings.autoThreadRep, channelId: settings.autoThreadRep.channelId || '' }
   };
 }
 function validateSettings(input) {
@@ -88,12 +57,15 @@ function validateSettings(input) {
   if (typeof input.enabled !== 'boolean') throw new Error('Status Boss Tracker tidak valid.');
   const channelId = input.channelId || null;
   const roleId = input.roleId || null;
-  if (channelId && !/^\d{17,20}$/.test(channelId)) throw new Error('ID channel tidak valid.');
+  if (channelId && !/^\d{17,20}$/.test(channelId)) throw new Error('ID channel notifikasi tidak valid.');
   if (roleId && !/^\d{17,20}$/.test(roleId)) throw new Error('ID role tidak valid.');
   if (typeof input.prefix !== 'string' || input.prefix.length < 1 || input.prefix.length > 5 || /\s/.test(input.prefix)) {
     throw new Error('Prefix harus 1–5 karakter tanpa spasi.');
   }
   const rep = input.autoThreadRep || {};
+  if (typeof rep.enabled !== 'boolean') throw new Error('Status Auto Thread Rep tidak valid.');
+  const repChannelId = rep.channelId || null;
+  if (repChannelId && !/^\d{17,20}$/.test(repChannelId)) throw new Error('ID channel Auto Thread Rep tidak valid.');
   if (typeof rep.enabled !== 'boolean') throw new Error('Status Auto Thread Rep tidak valid.');
   if (!/^\d{17,20}$/.test(String(rep.targetUserId || ''))) throw new Error('Target user ID harus berupa Discord ID.');
   if (typeof rep.amount !== 'string' || !/^\d{1,9}(?:[kKmM])?$/.test(rep.amount)) throw new Error('Nominal rep tidak valid (contoh: 50k).');
@@ -110,6 +82,7 @@ function validateSettings(input) {
     prefix: input.prefix,
     autoThreadRep: {
       enabled: rep.enabled,
+      channelId: repChannelId,
       targetUserId: String(rep.targetUserId),
       amount: rep.amount,
       threadNamePrefix: rep.threadNamePrefix.trim(),
@@ -119,112 +92,84 @@ function validateSettings(input) {
 }
 function startDashboard(client, tracker) {
   const port = Number(process.env.DASHBOARD_PORT || 3000);
-  const clientId = process.env.CLIENT_ID;
-  const clientSecret = process.env.DISCORD_CLIENT_SECRET;
-  const redirectUri = process.env.DASHBOARD_REDIRECT_URI;
-  if (!clientId || !clientSecret || !redirectUri) {
-    console.warn('[Dashboard] Nonaktif: isi CLIENT_ID, DISCORD_CLIENT_SECRET, dan DASHBOARD_REDIRECT_URI.');
-    return null;
-  }
-
   const server = http.createServer(async (req, res) => {
-    const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
+    if (!isLoopback(req.socket.remoteAddress) || !isLocalHost(req.headers.host)) {
+      return json(res, 403, { error: 'Dashboard hanya tersedia melalui localhost pada komputer bot.' });
+    }
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+      const origin = req.headers.origin;
+      if (origin) {
+        try {
+          if (!isLocalHost(new URL(origin).host) || new URL(origin).host !== req.headers.host) {
+            return json(res, 403, { error: 'Origin tidak diizinkan.' });
+          }
+        } catch {
+          return json(res, 403, { error: 'Origin tidak valid.' });
+        }
+      }
+    }
+    const url = new URL(req.url, 'http://' + req.headers.host);
     try {
-      if (req.method === 'GET' && url.pathname === '/auth/login') {
-        const state = crypto.randomBytes(24).toString('hex');
-        states.set(state, Date.now() + STATE_TTL);
-        res.setHeader('Set-Cookie', 'lucy_oauth_state=' + state + '; Path=/; HttpOnly; SameSite=Lax; Max-Age=600' + (process.env.DASHBOARD_COOKIE_SECURE === 'false' ? '' : '; Secure'));
-        const params = new URLSearchParams({
-          client_id: clientId,
-          redirect_uri: redirectUri,
-          response_type: 'code',
-          scope: 'identify guilds',
-          state
-        });
-        return redirect(res, 'https://discord.com/oauth2/authorize?' + params);
+      if (req.method === 'GET' && url.pathname === '/api/me') {
+        const guilds = [...client.guilds.cache.values()].map(guild => ({ id: guild.id, name: guild.name }));
+        return json(res, 200, { user: { username: 'Developer lokal' }, guilds });
       }
-      if (req.method === 'GET' && url.pathname === '/auth/callback') {
-        const state = url.searchParams.get('state');
-        const expiresAt = states.get(state);
-        const cookieState = readCookie(req, 'lucy_oauth_state');
-        states.delete(state);
-        const clearStateCookie = 'lucy_oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0' + (process.env.DASHBOARD_COOKIE_SECURE === 'false' ? '' : '; Secure');
-        if (!state || state !== cookieState || !expiresAt || expiresAt < Date.now() || !url.searchParams.get('code')) {
-          return redirect(res, '/?error=oauth_state');
-        }
-        const tokenResponse = await fetch('https://discord.com/api/v10/oauth2/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            client_id: clientId,
-            client_secret: clientSecret,
-            grant_type: 'authorization_code',
-            code: url.searchParams.get('code'),
-            redirect_uri: redirectUri
-          })
-        });
-        if (!tokenResponse.ok) throw new Error('OAuth token exchange gagal: ' + tokenResponse.status);
-        const token = await tokenResponse.json();
-        const [user, guilds] = await Promise.all([
-          discordFetch('/users/@me', { headers: { Authorization: 'Bearer ' + token.access_token } }),
-          discordFetch('/users/@me/guilds', { headers: { Authorization: 'Bearer ' + token.access_token } })
-        ]);
-        const sessionId = crypto.randomBytes(32).toString('hex');
-        sessions.set(sessionId, { user: { id: user.id, username: user.username, global_name: user.global_name, avatar: user.avatar }, guilds, expiresAt: Date.now() + SESSION_TTL });
-        res.setHeader('Set-Cookie', [clearStateCookie, 'lucy_dashboard=' + sessionId + '; ' + cookieOptions()]);
-        return redirect(res, '/');
+      if (req.method === 'GET' && url.pathname === '/api/logs') {
+        const after = Number(url.searchParams.get('after') || 0);
+        return json(res, 200, { logs: logBuffer.read(after), latestId: logBuffer.latestId() });
       }
-      if (req.method === 'POST' && url.pathname === '/auth/logout') {
-        const id = readCookie(req, 'lucy_dashboard');
-        if (id) sessions.delete(id);
-        res.setHeader('Set-Cookie', 'lucy_dashboard=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0' + (process.env.DASHBOARD_COOKIE_SECURE === 'false' ? '' : '; Secure'));
-        return json(res, 200, { ok: true });
+      if (req.method === 'GET' && url.pathname === '/api/settings') {
+        const guild = getGuild(client, url.searchParams.get('guildId'));
+        const channels = [...guild.channels.cache.values()]
+          .filter(c => c.isTextBased?.() && !c.isThread?.() && typeof c.send === 'function')
+          .map(c => ({ id: c.id, name: c.name }));
+        const roles = [...guild.roles.cache.values()]
+          .filter(r => !r.managed && r.id !== guild.id)
+          .map(r => ({ id: r.id, name: r.name }));
+        return json(res, 200, { settings: publicSettings(getGuildSettings(guild.id)), channels, roles });
       }
-
-      const session = cleanSession(req);
-      if (url.pathname.startsWith('/api/')) {
-        if (!session) return json(res, 401, { error: 'Silakan login dengan Discord.' });
-        if (req.method === 'GET' && url.pathname === '/api/me') {
-          return json(res, 200, { user: session.user, guilds: manageableGuilds(session, client) });
+      if (req.method === 'PUT' && url.pathname === '/api/settings') {
+        const input = await readBody(req);
+        const guild = getGuild(client, input.guildId);
+        const value = validateSettings(input.settings);
+        if (value.enabled && (!value.channelId || !value.roleId)) {
+          throw new Error('Pilih channel dan role sebelum mengaktifkan Boss Tracker.');
         }
-        if (req.method === 'GET' && url.pathname === '/api/logs') {
-          const after = Number(url.searchParams.get('after') || 0);
-          return json(res, 200, { logs: logBuffer.read(after), latestId: logBuffer.latestId() });
+        if (value.autoThreadRep.enabled && !value.autoThreadRep.channelId) {
+          throw new Error('Pilih channel Auto Thread Rep sebelum mengaktifkan fitur tersebut.');
         }
-        if (req.method === 'GET' && url.pathname === '/api/settings') {
-          const guild = requireGuild(session, client, url.searchParams.get('guildId'));
-          return json(res, 200, { settings: publicSettings(getGuildSettings(guild.id)), channels: [...guild.channels.cache.values()].filter(c => c.isTextBased?.() && !c.isThread?.()).map(c => ({ id: c.id, name: c.name })), roles: [...guild.roles.cache.values()].filter(r => !r.managed && r.id !== guild.id).map(r => ({ id: r.id, name: r.name })) });
-        }
-        if (req.method === 'PUT' && url.pathname === '/api/settings') {
-          const input = await readBody(req);
-          const guild = requireGuild(session, client, input.guildId);
-          const value = validateSettings(input.settings);
-          if (value.enabled && (!value.channelId || !value.roleId)) throw new Error('Pilih channel dan role sebelum mengaktifkan Boss Tracker.');
-          if (value.channelId) {
-            const channel = await guild.channels.fetch(value.channelId);
-            if (!channel || channel.guildId !== guild.id || !channel.isTextBased()) throw new Error('Channel harus berupa channel teks dari server ini.');
+        for (const [id, label] of [[value.channelId, 'Channel notifikasi'], [value.autoThreadRep.channelId, 'Channel Auto Thread Rep']]) {
+          if (!id) continue;
+          const channel = await guild.channels.fetch(id);
+          if (!channel || channel.guildId !== guild.id || !channel.isTextBased() || channel.isThread?.()) {
+            throw new Error(label + ' harus berupa channel teks dari server ini.');
           }
-          if (value.roleId) {
-            const role = await guild.roles.fetch(value.roleId);
-            if (!role || role.guild.id !== guild.id) throw new Error('Role tidak ditemukan di server ini.');
-          }
-          const saved = updateGuildSettings(guild.id, old => ({ ...old, ...value }));
-          if (saved.enabled && saved.lastBossTimestamp) tracker.scheduleGuild(guild.id, saved.lastBossTimestamp);
-          else if (!saved.enabled) tracker.stopGuild(guild.id);
-          console.log('[Dashboard] Pengaturan diperbarui oleh', session.user.username, 'untuk guild', guild.id);
-          return json(res, 200, { ok: true, settings: publicSettings(saved) });
         }
-        return json(res, 404, { error: 'Endpoint tidak ditemukan.' });
+        if (value.roleId) {
+          const role = await guild.roles.fetch(value.roleId);
+          if (!role || role.guild.id !== guild.id) throw new Error('Role tidak ditemukan di server ini.');
+        }
+        const saved = updateGuildSettings(guild.id, old => ({ ...old, ...value }));
+        if (saved.enabled && saved.lastBossTimestamp) tracker.scheduleGuild(guild.id, saved.lastBossTimestamp);
+        else if (!saved.enabled) tracker.stopGuild(guild.id);
+        console.log('[Dashboard] Pengaturan diperbarui untuk guild', guild.id);
+        return json(res, 200, { ok: true, settings: publicSettings(saved) });
       }
-
       if (req.method === 'GET' && (url.pathname === '/' || url.pathname.startsWith('/assets/'))) {
         const relative = url.pathname === '/' ? 'index.html' : url.pathname.slice('/assets/'.length);
         const file = path.resolve(PUBLIC_DIR, relative);
-        if (!file.startsWith(PUBLIC_DIR + path.sep) && file !== path.join(PUBLIC_DIR, 'index.html')) return json(res, 403, { error: 'Forbidden' });
+        if (!file.startsWith(PUBLIC_DIR + path.sep) && file !== path.join(PUBLIC_DIR, 'index.html')) {
+          return json(res, 403, { error: 'Forbidden' });
+        }
         const ext = path.extname(file);
         const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
         if (!fs.existsSync(file)) return json(res, 404, { error: 'Not found' });
-        res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-cache' });
+        res.writeHead(200, {
+          'Content-Type': types[ext] || 'application/octet-stream',
+          'X-Content-Type-Options': 'nosniff',
+          'Cache-Control': 'no-cache',
+          'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'"
+        });
         return res.end(fs.readFileSync(file));
       }
       return json(res, 404, { error: 'Not found' });
@@ -233,9 +178,9 @@ function startDashboard(client, tracker) {
       return json(res, error.status || 400, { error: error.message || 'Terjadi kesalahan.' });
     }
   });
-
-  server.listen(port, process.env.DASHBOARD_HOST || '127.0.0.1', () => {
-    console.log('[Dashboard] Listening on ' + (process.env.DASHBOARD_HOST || '127.0.0.1') + ':' + port);
+  // Bind strictly to loopback. Do not expose this unauthenticated developer dashboard to the LAN/public internet.
+  server.listen(port, '127.0.0.1', () => {
+    console.log('[Dashboard] Local-only dashboard: http://127.0.0.1:' + port);
   });
   return server;
 }
