@@ -1,6 +1,5 @@
 const $ = id => document.getElementById(id);
 let guildId = null;
-let original = null;
 let latestLogId = 0;
 let logRows = [];
 let logTimer = null;
@@ -21,7 +20,6 @@ function selectOptions(select, rows, placeholder, selected) {
   select.value = selected || '';
 }
 function renderSettings(settings) {
-  original = structuredClone(settings);
   $('boss-enabled').checked = settings.enabled;
   $('channel-id').value = settings.channelId || '';
   $('role-id').value = settings.roleId || '';
@@ -29,6 +27,7 @@ function renderSettings(settings) {
   $('next-boss').textContent = settings.lastBossTimestamp ? new Date(settings.lastBossTimestamp * 1000).toLocaleString('id-ID') : 'Belum terdeteksi';
   const rep = settings.autoThreadRep;
   $('rep-enabled').checked = rep.enabled;
+  $('rep-channel-id').value = rep.channelId || '';
   $('rep-target').value = rep.targetUserId;
   $('rep-amount').value = rep.amount;
   $('thread-prefix').value = rep.threadNamePrefix;
@@ -36,13 +35,14 @@ function renderSettings(settings) {
   $('boss-state').textContent = settings.enabled ? 'Aktif' : 'Nonaktif';
   $('boss-detail').textContent = settings.channelId ? 'Channel telah dipilih' : 'Channel belum dikonfigurasi';
   $('rep-state').textContent = rep.enabled ? 'Aktif' : 'Nonaktif';
-  $('rep-detail').textContent = 'Target: ' + rep.targetUserId;
+  $('rep-detail').textContent = rep.channelId ? 'Channel: ' + ($('rep-channel-id').selectedOptions[0]?.textContent || rep.channelId) : 'Channel belum dipilih';
 }
 async function loadGuild(id) {
   guildId = id;
   setStatus('Memuat konfigurasi…');
   const data = await api('/api/settings?guildId=' + encodeURIComponent(id));
   selectOptions($('channel-id'), data.channels, 'Pilih channel teks', data.settings.channelId);
+  selectOptions($('rep-channel-id'), data.channels, 'Pilih channel Auto Thread Rep', data.settings.autoThreadRep.channelId);
   selectOptions($('role-id'), data.roles, 'Pilih role', data.settings.roleId);
   renderSettings(data.settings);
   setStatus('Konfigurasi dimuat. Perubahan belum disimpan.');
@@ -55,6 +55,7 @@ function collectSettings() {
     prefix: $('prefix').value,
     autoThreadRep: {
       enabled: $('rep-enabled').checked,
+      channelId: $('rep-channel-id').value,
       targetUserId: $('rep-target').value.trim(),
       amount: $('rep-amount').value.trim(),
       threadNamePrefix: $('thread-prefix').value.trim(),
@@ -102,16 +103,13 @@ async function pollLogs() {
   } catch {}
 }
 async function boot() {
-  const params = new URLSearchParams(location.search);
-  if (params.has('error')) $('login-error').textContent = 'Login Discord gagal. Coba masuk kembali.';
   try {
     const data = await api('/api/me');
     $('login-view').classList.add('hidden');
     $('app-view').classList.remove('hidden');
-    $('logout').classList.remove('hidden');
-    $('user-name').textContent = data.user.global_name || data.user.username;
+    $('user-name').textContent = 'Developer lokal';
     if (!data.guilds.length) {
-      setStatus('Tidak ada server yang memenuhi syarat akses.', true);
+      setStatus('Bot belum tergabung di server mana pun.', true);
       return;
     }
     const select = $('guild-select');
@@ -119,11 +117,10 @@ async function boot() {
     await loadGuild(select.value);
     select.addEventListener('change', () => loadGuild(select.value).catch(e => setStatus(e.message, true)));
     pollLogs(); logTimer = setInterval(pollLogs, 2500);
-  } catch {
-    $('login-view').classList.remove('hidden');
+  } catch (error) {
+    setStatus(error.message, true);
   }
 }
 $('save').addEventListener('click', saveSettings);
 $('clear-logs').addEventListener('click', () => { logRows = []; renderLogs(); });
-$('logout').addEventListener('click', async () => { await api('/auth/logout', { method: 'POST', body: '{}' }); location.reload(); });
 boot();
