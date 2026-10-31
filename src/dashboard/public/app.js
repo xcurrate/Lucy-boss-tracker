@@ -2,9 +2,10 @@ const $ = id => document.getElementById(id);
 let guildId = null;
 let latestLogId = 0;
 let logRows = [];
+let dashboardToken = sessionStorage.getItem('lucy-dashboard-token') || '';
 
 async function api(path, options = {}) {
-  const response = await fetch(path, { credentials: 'same-origin', ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
+  const response = await fetch(path, { credentials: 'same-origin', ...options, headers: { 'Content-Type': 'application/json', ...(dashboardToken ? { Authorization: 'Bearer ' + dashboardToken } : {}), ...(options.headers || {}) } });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || 'Request gagal (' + response.status + ')');
   return data;
@@ -103,6 +104,11 @@ async function pollLogs() {
 }
 async function boot() {
   try {
+    if (!dashboardToken) {
+      dashboardToken = window.prompt('Masukkan DASHBOARD_TOKEN dari environment Pterodactyl:') || '';
+      if (!dashboardToken) throw new Error('Token dashboard wajib diisi.');
+      sessionStorage.setItem('lucy-dashboard-token', dashboardToken);
+    }
     const data = await api('/api/me');
     $('app-view').classList.remove('hidden');
     $('user-name').textContent = 'Developer lokal';
