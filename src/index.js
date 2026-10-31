@@ -20,8 +20,7 @@ async function handleAutoThreadRep(message) {
   // mencoba menjalankan *rep atau menyebut target Auto Thread Rep.
   const content = message.content || '';
   const hasRepCommand = /\\*rep\\b/i.test(content);
-  const targetMentionInContent = /<@!?1515658233174294569>/.test(content);
-  if (!hasRepCommand && !targetMentionInContent) return;
+  if (!hasRepCommand) return;
 
   const context = {
     guildId: message.guildId || 'DM',
