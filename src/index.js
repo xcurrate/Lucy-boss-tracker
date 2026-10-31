@@ -18,7 +18,7 @@ const tracker = new BossTracker(client);
 
 async function handleAutoThreadRep(message) {
   if (message.author?.bot) return;
-  if (!message.content?.match(/\\*rep\\s+<@!?1515658233174294569>/)) return;
+  if (!message.content?.match(/\*rep\s+<@!?1515658233174294569>/)) return;
   // A textual lookalike is not enough: Discord must parse this as a real user mention.
   if (!message.mentions.users.has(REP_TARGET_ID)) return;
   // A message can only own one thread; avoid attempting to create it again.
