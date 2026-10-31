@@ -16,20 +16,84 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 const tracker = new BossTracker(client);
 
 async function handleAutoThreadRep(message) {
-  if (message.author?.bot || !message.guildId) return;
-  const config = getGuildSettings(message.guildId).autoThreadRep;
-  if (!config.enabled || !config.channelId || message.channelId !== config.channelId) return;
-  const targetId = config.targetUserId;
-  if (!targetId || !message.content?.match(new RegExp('\\*rep\\s+<@!?' + targetId + '>'))) return;
-  if (!message.mentions.users.has(targetId) || message.hasThread) return;
+  // Hindari log untuk setiap pesan biasa; diagnostik hanya untuk pesan yang tampak
+  // mencoba menjalankan *rep atau menyebut target Auto Thread Rep.
+  const content = message.content || '';
+  const hasRepCommand = /\\*rep\\b/i.test(content);
+  const targetMentionInContent = /<@!?1515658233174294569>/.test(content);
+  if (!hasRepCommand && !targetMentionInContent) return;
+
+  const context = {
+    guildId: message.guildId || 'DM',
+    channelId: message.channelId,
+    messageId: message.id,
+    authorId: message.author?.id,
+    authorBot: Boolean(message.author?.bot)
+  };
+  const skip = reason => console.log('[AutoThreadRep] SKIP:', reason, JSON.stringify(context));
+  const fail = (stage, error) => console.error(
+    '[AutoThreadRep] ERROR pada ' + stage + ':',
+    error?.message || error,
+    JSON.stringify({ ...context, code: error?.code, httpStatus: error?.status })
+  );
+
+  if (message.author?.bot) return skip('Pesan berasal dari bot; hanya pesan anggota yang diproses.');
+  if (!message.guildId) return skip('Pesan bukan berasal dari server Discord.');
+
+  let config;
   try {
-    const thread = await message.startThread({
+    config = getGuildSettings(message.guildId).autoThreadRep;
+  } catch (error) {
+    return fail('membaca konfigurasi Auto Thread Rep', error);
+  }
+
+  if (!config.enabled) return skip('Fitur Auto Thread Rep sedang OFF di dashboard.');
+  if (!config.channelId) return skip('Channel pemicu belum dipilih di dashboard.');
+  if (message.channelId !== config.channelId) {
+    return skip('Channel tidak cocok. Pesan harus dikirim di channel pemicu yang dipilih.');
+  }
+
+  const commandMatch = content.match(/\\*rep\\s+<@!?(\\d+)>/i);
+  if (!commandMatch) {
+    return skip('Format tidak cocok. Gunakan *rep lalu mention target Discord.');
+  }
+  if (commandMatch[1] !== String(config.targetUserId)) {
+    return skip('Mention mengarah ke user ID ' + commandMatch[1] + ', bukan target konfigurasi ' + config.targetUserId + '.');
+  }
+  if (!message.mentions?.users?.has(String(config.targetUserId))) {
+    return skip('Mention target tidak terdeteksi sebagai mention Discord yang valid.');
+  }
+  if (message.hasThread) {
+    return skip('Pesan sudah memiliki thread; thread duplikat tidak dibuat.');
+  }
+  if (typeof message.startThread !== 'function') {
+    return skip('Channel/pesan ini tidak mendukung pembuatan thread dari pesan.');
+  }
+
+  console.log('[AutoThreadRep] MATCH: syarat terpenuhi, mencoba membuat thread.', JSON.stringify(context));
+  let thread;
+  try {
+    thread = await message.startThread({
       name: (config.threadNamePrefix + ' - ' + message.author.username).slice(0, 100),
       autoArchiveDuration: config.autoArchiveDuration
     });
-    await thread.send({ content: 'lucy give ' + config.amount + ' ' + message.author.id, allowedMentions: { parse: [] } });
+    console.log('[AutoThreadRep] SUCCESS: thread berhasil dibuat.', JSON.stringify({
+      ...context, threadId: thread.id, threadName: thread.name
+    }));
   } catch (error) {
-    console.error('[AutoThreadRep] Gagal membuat thread atau mengirim command teks:', error);
+    return fail('membuat thread (periksa izin Create Public Threads dan Send Messages in Threads)', error);
+  }
+
+  try {
+    await thread.send({
+      content: 'lucy give ' + config.amount + ' ' + message.author.id,
+      allowedMentions: { parse: [] }
+    });
+    console.log('[AutoThreadRep] SUCCESS: instruksi rep berhasil dikirim ke thread.', JSON.stringify({
+      ...context, threadId: thread.id
+    }));
+  } catch (error) {
+    fail('mengirim instruksi ke thread (periksa izin Send Messages in Threads)', error);
   }
 }
 
