@@ -2,7 +2,6 @@ const $ = id => document.getElementById(id);
 let guildId = null;
 let latestLogId = 0;
 let logRows = [];
-let logTimer = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, { credentials: 'same-origin', ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
@@ -105,7 +104,6 @@ async function pollLogs() {
 async function boot() {
   try {
     const data = await api('/api/me');
-    $('login-view').classList.add('hidden');
     $('app-view').classList.remove('hidden');
     $('user-name').textContent = 'Developer lokal';
     if (!data.guilds.length) {
@@ -116,7 +114,7 @@ async function boot() {
     for (const guild of data.guilds) select.add(new Option(guild.name, guild.id));
     await loadGuild(select.value);
     select.addEventListener('change', () => loadGuild(select.value).catch(e => setStatus(e.message, true)));
-    pollLogs(); logTimer = setInterval(pollLogs, 2500);
+    pollLogs(); setInterval(pollLogs, 2500);
   } catch (error) {
     setStatus(error.message, true);
   }
