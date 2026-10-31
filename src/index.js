@@ -18,7 +18,7 @@ const tracker = new BossTracker(client);
 async function handleAutoThreadRep(message) {
   if (message.author?.bot || !message.guildId) return;
   const config = getGuildSettings(message.guildId).autoThreadRep;
-  if (!config.enabled) return;
+  if (!config.enabled || !config.channelId || message.channelId !== config.channelId) return;
   const targetId = config.targetUserId;
   if (!targetId || !message.content?.match(new RegExp('\\*rep\\s+<@!?' + targetId + '>'))) return;
   if (!message.mentions.users.has(targetId) || message.hasThread) return;
