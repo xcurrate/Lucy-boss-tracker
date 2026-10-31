@@ -829,3 +829,20 @@ footer span {
   padding:28px
   }
 }
+
+
+.token-form {
+  display:grid;
+  gap:16px;
+  text-align:left
+}
+
+.token-form .primary {
+  width:100%;
+  justify-content:center
+}
+
+#token-submit:disabled {
+  opacity:.65;
+  cursor:wait
+}

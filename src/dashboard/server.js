@@ -52,17 +52,17 @@ function validateSettings(input) {
   if (typeof input.enabled !== 'boolean') throw new Error('Status Boss Tracker tidak valid.');
   const channelId = input.channelId || null;
   const roleId = input.roleId || null;
-  if (channelId && !/^\\d{17,20}$/.test(channelId)) throw new Error('ID channel notifikasi tidak valid.');
-  if (roleId && !/^\\d{17,20}$/.test(roleId)) throw new Error('ID role tidak valid.');
-  if (typeof input.prefix !== 'string' || input.prefix.length < 1 || input.prefix.length > 5 || /\\s/.test(input.prefix)) {
+  if (channelId && !/^\d{17,20}$/.test(channelId)) throw new Error('ID channel notifikasi tidak valid.');
+  if (roleId && !/^\d{17,20}$/.test(roleId)) throw new Error('ID role tidak valid.');
+  if (typeof input.prefix !== 'string' || input.prefix.length < 1 || input.prefix.length > 5 || /\s/.test(input.prefix)) {
     throw new Error('Prefix harus 1–5 karakter tanpa spasi.');
   }
   const rep = input.autoThreadRep || {};
   if (typeof rep.enabled !== 'boolean') throw new Error('Status Auto Thread Rep tidak valid.');
   const repChannelId = rep.channelId || null;
-  if (repChannelId && !/^\\d{17,20}$/.test(repChannelId)) throw new Error('ID channel Auto Thread Rep tidak valid.');
-  if (!/^\\d{17,20}$/.test(String(rep.targetUserId || ''))) throw new Error('Target user ID harus berupa Discord ID.');
-  if (typeof rep.amount !== 'string' || !/^\\d{1,9}(?:[kKmM])?$/.test(rep.amount)) throw new Error('Nominal rep tidak valid (contoh: 50k).');
+  if (repChannelId && !/^\d{17,20}$/.test(repChannelId)) throw new Error('ID channel Auto Thread Rep tidak valid.');
+  if (!/^\d{17,20}$/.test(String(rep.targetUserId || ''))) throw new Error('Target user ID harus berupa Discord ID.');
+  if (typeof rep.amount !== 'string' || !/^\d{1,9}(?:[kKmM])?$/.test(rep.amount)) throw new Error('Nominal rep tidak valid (contoh: 50k).');
   if (typeof rep.threadNamePrefix !== 'string' || !rep.threadNamePrefix.trim() || rep.threadNamePrefix.length > 40) {
     throw new Error('Awalan nama thread wajib diisi (maksimal 40 karakter).');
   }
@@ -87,7 +87,7 @@ function validateSettings(input) {
 function startDashboard(client, tracker) {
   const port = Number(process.env.DASHBOARD_PORT || process.env.SERVER_PORT || process.env.PORT || 4002);
   const host = process.env.DASHBOARD_HOST || '0.0.0.0';
-  const token = process.env.DASHBOARD_TOKEN || '';
+  const token = (process.env.DASHBOARD_TOKEN || '').trim();
   if (token.length < 24) {
     console.error('[Dashboard] DASHBOARD_TOKEN wajib diisi (minimal 24 karakter). Dashboard tidak dijalankan tanpa token.');
     return null;
@@ -96,7 +96,7 @@ function startDashboard(client, tracker) {
     const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
     // Static dashboard files are public; every API endpoint requires the developer token.
     if (url.pathname.startsWith('/api/')) {
-      const supplied = (req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+      const supplied = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
       if (!safeEqual(supplied, token)) return json(res, 401, { error: 'Token dashboard salah atau belum diisi.' });
     }
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {

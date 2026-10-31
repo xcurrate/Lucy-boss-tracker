@@ -7,7 +7,7 @@ let dashboardToken = sessionStorage.getItem('lucy-dashboard-token') || '';
 async function api(path, options = {}) {
   const response = await fetch(path, { credentials: 'same-origin', ...options, headers: { 'Content-Type': 'application/json', ...(dashboardToken ? { Authorization: 'Bearer ' + dashboardToken } : {}), ...(options.headers || {}) } });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Request gagal (' + response.status + ')');
+  if (!response.ok) { const error = new Error(data.error || 'Request gagal (' + response.status + ')'); error.status = response.status; throw error; }
   return data;
 }
 function setStatus(message, bad = false) {
@@ -102,27 +102,52 @@ async function pollLogs() {
     }
   } catch {}
 }
-async function boot() {
+async function openDashboard(token) {
+  const submit = $('token-submit');
+  const errorBox = $('login-error');
+  submit.disabled = true;
+  errorBox.textContent = 'Memverifikasi token…';
+  dashboardToken = token.trim();
   try {
-    if (!dashboardToken) {
-      dashboardToken = window.prompt('Masukkan DASHBOARD_TOKEN dari environment Pterodactyl:') || '';
-      if (!dashboardToken) throw new Error('Token dashboard wajib diisi.');
-      sessionStorage.setItem('lucy-dashboard-token', dashboardToken);
-    }
     const data = await api('/api/me');
+    sessionStorage.setItem('lucy-dashboard-token', dashboardToken);
+    $('token-view').classList.add('hidden');
     $('app-view').classList.remove('hidden');
-    $('user-name').textContent = 'Developer lokal';
+    $('user-name').textContent = 'Developer';
     if (!data.guilds.length) {
       setStatus('Bot belum tergabung di server mana pun.', true);
       return;
     }
     const select = $('guild-select');
+    select.replaceChildren();
     for (const guild of data.guilds) select.add(new Option(guild.name, guild.id));
     await loadGuild(select.value);
     select.addEventListener('change', () => loadGuild(select.value).catch(e => setStatus(e.message, true)));
     pollLogs(); setInterval(pollLogs, 2500);
   } catch (error) {
-    setStatus(error.message, true);
+    dashboardToken = '';
+    sessionStorage.removeItem('lucy-dashboard-token');
+    errorBox.textContent = error.status === 401
+      ? 'Token tidak cocok. Periksa kembali DASHBOARD_TOKEN di Pterodactyl, lalu coba lagi.'
+      : error.message;
+    $('dashboard-token').focus();
+  } finally {
+    submit.disabled = false;
+  }
+}
+$('token-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const value = $('dashboard-token').value;
+  if (!value.trim()) {
+    $('login-error').textContent = 'Token wajib diisi.';
+    return;
+  }
+  openDashboard(value);
+});
+async function boot() {
+  if (dashboardToken) {
+    $('dashboard-token').value = dashboardToken;
+    await openDashboard(dashboardToken);
   }
 }
 $('save').addEventListener('click', saveSettings);
