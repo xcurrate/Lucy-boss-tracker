@@ -1,6 +1,7 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
 const logBuffer = require('../utils/logBuffer');
 
@@ -10,16 +11,10 @@ function json(res, status, value) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(value));
 }
-function isLoopback(address = '') {
-  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
-}
-function isLocalHost(host = '') {
-  try {
-    const hostname = new URL('http://' + host).hostname.replace(/^\[|\]$/g, '');
-    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
-  } catch {
-    return false;
-  }
+function safeEqual(a, b) {
+  const left = Buffer.from(String(a));
+  const right = Buffer.from(String(b));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -57,18 +52,17 @@ function validateSettings(input) {
   if (typeof input.enabled !== 'boolean') throw new Error('Status Boss Tracker tidak valid.');
   const channelId = input.channelId || null;
   const roleId = input.roleId || null;
-  if (channelId && !/^\d{17,20}$/.test(channelId)) throw new Error('ID channel notifikasi tidak valid.');
-  if (roleId && !/^\d{17,20}$/.test(roleId)) throw new Error('ID role tidak valid.');
-  if (typeof input.prefix !== 'string' || input.prefix.length < 1 || input.prefix.length > 5 || /\s/.test(input.prefix)) {
+  if (channelId && !/^\\d{17,20}$/.test(channelId)) throw new Error('ID channel notifikasi tidak valid.');
+  if (roleId && !/^\\d{17,20}$/.test(roleId)) throw new Error('ID role tidak valid.');
+  if (typeof input.prefix !== 'string' || input.prefix.length < 1 || input.prefix.length > 5 || /\\s/.test(input.prefix)) {
     throw new Error('Prefix harus 1–5 karakter tanpa spasi.');
   }
   const rep = input.autoThreadRep || {};
   if (typeof rep.enabled !== 'boolean') throw new Error('Status Auto Thread Rep tidak valid.');
   const repChannelId = rep.channelId || null;
-  if (repChannelId && !/^\d{17,20}$/.test(repChannelId)) throw new Error('ID channel Auto Thread Rep tidak valid.');
-  if (typeof rep.enabled !== 'boolean') throw new Error('Status Auto Thread Rep tidak valid.');
-  if (!/^\d{17,20}$/.test(String(rep.targetUserId || ''))) throw new Error('Target user ID harus berupa Discord ID.');
-  if (typeof rep.amount !== 'string' || !/^\d{1,9}(?:[kKmM])?$/.test(rep.amount)) throw new Error('Nominal rep tidak valid (contoh: 50k).');
+  if (repChannelId && !/^\\d{17,20}$/.test(repChannelId)) throw new Error('ID channel Auto Thread Rep tidak valid.');
+  if (!/^\\d{17,20}$/.test(String(rep.targetUserId || ''))) throw new Error('Target user ID harus berupa Discord ID.');
+  if (typeof rep.amount !== 'string' || !/^\\d{1,9}(?:[kKmM])?$/.test(rep.amount)) throw new Error('Nominal rep tidak valid (contoh: 50k).');
   if (typeof rep.threadNamePrefix !== 'string' || !rep.threadNamePrefix.trim() || rep.threadNamePrefix.length > 40) {
     throw new Error('Awalan nama thread wajib diisi (maksimal 40 karakter).');
   }
@@ -91,28 +85,34 @@ function validateSettings(input) {
   };
 }
 function startDashboard(client, tracker) {
-  const port = Number(process.env.DASHBOARD_PORT || 3000);
+  const port = Number(process.env.DASHBOARD_PORT || process.env.SERVER_PORT || process.env.PORT || 4002);
+  const host = process.env.DASHBOARD_HOST || '0.0.0.0';
+  const token = process.env.DASHBOARD_TOKEN || '';
+  if (token.length < 24) {
+    console.error('[Dashboard] DASHBOARD_TOKEN wajib diisi (minimal 24 karakter). Dashboard tidak dijalankan tanpa token.');
+    return null;
+  }
   const server = http.createServer(async (req, res) => {
-    if (!isLoopback(req.socket.remoteAddress) || !isLocalHost(req.headers.host)) {
-      return json(res, 403, { error: 'Dashboard hanya tersedia melalui localhost pada komputer bot.' });
+    const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
+    // Static dashboard files are public; every API endpoint requires the developer token.
+    if (url.pathname.startsWith('/api/')) {
+      const supplied = (req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+      if (!safeEqual(supplied, token)) return json(res, 401, { error: 'Token dashboard salah atau belum diisi.' });
     }
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
       const origin = req.headers.origin;
       if (origin) {
         try {
-          if (!isLocalHost(new URL(origin).host) || new URL(origin).host !== req.headers.host) {
-            return json(res, 403, { error: 'Origin tidak diizinkan.' });
-          }
+          if (new URL(origin).host !== req.headers.host) return json(res, 403, { error: 'Origin tidak diizinkan.' });
         } catch {
           return json(res, 403, { error: 'Origin tidak valid.' });
         }
       }
     }
-    const url = new URL(req.url, 'http://' + req.headers.host);
     try {
       if (req.method === 'GET' && url.pathname === '/api/me') {
         const guilds = [...client.guilds.cache.values()].map(guild => ({ id: guild.id, name: guild.name }));
-        return json(res, 200, { user: { username: 'Developer lokal' }, guilds });
+        return json(res, 200, { user: { username: 'Developer' }, guilds });
       }
       if (req.method === 'GET' && url.pathname === '/api/logs') {
         const after = Number(url.searchParams.get('after') || 0);
@@ -132,12 +132,8 @@ function startDashboard(client, tracker) {
         const input = await readBody(req);
         const guild = getGuild(client, input.guildId);
         const value = validateSettings(input.settings);
-        if (value.enabled && (!value.channelId || !value.roleId)) {
-          throw new Error('Pilih channel dan role sebelum mengaktifkan Boss Tracker.');
-        }
-        if (value.autoThreadRep.enabled && !value.autoThreadRep.channelId) {
-          throw new Error('Pilih channel Auto Thread Rep sebelum mengaktifkan fitur tersebut.');
-        }
+        if (value.enabled && (!value.channelId || !value.roleId)) throw new Error('Pilih channel dan role sebelum mengaktifkan Boss Tracker.');
+        if (value.autoThreadRep.enabled && !value.autoThreadRep.channelId) throw new Error('Pilih channel Auto Thread Rep sebelum mengaktifkan fitur tersebut.');
         for (const [id, label] of [[value.channelId, 'Channel notifikasi'], [value.autoThreadRep.channelId, 'Channel Auto Thread Rep']]) {
           if (!id) continue;
           const channel = await guild.channels.fetch(id);
@@ -158,9 +154,7 @@ function startDashboard(client, tracker) {
       if (req.method === 'GET' && (url.pathname === '/' || url.pathname.startsWith('/assets/'))) {
         const relative = url.pathname === '/' ? 'index.html' : url.pathname.slice('/assets/'.length);
         const file = path.resolve(PUBLIC_DIR, relative);
-        if (!file.startsWith(PUBLIC_DIR + path.sep) && file !== path.join(PUBLIC_DIR, 'index.html')) {
-          return json(res, 403, { error: 'Forbidden' });
-        }
+        if (!file.startsWith(PUBLIC_DIR + path.sep) && file !== path.join(PUBLIC_DIR, 'index.html')) return json(res, 403, { error: 'Forbidden' });
         const ext = path.extname(file);
         const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
         if (!fs.existsSync(file)) return json(res, 404, { error: 'Not found' });
@@ -178,10 +172,7 @@ function startDashboard(client, tracker) {
       return json(res, error.status || 400, { error: error.message || 'Terjadi kesalahan.' });
     }
   });
-  // Bind strictly to loopback. Do not expose this unauthenticated developer dashboard to the LAN/public internet.
-  server.listen(port, '127.0.0.1', () => {
-    console.log('[Dashboard] Local-only dashboard: http://127.0.0.1:' + port);
-  });
+  server.listen(port, host, () => console.log('[Dashboard] Listening on http://' + host + ':' + port + ' (token protected)'));
   return server;
 }
 module.exports = { startDashboard };
