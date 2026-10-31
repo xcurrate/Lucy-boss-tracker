@@ -5,7 +5,7 @@ const file = path.join(dir, 'guild-settings.json');
 const defaults = () => ({
   enabled: false, channelId: null, roleId: null, prefix: '!', lastBossTimestamp: null, lastNotifiedTimestamp: null,
   dmUsers: [], userModes: {}, userWarnSeconds: {},
-  autoThreadRep: { enabled: true, targetUserId: '1515658233174294569', amount: '50k', threadNamePrefix: 'Rep', autoArchiveDuration: 1440 }
+  autoThreadRep: { enabled: true, channelId: null, targetUserId: '1515658233174294569', amount: '50k', threadNamePrefix: 'Rep', autoArchiveDuration: 1440 }
 });
 function readAll() {
   fs.mkdirSync(dir, { recursive: true });
