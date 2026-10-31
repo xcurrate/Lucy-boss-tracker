@@ -168,7 +168,7 @@ function startDashboard(client, tracker) {
           'Content-Type': types[ext] || 'application/octet-stream',
           'X-Content-Type-Options': 'nosniff',
           'Cache-Control': 'no-cache',
-          'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'"
+          'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'"
         });
         return res.end(fs.readFileSync(file));
       }
