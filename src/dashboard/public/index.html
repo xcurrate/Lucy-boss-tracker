@@ -23,7 +23,18 @@
         <div><div class="eyebrow">LOCAL DEVELOPER / ADMINISTRATION</div><h1>Control dashboard</h1></div>
         <div class="user-area"><span id="user-name">Developer lokal</span></div>
       </header>
-      <div id="app-view">
+      <section id="token-view" class="login-card">
+        <div class="hero-icon">🔐</div>
+        <div class="eyebrow">DEVELOPER ACCESS</div>
+        <h2>Masuk ke Lucy Control Center</h2>
+        <p>Masukkan DASHBOARD_TOKEN yang disetel pada Environment Variables Pterodactyl. Dashboard hanya akan dibuka setelah token diverifikasi.</p>
+        <form id="token-form" class="token-form">
+          <div class="field"><label for="dashboard-token">DASHBOARD TOKEN</label><input id="dashboard-token" type="password" autocomplete="current-password" placeholder="Masukkan token dashboard" required></div>
+          <button id="token-submit" class="primary" type="submit">Verifikasi token <span>→</span></button>
+        </form>
+        <span id="login-error" role="alert" aria-live="polite"></span>
+      </section>
+      <div id="app-view" class="hidden">
         <section id="overview" class="overview-grid">
           <div class="welcome"><div class="eyebrow">OVERVIEW</div><h2>Semua kontrol, satu dashboard.</h2><p>Pilih server untuk mengelola fitur Lucy. Perubahan disimpan ke konfigurasi server.</p>
             <label for="guild-select">SERVER DISCORD</label><select id="guild-select"></select>
