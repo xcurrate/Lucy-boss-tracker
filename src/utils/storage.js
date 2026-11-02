@@ -5,6 +5,7 @@ const file = path.join(dir, 'guild-settings.json');
 const defaults = () => ({
   enabled: false, channelId: null, roleId: null, prefix: '!', lastBossTimestamp: null, lastNotifiedTimestamp: null,
   dmUsers: [], userModes: {}, userWarnSeconds: {},
+  lucyCounter: { enabled: false, targetEnabled: false, targetGoal: 0, targetMessage: '🎉 Target Lucy tercapai!', targetChannelId: null, challengeStartAt: '', challengeEndAt: '' },
   autoThreadRep: { enabled: true, channelId: null, targetUserId: '1515658233174294569', amount: '50k', threadNamePrefix: 'Rep', autoArchiveDuration: 1440 }
 });
 function readAll() {
@@ -20,7 +21,14 @@ function writeAll(data) {
 }
 function mergeSettings(saved = {}) {
   const base = defaults();
-  return { ...base, ...saved, autoThreadRep: { ...base.autoThreadRep, ...(saved.autoThreadRep || {}) }, userModes: { ...(saved.userModes || {}) }, userWarnSeconds: { ...(saved.userWarnSeconds || {}) }, dmUsers: [...(saved.dmUsers || [])] };
+  return {
+    ...base, ...saved,
+    lucyCounter: { ...base.lucyCounter, ...(saved.lucyCounter || {}) },
+    autoThreadRep: { ...base.autoThreadRep, ...(saved.autoThreadRep || {}) },
+    userModes: { ...(saved.userModes || {}) },
+    userWarnSeconds: { ...(saved.userWarnSeconds || {}) },
+    dmUsers: [...(saved.dmUsers || [])]
+  };
 }
 function getGuildSettings(id) { return mergeSettings(readAll()[id] || {}); }
 function updateGuildSettings(id, fn) {
