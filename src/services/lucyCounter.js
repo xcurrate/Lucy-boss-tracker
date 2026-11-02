@@ -62,7 +62,7 @@ function isTargetWindow(date, config = {}) {
     ? now >= startMinutes || now < stopMinutes
     : now >= startMinutes && now < stopMinutes;
 }
-function countLucy(content) { return (String(content || '').match(/\blucy\b/gi) || []).length; }
+function countLucy(content) { return /\blucy\b/i.test(String(content || '')) ? 1 : 0; }
 function total(user, day) {
   return Object.entries(user.days || {}).filter(([key]) => !day || key === day).reduce((sum, [, n]) => sum + n, 0);
 }
@@ -144,7 +144,8 @@ async function handleMessage(message) {
 
   const settings = getGuildSettings(message.guildId);
   const config = settings.lucyCounter;
-  if (!config.enabled || !countLucy(message.content)) return;
+  const blacklistedChannelIds = config.blacklistedChannelIds || [];
+  if (!config.enabled || blacklistedChannelIds.includes(message.channelId) || !countLucy(message.content)) return;
 
   const count = countLucy(message.content);
   const currentSettings = getGuildSettings(message.guildId);
