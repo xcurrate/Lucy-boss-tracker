@@ -2,10 +2,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { countLucy, dayKey, isTargetWindow, challengeCycleKey } = require('../src/services/lucyCounter');
 
-test('counts Lucy as a whole word, case-insensitively', () => {
-  assert.equal(countLucy('Lucy lucy LUCY'), 3);
+test('counts at most one Lucy per message, case-insensitively', () => {
+  assert.equal(countLucy('Lucy lucy LUCY'), 1);
   assert.equal(countLucy('lucyland lucky'), 0);
-  assert.equal(countLucy('one Lucy, two lucy!'), 2);
+  assert.equal(countLucy('one Lucy, two lucy!'), 1);
+  assert.equal(countLucy('hello there'), 0);
 });
 
 test('daily key uses YYYY-MM-DD in WIB', () => {
