@@ -20,7 +20,8 @@ function selectOptions(select, rows, placeholder, selected) {
   select.value = selected || '';
 }
 function renderSettings(settings) {
-  $('boss-enabled').checked = settings.enabled;\n  $('lucy-counter-enabled').checked = Boolean(settings.lucyCounter?.enabled);
+  $('boss-enabled').checked = settings.enabled;
+  $('lucy-counter-enabled').checked = Boolean(settings.lucyCounter?.enabled);
   $('channel-id').value = settings.channelId || '';
   $('role-id').value = settings.roleId || '';
   $('prefix').value = settings.prefix || '!';
@@ -49,7 +50,8 @@ async function loadGuild(id) {
 }
 function collectSettings() {
   return {
-    enabled: $('boss-enabled').checked,\n    lucyCounter: { enabled: $('lucy-counter-enabled').checked },
+    enabled: $('boss-enabled').checked,
+    lucyCounter: { enabled: $('lucy-counter-enabled').checked },
     channelId: $('channel-id').value,
     roleId: $('role-id').value,
     prefix: $('prefix').value,
