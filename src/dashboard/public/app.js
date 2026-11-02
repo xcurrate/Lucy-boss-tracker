@@ -28,6 +28,8 @@ function renderSettings(settings) {
   $('lucy-target-message').value = settings.lucyCounter?.targetMessage || '🎉 Target Lucy tercapai!';
   $('lucy-target-start').value = settings.lucyCounter?.targetStartTime || '12:00';
   $('lucy-target-stop').value = settings.lucyCounter?.targetStopTime || '10:00';
+  const blacklistedChannels = new Set(settings.lucyCounter?.blacklistedChannelIds || []);
+  for (const option of $('lucy-blacklisted-channels').options) option.selected = blacklistedChannels.has(option.value);
   $('channel-id').value = settings.channelId || '';
   $('role-id').value = settings.roleId || '';
   $('prefix').value = settings.prefix || '!';
@@ -51,6 +53,7 @@ async function loadGuild(id) {
   selectOptions($('channel-id'), data.channels, 'Pilih channel teks', data.settings.channelId);
   selectOptions($('rep-channel-id'), data.channels, 'Pilih channel Auto Thread Rep', data.settings.autoThreadRep.channelId);
   selectOptions($('lucy-target-channel'), data.channels, 'Pilih channel laporan target', data.settings.lucyCounter?.targetChannelId);
+  selectOptions($('lucy-blacklisted-channels'), data.channels, 'Pilih channel untuk di-blacklist', '');
   selectOptions($('role-id'), data.roles, 'Pilih role', data.settings.roleId);
   renderSettings(data.settings);
   setStatus('Konfigurasi dimuat. Perubahan belum disimpan.');
@@ -65,7 +68,8 @@ function collectSettings() {
       targetMessage: $('lucy-target-message').value.trim(),
       targetChannelId: $('lucy-target-channel').value,
       targetStartTime: $('lucy-target-start').value,
-      targetStopTime: $('lucy-target-stop').value
+      targetStopTime: $('lucy-target-stop').value,
+      blacklistedChannelIds: [...$('lucy-blacklisted-channels').selectedOptions].map(option => option.value)
     },
     channelId: $('channel-id').value,
     roleId: $('role-id').value,
