@@ -6,6 +6,7 @@ const { BossTracker } = require('./services/bossTracker');
 const { getGuildSettings } = require('./utils/storage');
 const logBuffer = require('./utils/logBuffer');
 const { startDashboard } = require('./dashboard/server');
+const lucyCounter = require('./services/lucyCounter');
 
 logBuffer.install();
 if (!process.env.DISCORD_TOKEN || !process.env.LUCY_BOT_ID) {
@@ -49,6 +50,7 @@ client.once(Events.ClientReady, async c => {
   await tracker.restoreSchedules();
 });
 client.on(Events.MessageCreate, async message => {
+  lucyCounter.handleMessage(message).catch(e => console.error('[LucyCounter]', e));
   tracker.handleMessage(message).catch(console.error);
   handlePrefixMessage(message).catch(e => {
     console.error('[PrefixCommand]', e);
