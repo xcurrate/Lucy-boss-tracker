@@ -119,25 +119,30 @@ async function handleMessage(message) {
   const config = settings.lucyCounter;
   if (!config.enabled || !countLucy(message.content)) return;
 
-  // The checkmark is proof that the message survived the full 10-second verification window.
-  await new Promise(resolve => setTimeout(resolve, 10000));
-  let verifiedMessage;
-  try { verifiedMessage = await message.fetch(); } catch { return; }
-  const count = countLucy(verifiedMessage.content);
-  if (!count) return;
-  try { await verifiedMessage.react('✅'); } catch (error) {
+  const count = countLucy(message.content);
+  const currentSettings = getGuildSettings(message.guildId);
+  const currentConfig = currentSettings.lucyCounter;
+  if (!currentConfig.enabled) return;
+
+  // Server-wide cooldown: accept a Lucy message only if at least 10 seconds passed
+  // since the last accepted Lucy message. Reactions are added immediately.
+  const all = read();
+  const data = guildData(all, message.guildId);
+  const messageTime = message.createdTimestamp || Date.now();
+  const lastLucyAt = Number(data.lastLucyAcceptedAt || 0);
+  if (messageTime - lastLucyAt < 10000) return;
+
+  data.lastLucyAcceptedAt = messageTime;
+  write(all);
+
+  try { await message.react('✅'); } catch (error) {
     console.warn('[LucyCounter] Gagal memberi reaksi verifikasi:', error.message);
     return;
   }
 
-  const currentSettings = getGuildSettings(message.guildId);
-  const currentConfig = currentSettings.lucyCounter;
-  if (!currentConfig.enabled) return;
-  const all = read();
-  const data = guildData(all, message.guildId);
-  const today = dayKey(new Date(verifiedMessage.createdTimestamp));
-  const user = data.users[verifiedMessage.author.id] ||= { name: verifiedMessage.author.username, days: {} };
-  user.name = verifiedMessage.member?.displayName || verifiedMessage.author.username;
+  const today = dayKey(new Date(messageTime));
+  const user = data.users[message.author.id] ||= { name: message.author.username, days: {} };
+  user.name = message.member?.displayName || message.author.username;
   user.days[today] = (user.days[today] || 0) + count;
 
   // Counting/leaderboards are independent of target challenge state.
