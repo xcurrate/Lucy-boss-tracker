@@ -102,15 +102,16 @@ async function handleCommand(message) {
     const data = guildData(all, message.guildId);
     const totalCount = ranking(data, null).reduce((n, r) => n + r.count, 0);
     const today = challengeCycleKey(new Date(), config);
-    if (data.challengeDayKey !== today) {
-      data.challengeDayKey = today;
-      data.challengeCount = 0;
-      data.notified = false;
+    const memberData = data.users[message.author.id] ||= { name: message.member?.displayName || message.author.username, days: {} };
+    if (memberData.challengeDayKey !== today) {
+      memberData.challengeDayKey = today;
+      memberData.challengeCount = 0;
+      memberData.challengeNotified = false;
       write(all);
     }
     const schedule = targetSchedule(config);
     const fmt = n => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0');
-    return message.reply({ content: `🎯 Target Lucy: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target: **${config.targetGoal || 0}** • Progress siklus: **${data.challengeCount || 0}/${config.targetGoal || 0}** • Jadwal WIB: **${fmt(schedule.startMinutes)}–${fmt(schedule.stopMinutes)}** • Status jadwal: **${isTargetWindow(new Date(), config) ? 'AKTIF' : 'ISTIRAHAT'}** • Total Lucy terhitung: **${totalCount}**`, allowedMentions: { parse: [] } });
+    return message.reply({ content: `🎯 Target Lucy: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target per orang: **${config.targetGoal || 0}** • Progres kamu siklus ini: **${memberData.challengeCount || 0}/${config.targetGoal || 0}** • Jadwal WIB: **${fmt(schedule.startMinutes)}–${fmt(schedule.stopMinutes)}** • Status jadwal: **${isTargetWindow(new Date(), config) ? 'AKTIF' : 'ISTIRAHAT'}** • Total Lucy server (semua anggota): **${totalCount}**`, allowedMentions: { parse: [] } });
   }
   if (!admin(message)) return message.reply('Pengaturan Lucy hanya untuk moderator/admin dengan izin Manage Server.');
 
@@ -176,24 +177,25 @@ async function handleMessage(message) {
   user.name = message.member?.displayName || message.author.username;
   user.days[today] = (user.days[today] || 0) + count;
 
-  // Target progress resets when the configured start time begins a new cycle.
-  // It only counts messages within the configured daily start/stop window.
+  // Target progress is tracked independently for each person and resets at the start of each cycle.
+  // It only counts accepted Lucy messages within the configured daily start/stop window.
   const cycleKey = challengeCycleKey(new Date(messageTime), currentConfig);
-  if (data.challengeDayKey !== cycleKey) {
-    data.challengeDayKey = cycleKey;
-    data.challengeCount = 0;
-    data.notified = false;
+  if (user.challengeDayKey !== cycleKey) {
+    user.challengeDayKey = cycleKey;
+    user.challengeCount = 0;
+    user.challengeNotified = false;
   }
-  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && isTargetWindow(new Date(messageTime), currentConfig)) {
-    data.challengeCount += count;
-  }
+  const targetActive = currentConfig.targetEnabled && currentConfig.targetGoal > 0 && isTargetWindow(new Date(messageTime), currentConfig);
+  if (targetActive) user.challengeCount = (user.challengeCount || 0) + count;
   write(all);
 
-  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && isTargetWindow(new Date(messageTime), currentConfig) && data.challengeCount >= currentConfig.targetGoal && !data.notified) {
-    data.notified = true;
+  if (targetActive && user.challengeCount >= currentConfig.targetGoal && !user.challengeNotified) {
+    user.challengeNotified = true;
     write(all);
     const channel = currentConfig.targetChannelId ? await message.guild.channels.fetch(currentConfig.targetChannelId).catch(() => null) : message.channel;
-    if (channel?.isTextBased()) await channel.send({ content: currentConfig.targetMessage || DEFAULT_TARGET_MESSAGE, allowedMentions: { parse: [] } }).catch(() => {});
+    const targetMessage = currentConfig.targetMessage || DEFAULT_TARGET_MESSAGE;
+    const report = `🎯 **${user.name}** mencapai target Lucy pribadi (${user.challengeCount}/${currentConfig.targetGoal})!\n${targetMessage}`;
+    if (channel?.isTextBased()) await channel.send({ content: report, allowedMentions: { parse: [] } }).catch(() => {});
   }
 }
 module.exports = { handleMessage, handleCommand, countLucy, dayKey, leaderboardEmbed, targetSchedule, challengeCycleKey, isTargetWindow };
