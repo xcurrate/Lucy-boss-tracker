@@ -49,7 +49,8 @@ async function loadGuild(id) {
   setStatus('Memuat konfigurasi…');
   const data = await api('/api/settings?guildId=' + encodeURIComponent(id));
   selectOptions($('channel-id'), data.channels, 'Pilih channel teks', data.settings.channelId);
-  selectOptions($('rep-channel-id'), data.channels, 'Pilih channel Auto Thread Rep', data.settings.autoThreadRep.channelId);\n  selectOptions($('lucy-target-channel'), data.channels, 'Pilih channel laporan target', data.settings.lucyCounter?.targetChannelId);
+  selectOptions($('rep-channel-id'), data.channels, 'Pilih channel Auto Thread Rep', data.settings.autoThreadRep.channelId);
+  selectOptions($('lucy-target-channel'), data.channels, 'Pilih channel laporan target', data.settings.lucyCounter?.targetChannelId);
   selectOptions($('role-id'), data.roles, 'Pilih role', data.settings.roleId);
   renderSettings(data.settings);
   setStatus('Konfigurasi dimuat. Perubahan belum disimpan.');
