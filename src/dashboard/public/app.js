@@ -26,6 +26,8 @@ function renderSettings(settings) {
   $('lucy-target-goal').value = Number(settings.lucyCounter?.targetGoal || 0);
   $('lucy-target-channel').value = settings.lucyCounter?.targetChannelId || '';
   $('lucy-target-message').value = settings.lucyCounter?.targetMessage || '🎉 Target Lucy tercapai!';
+  $('lucy-target-start').value = settings.lucyCounter?.targetStartTime || '12:00';
+  $('lucy-target-stop').value = settings.lucyCounter?.targetStopTime || '10:00';
   $('channel-id').value = settings.channelId || '';
   $('role-id').value = settings.roleId || '';
   $('prefix').value = settings.prefix || '!';
@@ -61,7 +63,9 @@ function collectSettings() {
       targetEnabled: $('lucy-target-enabled').checked,
       targetGoal: Number($('lucy-target-goal').value || 0),
       targetMessage: $('lucy-target-message').value.trim(),
-      targetChannelId: $('lucy-target-channel').value
+      targetChannelId: $('lucy-target-channel').value,
+      targetStartTime: $('lucy-target-start').value,
+      targetStopTime: $('lucy-target-stop').value
     },
     channelId: $('channel-id').value,
     roleId: $('role-id').value,
