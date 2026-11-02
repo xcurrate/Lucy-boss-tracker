@@ -54,12 +54,14 @@
         </section>
         <section class="panel" id="lucy-counter">
           <div class="panel-heading"><div><div class="eyebrow">CATEGORY 03 / COMMUNITY</div><h2>🔢 Lucy Counter</h2><p>Hitung kata Lucy per server. Penghitungan memakai zona waktu WIB.</p></div><label class="switch"><input id="lucy-counter-enabled" type="checkbox"><span></span></label></div>
-          <p>Reaksi ✅ diberikan langsung saat kata “lucy” terdeteksi, dengan cooldown 10 detik per server. Target challenge berulang setiap hari dan progresnya reset pukul 00.00 WIB. Penghitungan leaderboard tetap berjalan terlepas dari status target challenge.</p>
+          <p>Reaksi ✅ diberikan langsung saat kata “lucy” terdeteksi, dengan cooldown 10 detik per orang (terpisah untuk setiap anggota di server). Target challenge berulang setiap hari dan progresnya reset pukul 00.00 WIB. Penghitungan leaderboard tetap berjalan terlepas dari status target challenge.</p>
           <div class="form-grid">
             <div class="field"><label for="lucy-target-enabled">TARGET CHALLENGE</label><label class="switch"><input id="lucy-target-enabled" type="checkbox"><span></span></label><small>ON/OFF target challenge server ini. Tidak mematikan penghitung Lucy.</small></div>
             <div class="field"><label for="lucy-target-goal">JUMLAH TARGET</label><input id="lucy-target-goal" type="number" min="0" step="1" value="0"><small>Jumlah kata Lucy yang dibutuhkan setiap hari.</small></div>
             <div class="field"><label for="lucy-target-channel">CHANNEL LAPORAN TARGET</label><select id="lucy-target-channel"></select><small>Channel yang menerima pesan saat target tercapai.</small></div>
             <div class="field"><label for="lucy-target-message">PESAN TARGET TERCAPAI</label><input id="lucy-target-message" maxlength="1500" placeholder="🎉 Target Lucy tercapai!"><small>Pesan ini dikirim saat target challenge tercapai.</small></div>
+            <div class="field"><label for="lucy-target-start">MULAI TARGET (WIB)</label><input id="lucy-target-start" type="time" value="12:00" required><small>Awal siklus baru; progres target direset pada jam ini.</small></div>
+            <div class="field"><label for="lucy-target-stop">BERHENTI TARGET (WIB)</label><input id="lucy-target-stop" type="time" value="10:00" required><small>Jam berhenti di hari berikutnya jika lebih awal dari waktu mulai.</small></div>
 </div>
           <p>Leaderboard: <code>[prefix]lcountd</code> (hari ini), <code>[prefix]lcountall</code> (sepanjang masa), <code>[prefix]lucytarget status</code> (status target).</p>
         </section>
