@@ -45,7 +45,7 @@ function publicSettings(settings) {
     prefix: settings.prefix || '!',
     lastBossTimestamp: settings.lastBossTimestamp,
     autoThreadRep: { ...settings.autoThreadRep, channelId: settings.autoThreadRep.channelId || '' },
-    lucyCounter: { enabled: Boolean(settings.lucyCounter?.enabled), targetEnabled: Boolean(settings.lucyCounter?.targetEnabled), targetGoal: Number(settings.lucyCounter?.targetGoal || 0), targetMessage: settings.lucyCounter?.targetMessage || '🎉 Target Lucy tercapai!', targetChannelId: settings.lucyCounter?.targetChannelId || '' }
+    lucyCounter: { enabled: Boolean(settings.lucyCounter?.enabled), targetEnabled: Boolean(settings.lucyCounter?.targetEnabled), targetGoal: Number(settings.lucyCounter?.targetGoal || 0), targetMessage: settings.lucyCounter?.targetMessage || '🎉 Target Lucy tercapai!', targetChannelId: settings.lucyCounter?.targetChannelId || '', targetStartTime: settings.lucyCounter?.targetStartTime || '12:00', targetStopTime: settings.lucyCounter?.targetStopTime || '10:00' }
   };
 }
 function validateSettings(input) {
@@ -59,6 +59,14 @@ function validateSettings(input) {
   if (targetChannelId && !/^\d{17,20}$/.test(targetChannelId)) throw new Error('ID channel laporan target tidak valid.');
   const targetMessage = typeof lucyCounter.targetMessage === 'string' ? lucyCounter.targetMessage.trim() : '';
   if (targetMessage.length > 1500) throw new Error('Pesan target maksimal 1500 karakter.');
+  const validateTargetTime = (value, fallback, label) => {
+    const time = value || fallback;
+    if (typeof time !== 'string' || !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(time)) throw new Error(label + ' harus format HH:mm (WIB).');
+    return time;
+  };
+  const targetStartTime = validateTargetTime(lucyCounter.targetStartTime, '12:00', 'Waktu mulai target');
+  const targetStopTime = validateTargetTime(lucyCounter.targetStopTime, '10:00', 'Waktu berhenti target');
+  if (targetStartTime === targetStopTime) throw new Error('Waktu mulai dan berhenti target tidak boleh sama.');
   const channelId = input.channelId || null;
   const roleId = input.roleId || null;
   if (channelId && !/^\d{17,20}$/.test(channelId)) throw new Error('ID channel notifikasi tidak valid.');
@@ -83,7 +91,7 @@ function validateSettings(input) {
     channelId,
     roleId,
     prefix: input.prefix,
-    lucyCounter: { enabled: lucyCounter.enabled, targetEnabled: Boolean(lucyCounter.targetEnabled), targetGoal, targetMessage: targetMessage || '🎉 Target Lucy tercapai!', targetChannelId },
+    lucyCounter: { enabled: lucyCounter.enabled, targetEnabled: Boolean(lucyCounter.targetEnabled), targetGoal, targetMessage: targetMessage || '🎉 Target Lucy tercapai!', targetChannelId, targetStartTime, targetStopTime },
     autoThreadRep: {
       enabled: rep.enabled,
       channelId: repChannelId,
