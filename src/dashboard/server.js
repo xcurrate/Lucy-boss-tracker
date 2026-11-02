@@ -44,12 +44,15 @@ function publicSettings(settings) {
     roleId: settings.roleId || '',
     prefix: settings.prefix || '!',
     lastBossTimestamp: settings.lastBossTimestamp,
-    autoThreadRep: { ...settings.autoThreadRep, channelId: settings.autoThreadRep.channelId || '' }
+    autoThreadRep: { ...settings.autoThreadRep, channelId: settings.autoThreadRep.channelId || '' },
+    lucyCounter: { enabled: Boolean(settings.lucyCounter?.enabled) }
   };
 }
 function validateSettings(input) {
   if (!input || typeof input !== 'object') throw new Error('Pengaturan tidak valid.');
   if (typeof input.enabled !== 'boolean') throw new Error('Status Boss Tracker tidak valid.');
+  const lucyCounter = input.lucyCounter || { enabled: false };
+  if (typeof lucyCounter.enabled !== 'boolean') throw new Error('Status Lucy Counter tidak valid.');
   const channelId = input.channelId || null;
   const roleId = input.roleId || null;
   if (channelId && !/^\d{17,20}$/.test(channelId)) throw new Error('ID channel notifikasi tidak valid.');
