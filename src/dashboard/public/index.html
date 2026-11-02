@@ -54,7 +54,16 @@
         </section>
         <section class="panel" id="lucy-counter">
           <div class="panel-heading"><div><div class="eyebrow">CATEGORY 03 / COMMUNITY</div><h2>🔢 Lucy Counter</h2><p>Hitung kata Lucy per server. Penghitungan memakai zona waktu WIB.</p></div><label class="switch"><input id="lucy-counter-enabled" type="checkbox"><span></span></label></div>
-          <p>ON menghitung kata “lucy” dari pesan anggota, memberi reaksi ✅, lalu menunggu 10 detik sebelum menyimpan hitungan. Leaderboard: <code>[prefix]lcountd</code> (hari ini), <code>[prefix]lcountall</code> (sepanjang masa).</p>
+          <p>Setiap pesan yang berisi kata “lucy” menunggu 10 detik untuk diverifikasi. Reaksi ✅ baru diberikan setelah verifikasi berhasil. Penghitungan leaderboard tetap berjalan terlepas dari status target challenge.</p>
+          <div class="form-grid">
+            <div class="field"><label for="lucy-target-enabled">TARGET CHALLENGE</label><label class="switch"><input id="lucy-target-enabled" type="checkbox"><span></span></label><small>ON/OFF target challenge server ini. Tidak mematikan penghitung Lucy.</small></div>
+            <div class="field"><label for="lucy-target-goal">JUMLAH TARGET</label><input id="lucy-target-goal" type="number" min="0" step="1" value="0"><small>Jumlah kata Lucy terverifikasi yang dibutuhkan selama challenge.</small></div>
+            <div class="field"><label for="lucy-target-channel">CHANNEL LAPORAN TARGET</label><select id="lucy-target-channel"></select><small>Channel yang menerima pesan saat target tercapai.</small></div>
+            <div class="field"><label for="lucy-target-message">PESAN TARGET TERCAPAI</label><input id="lucy-target-message" maxlength="1500" placeholder="🎉 Target Lucy tercapai!"><small>Pesan ini dikirim saat target challenge tercapai.</small></div>
+            <div class="field"><label for="lucy-challenge-start">MULAI CHALLENGE (WIB)</label><input id="lucy-challenge-start" type="datetime-local"><small>Tanggal dan jam WIB, contoh 2026-11-02 10:00.</small></div>
+            <div class="field"><label for="lucy-challenge-end">BATAS CHALLENGE (WIB)</label><input id="lucy-challenge-end" type="datetime-local"><small>Tanggal dan jam WIB. Harus setelah waktu mulai.</small></div>
+          </div>
+          <p>Leaderboard: <code>[prefix]lcountd</code> (hari ini), <code>[prefix]lcountall</code> (sepanjang masa), <code>[prefix]lucytarget status</code> (status target).</p>
         </section>
         <section class="panel" id="rep">
           <div class="panel-heading"><div><div class="eyebrow">CATEGORY 02 / AUTOMATION</div><h2>🧵 Auto Thread Rep</h2><p>Buat thread otomatis dari pesan *rep dengan mention target yang benar.</p></div><label class="switch"><input id="rep-enabled" type="checkbox"><span></span></label></div>
