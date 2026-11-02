@@ -6,6 +6,8 @@ const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
 const file = path.resolve(process.cwd(), 'data', 'lucy-counter.json');
 const WIB = 'Asia/Jakarta';
 const DEFAULT_TARGET_MESSAGE = '🎉 Target Lucy tercapai!';
+const DEFAULT_TARGET_START = '12:00';
+const DEFAULT_TARGET_STOP = '10:00';
 
 function read() {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return {}; }
@@ -69,14 +71,16 @@ async function handleCommand(message) {
     const all = read();
     const data = guildData(all, message.guildId);
     const totalCount = ranking(data, null).reduce((n, r) => n + r.count, 0);
-    const today = dayKey();
+    const today = challengeCycleKey(new Date(), config);
     if (data.challengeDayKey !== today) {
       data.challengeDayKey = today;
       data.challengeCount = 0;
       data.notified = false;
       write(all);
     }
-    return message.reply({ content: `🎯 Target Lucy harian: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target: **${config.targetGoal || 0}** • Progress hari ini: **${data.challengeCount || 0}/${config.targetGoal || 0}** • Total Lucy terhitung: **${totalCount}**`, allowedMentions: { parse: [] } });
+    const schedule = targetSchedule(config);
+    const fmt = n => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0');
+    return message.reply({ content: `🎯 Target Lucy: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target: **${config.targetGoal || 0}** • Progress siklus: **${data.challengeCount || 0}/${config.targetGoal || 0}** • Jadwal WIB: **${fmt(schedule.startMinutes)}–${fmt(schedule.stopMinutes)}** • Status jadwal: **${isTargetWindow(new Date(), config) ? 'AKTIF' : 'ISTIRAHAT'}** • Total Lucy terhitung: **${totalCount}**`, allowedMentions: { parse: [] } });
   }
   if (!admin(message)) return message.reply('Pengaturan Lucy hanya untuk moderator/admin dengan izin Manage Server.');
 
@@ -117,15 +121,15 @@ async function handleMessage(message) {
   const currentConfig = currentSettings.lucyCounter;
   if (!currentConfig.enabled) return;
 
-  // Server-wide cooldown: accept a Lucy message only if at least 10 seconds passed
-  // since the last accepted Lucy message. Reactions are added immediately.
+  // Per-person cooldown in this server: each member has an independent 10-second cooldown.
   const all = read();
   const data = guildData(all, message.guildId);
   const messageTime = message.createdTimestamp || Date.now();
-  const lastLucyAt = Number(data.lastLucyAcceptedAt || 0);
+  const memberData = data.users[message.author.id] ||= { name: message.author.username, days: {} };
+  const lastLucyAt = Number(memberData.lastLucyAcceptedAt || 0);
   if (messageTime - lastLucyAt < 10000) return;
 
-  data.lastLucyAcceptedAt = messageTime;
+  memberData.lastLucyAcceptedAt = messageTime;
   write(all);
 
   try { await message.react('✅'); } catch (error) {
@@ -134,18 +138,19 @@ async function handleMessage(message) {
   }
 
   const today = dayKey(new Date(messageTime));
-  const user = data.users[message.author.id] ||= { name: message.author.username, days: {} };
+  const user = data.users[message.author.id];
   user.name = message.member?.displayName || message.author.username;
   user.days[today] = (user.days[today] || 0) + count;
 
-  // The target challenge repeats every day and resets at 00:00 WIB.
-  // Counter/leaderboards continue independently of whether the target is ON.
-  if (data.challengeDayKey !== today) {
-    data.challengeDayKey = today;
+  // Target progress resets when the configured start time begins a new cycle.
+  // It only counts messages within the configured daily start/stop window.
+  const cycleKey = challengeCycleKey(new Date(messageTime), currentConfig);
+  if (data.challengeDayKey !== cycleKey) {
+    data.challengeDayKey = cycleKey;
     data.challengeCount = 0;
     data.notified = false;
   }
-  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0) {
+  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && isTargetWindow(new Date(messageTime), currentConfig)) {
     data.challengeCount += count;
   }
   write(all);
@@ -157,4 +162,4 @@ async function handleMessage(message) {
     if (channel?.isTextBased()) await channel.send({ content: currentConfig.targetMessage || DEFAULT_TARGET_MESSAGE, allowedMentions: { parse: [] } }).catch(() => {});
   }
 }
-module.exports = { handleMessage, handleCommand, countLucy, dayKey, leaderboardEmbed };
+module.exports = { handleMessage, handleCommand, countLucy, dayKey, leaderboardEmbed, targetSchedule, challengeCycleKey, isTargetWindow };
