@@ -26,8 +26,6 @@ function renderSettings(settings) {
   $('lucy-target-goal').value = Number(settings.lucyCounter?.targetGoal || 0);
   $('lucy-target-channel').value = settings.lucyCounter?.targetChannelId || '';
   $('lucy-target-message').value = settings.lucyCounter?.targetMessage || '🎉 Target Lucy tercapai!';
-  $('lucy-challenge-start').value = settings.lucyCounter?.challengeStartAt || '';
-  $('lucy-challenge-end').value = settings.lucyCounter?.challengeEndAt || '';
   $('channel-id').value = settings.channelId || '';
   $('role-id').value = settings.roleId || '';
   $('prefix').value = settings.prefix || '!';
@@ -63,9 +61,7 @@ function collectSettings() {
       targetEnabled: $('lucy-target-enabled').checked,
       targetGoal: Number($('lucy-target-goal').value || 0),
       targetMessage: $('lucy-target-message').value.trim(),
-      targetChannelId: $('lucy-target-channel').value,
-      challengeStartAt: $('lucy-challenge-start').value,
-      challengeEndAt: $('lucy-challenge-end').value
+      targetChannelId: $('lucy-target-channel').value
     },
     channelId: $('channel-id').value,
     roleId: $('role-id').value,
