@@ -106,7 +106,7 @@ async function handleMessage(message) {
   user.name = message.member?.displayName || message.author.username;
   user.days[today] = (user.days[today] || 0) + count;
   const target = currentGuild.targets;
-  const totalCount = ranking(currentGuild, null).reduce((n, row) => n + row.count, 0) + count;
+  const totalCount = ranking(currentGuild, null).reduce((n, row) => n + row.count, 0);
   write(current);
   if (target.goal > 0 && !target.notified && totalCount >= target.goal) {
     target.notified = true; write(current);
