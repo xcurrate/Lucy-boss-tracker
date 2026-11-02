@@ -152,7 +152,7 @@ async function handleMessage(message) {
     data.challengeCount = 0;
     data.notified = false;
   }
-  const targetTime = verifiedMessage.createdTimestamp || Date.now();
+  const targetTime = messageTime;
   if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && inChallenge(targetTime, currentConfig)) {
     data.challengeCount += count;
   }
