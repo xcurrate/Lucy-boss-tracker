@@ -130,6 +130,9 @@ async function handleMessage(message) {
     return;
   }
 
+  const currentSettings = getGuildSettings(message.guildId);
+  const currentConfig = currentSettings.lucyCounter;
+  if (!currentConfig.enabled) return;
   const all = read();
   const data = guildData(all, message.guildId);
   const today = dayKey(new Date(verifiedMessage.createdTimestamp));
@@ -138,23 +141,23 @@ async function handleMessage(message) {
   user.days[today] = (user.days[today] || 0) + count;
 
   // Counting/leaderboards are independent of target challenge state.
-  const targetKey = challengeKey(config);
+  const targetKey = challengeKey(currentConfig);
   if (data.challengeKey !== targetKey) {
     data.challengeKey = targetKey;
     data.challengeCount = 0;
     data.notified = false;
   }
   const targetTime = verifiedMessage.createdTimestamp || Date.now();
-  if (config.targetEnabled && config.targetGoal > 0 && inChallenge(targetTime, config)) {
+  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && inChallenge(targetTime, currentConfig)) {
     data.challengeCount += count;
   }
   write(all);
 
-  if (config.targetEnabled && config.targetGoal > 0 && data.challengeCount >= config.targetGoal && !data.notified && inChallenge(targetTime, config)) {
+  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && data.challengeCount >= currentConfig.targetGoal && !data.notified && inChallenge(targetTime, currentConfig)) {
     data.notified = true;
     write(all);
-    const channel = config.targetChannelId ? await verifiedMessage.guild.channels.fetch(config.targetChannelId).catch(() => null) : verifiedMessage.channel;
-    if (channel?.isTextBased()) await channel.send({ content: config.targetMessage || DEFAULT_TARGET_MESSAGE, allowedMentions: { parse: [] } }).catch(() => {});
+    const channel = currentConfig.targetChannelId ? await verifiedMessage.guild.channels.fetch(currentConfig.targetChannelId).catch(() => null) : verifiedMessage.channel;
+    if (channel?.isTextBased()) await channel.send({ content: currentConfig.targetMessage || DEFAULT_TARGET_MESSAGE, allowedMentions: { parse: [] } }).catch(() => {});
   }
 }
 module.exports = { handleMessage, handleCommand, countLucy, dayKey, leaderboardEmbed };
