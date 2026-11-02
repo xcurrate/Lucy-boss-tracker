@@ -83,7 +83,7 @@ async function handleCommand(message) {
     const totalCount = ranking(data, null).reduce((n, r) => n + r.count, 0);
     const start = config.challengeStartAt ? config.challengeStartAt.replace('T', ' ') + ' WIB' : 'belum diatur';
     const end = config.challengeEndAt ? config.challengeEndAt.replace('T', ' ') + ' WIB' : 'belum diatur';
-    return message.reply({ content: `🎯 Target Lucy: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target: **${config.targetGoal || 0}** • Total Lucy terhitung: **${totalCount}**\nRentang challenge: ${start} – ${end}`, allowedMentions: { parse: [] } });
+    return message.reply({ content: `🎯 Target Lucy: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target: **${config.targetGoal || 0}** • Progress challenge: **${data.challengeCount || 0}/${config.targetGoal || 0}** • Total Lucy terhitung: **${totalCount}**\nRentang challenge: ${start} – ${end}`, allowedMentions: { parse: [] } });
   }
   if (!admin(message)) return message.reply('Pengaturan Lucy hanya untuk moderator/admin dengan izin Manage Server.');
 
