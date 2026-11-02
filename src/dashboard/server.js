@@ -45,7 +45,7 @@ function publicSettings(settings) {
     prefix: settings.prefix || '!',
     lastBossTimestamp: settings.lastBossTimestamp,
     autoThreadRep: { ...settings.autoThreadRep, channelId: settings.autoThreadRep.channelId || '' },
-    lucyCounter: { enabled: Boolean(settings.lucyCounter?.enabled), targetEnabled: Boolean(settings.lucyCounter?.targetEnabled), targetGoal: Number(settings.lucyCounter?.targetGoal || 0), targetMessage: settings.lucyCounter?.targetMessage || '🎉 Target Lucy tercapai!', targetChannelId: settings.lucyCounter?.targetChannelId || '', targetStartTime: settings.lucyCounter?.targetStartTime || '12:00', targetStopTime: settings.lucyCounter?.targetStopTime || '10:00', blacklistedChannelIds: Array.isArray(settings.lucyCounter?.blacklistedChannelIds) ? settings.lucyCounter.blacklistedChannelIds : [] }
+    lucyCounter: { enabled: Boolean(settings.lucyCounter?.enabled), targetEnabled: Boolean(settings.lucyCounter?.targetEnabled), targetGoal: Number(settings.lucyCounter?.targetGoal || 0), targetMessage: settings.lucyCounter?.targetMessage || '🎉 Target Lucy tercapai!', targetChannelId: settings.lucyCounter?.targetChannelId || '', targetStartTime: settings.lucyCounter?.targetStartTime || '12:00', targetStopTime: settings.lucyCounter?.targetStopTime || '10:00', blacklistedChannelIds: Array.isArray(settings.lucyCounter?.blacklistedChannelIds) ? settings.lucyCounter.blacklistedChannelIds : [], whitelistedChannelIds: Array.isArray(settings.lucyCounter?.whitelistedChannelIds) ? settings.lucyCounter.whitelistedChannelIds : [] }
   };
 }
 function validateSettings(input) {
@@ -59,6 +59,8 @@ function validateSettings(input) {
   if (targetChannelId && !/^\d{17,20}$/.test(targetChannelId)) throw new Error('ID channel laporan target tidak valid.');
   const blacklistedChannelIds = [...new Set(Array.isArray(lucyCounter.blacklistedChannelIds) ? lucyCounter.blacklistedChannelIds.map(String) : [])];
   if (blacklistedChannelIds.some(id => !/^\d{17,20}$/.test(id))) throw new Error('Daftar channel blacklist berisi ID channel yang tidak valid.');
+  const whitelistedChannelIds = [...new Set(Array.isArray(lucyCounter.whitelistedChannelIds) ? lucyCounter.whitelistedChannelIds.map(String) : [])];
+  if (whitelistedChannelIds.some(id => !/^\d{17,20}$/.test(id))) throw new Error('Daftar channel whitelist berisi ID channel yang tidak valid.');
   const targetMessage = typeof lucyCounter.targetMessage === 'string' ? lucyCounter.targetMessage.trim() : '';
   if (targetMessage.length > 1500) throw new Error('Pesan target maksimal 1500 karakter.');
   const validateTargetTime = (value, fallback, label) => {
@@ -93,7 +95,7 @@ function validateSettings(input) {
     channelId,
     roleId,
     prefix: input.prefix,
-    lucyCounter: { enabled: lucyCounter.enabled, targetEnabled: Boolean(lucyCounter.targetEnabled), targetGoal, targetMessage: targetMessage || '🎉 Target Lucy tercapai!', targetChannelId, targetStartTime, targetStopTime, blacklistedChannelIds },
+    lucyCounter: { enabled: lucyCounter.enabled, targetEnabled: Boolean(lucyCounter.targetEnabled), targetGoal, targetMessage: targetMessage || '🎉 Target Lucy tercapai!', targetChannelId, targetStartTime, targetStopTime, blacklistedChannelIds, whitelistedChannelIds },
     autoThreadRep: {
       enabled: rep.enabled,
       channelId: repChannelId,
@@ -154,7 +156,7 @@ function startDashboard(client, tracker) {
         const value = validateSettings(input.settings);
         if (value.enabled && (!value.channelId || !value.roleId)) throw new Error('Pilih channel dan role sebelum mengaktifkan Boss Tracker.');
         if (value.autoThreadRep.enabled && !value.autoThreadRep.channelId) throw new Error('Pilih channel Auto Thread Rep sebelum mengaktifkan fitur tersebut.');
-        for (const [id, label] of [[value.channelId, 'Channel notifikasi'], [value.autoThreadRep.channelId, 'Channel Auto Thread Rep'], [value.lucyCounter.targetChannelId, 'Channel laporan target Lucy'], ...value.lucyCounter.blacklistedChannelIds.map(id => [id, 'Channel blacklist Lucy'])]) {
+        for (const [id, label] of [[value.channelId, 'Channel notifikasi'], [value.autoThreadRep.channelId, 'Channel Auto Thread Rep'], [value.lucyCounter.targetChannelId, 'Channel laporan target Lucy'], ...value.lucyCounter.blacklistedChannelIds.map(id => [id, 'Channel blacklist Lucy']), ...value.lucyCounter.whitelistedChannelIds.map(id => [id, 'Channel whitelist Lucy'])]) {
           if (!id) continue;
           const channel = await guild.channels.fetch(id);
           if (!channel || channel.guildId !== guild.id || !channel.isTextBased() || channel.isThread?.()) {
