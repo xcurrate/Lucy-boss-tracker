@@ -71,7 +71,7 @@ async function handleCommand(message) {
   if (sub === 'set') {
     const goal = Number(parts[2]);
     if (!Number.isSafeInteger(goal) || goal < 1) return message.reply(`Format: ${prefix}lucytarget set <jumlah>`);
-    t.goal = goal; t.notified = false; write(all); return message.reply(`Target Lucy disetel ke ${goal}.`);
+    t.goal = goal; t.notified = false; t.startAt = null; t.deadlineAt = null; t.channelId = null; t.challengeCount = 0; write(all); return message.reply(`Target Lucy disetel ke ${goal}.`);
   }
   if (sub === 'challenge') {
     const goal = Number(parts[2]), start = parts[3], deadline = parts[4], channelId = (parts[5] || '').match(/^<#?(\d+)>?$/)?.[1];
@@ -83,7 +83,7 @@ async function handleCommand(message) {
     };
     const startAt = parse(start), deadlineAt = parse(deadline);
     if (!Number.isSafeInteger(goal) || goal<1 || !startAt || !deadlineAt || deadlineAt<=startAt || !channelId) return message.reply(`Format: ${prefix}lucytarget challenge <jumlah> <mulai-HH:mm> <batas-HH:mm> #channel (WIB hari ini)`);
-    t.goal = goal; t.startAt = startAt; t.deadlineAt = deadlineAt; t.channelId = channelId; t.notified = false; write(all);
+    t.goal = goal; t.startAt = startAt; t.deadlineAt = deadlineAt; t.channelId = channelId; t.challengeCount = 0; t.notified = false; write(all);
     return message.reply('Challenge disimpan. Waktu challenge tidak mengubah reset leaderboard harian.');
   }
   return message.reply(`Perintah: ${prefix}lucytarget on|off|set <jumlah>|message <pesan>|challenge <jumlah> <mulai-HH:mm> <batas-HH:mm> #channel|status`);
