@@ -66,15 +66,14 @@ async function handleCommand(message) {
   const sub = (parts[1] || '').toLowerCase();
   const targetSub = (parts[2] || '').toLowerCase();
   if (sub === 'status') {
-    const data = guildData(read(), message.guildId);
+    const all = read();
+    const data = guildData(all, message.guildId);
     const totalCount = ranking(data, null).reduce((n, r) => n + r.count, 0);
     const today = dayKey();
     if (data.challengeDayKey !== today) {
       data.challengeDayKey = today;
       data.challengeCount = 0;
       data.notified = false;
-      const all = read();
-      all[message.guildId] = data;
       write(all);
     }
     return message.reply({ content: `🎯 Target Lucy harian: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target: **${config.targetGoal || 0}** • Progress hari ini: **${data.challengeCount || 0}/${config.targetGoal || 0}** • Total Lucy terhitung: **${totalCount}**`, allowedMentions: { parse: [] } });
