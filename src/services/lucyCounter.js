@@ -161,7 +161,7 @@ async function handleMessage(message) {
   if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && data.challengeCount >= currentConfig.targetGoal && !data.notified && inChallenge(targetTime, currentConfig)) {
     data.notified = true;
     write(all);
-    const channel = currentConfig.targetChannelId ? await verifiedMessage.guild.channels.fetch(currentConfig.targetChannelId).catch(() => null) : verifiedMessage.channel;
+    const channel = currentConfig.targetChannelId ? await message.guild.channels.fetch(currentConfig.targetChannelId).catch(() => null) : message.channel;
     if (channel?.isTextBased()) await channel.send({ content: currentConfig.targetMessage || DEFAULT_TARGET_MESSAGE, allowedMentions: { parse: [] } }).catch(() => {});
   }
 }
