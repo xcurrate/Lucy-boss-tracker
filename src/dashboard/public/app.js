@@ -22,6 +22,12 @@ function selectOptions(select, rows, placeholder, selected) {
 function renderSettings(settings) {
   $('boss-enabled').checked = settings.enabled;
   $('lucy-counter-enabled').checked = Boolean(settings.lucyCounter?.enabled);
+  $('lucy-target-enabled').checked = Boolean(settings.lucyCounter?.targetEnabled);
+  $('lucy-target-goal').value = Number(settings.lucyCounter?.targetGoal || 0);
+  $('lucy-target-channel').value = settings.lucyCounter?.targetChannelId || '';
+  $('lucy-target-message').value = settings.lucyCounter?.targetMessage || '🎉 Target Lucy tercapai!';
+  $('lucy-challenge-start').value = settings.lucyCounter?.challengeStartAt || '';
+  $('lucy-challenge-end').value = settings.lucyCounter?.challengeEndAt || '';
   $('channel-id').value = settings.channelId || '';
   $('role-id').value = settings.roleId || '';
   $('prefix').value = settings.prefix || '!';
@@ -43,7 +49,7 @@ async function loadGuild(id) {
   setStatus('Memuat konfigurasi…');
   const data = await api('/api/settings?guildId=' + encodeURIComponent(id));
   selectOptions($('channel-id'), data.channels, 'Pilih channel teks', data.settings.channelId);
-  selectOptions($('rep-channel-id'), data.channels, 'Pilih channel Auto Thread Rep', data.settings.autoThreadRep.channelId);
+  selectOptions($('rep-channel-id'), data.channels, 'Pilih channel Auto Thread Rep', data.settings.autoThreadRep.channelId);\n  selectOptions($('lucy-target-channel'), data.channels, 'Pilih channel laporan target', data.settings.lucyCounter?.targetChannelId);
   selectOptions($('role-id'), data.roles, 'Pilih role', data.settings.roleId);
   renderSettings(data.settings);
   setStatus('Konfigurasi dimuat. Perubahan belum disimpan.');
@@ -51,7 +57,15 @@ async function loadGuild(id) {
 function collectSettings() {
   return {
     enabled: $('boss-enabled').checked,
-    lucyCounter: { enabled: $('lucy-counter-enabled').checked },
+    lucyCounter: {
+      enabled: $('lucy-counter-enabled').checked,
+      targetEnabled: $('lucy-target-enabled').checked,
+      targetGoal: Number($('lucy-target-goal').value || 0),
+      targetMessage: $('lucy-target-message').value.trim(),
+      targetChannelId: $('lucy-target-channel').value,
+      challengeStartAt: $('lucy-challenge-start').value,
+      challengeEndAt: $('lucy-challenge-end').value
+    },
     channelId: $('channel-id').value,
     roleId: $('role-id').value,
     prefix: $('prefix').value,
