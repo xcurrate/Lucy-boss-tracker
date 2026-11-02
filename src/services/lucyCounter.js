@@ -44,8 +44,9 @@ function previousDayKey(key) {
 }
 function targetSchedule(config = {}) {
   const parse = (value, fallback) => {
-    const match = /^([01]\\d|2[0-3]):([0-5]\\d)$/.exec(value || fallback);
-    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+    const parts = String(value || fallback).split(':').map(Number);
+    if (parts.length !== 2 || !Number.isInteger(parts[0]) || !Number.isInteger(parts[1]) || parts[0] < 0 || parts[0] > 23 || parts[1] < 0 || parts[1] > 59) return null;
+    return parts[0] * 60 + parts[1];
   };
   return { startMinutes: parse(config.targetStartTime, DEFAULT_TARGET_START), stopMinutes: parse(config.targetStopTime, DEFAULT_TARGET_STOP) };
 }
