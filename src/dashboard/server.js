@@ -77,6 +77,7 @@ function validateSettings(input) {
     channelId,
     roleId,
     prefix: input.prefix,
+    lucyCounter: { enabled: lucyCounter.enabled },
     autoThreadRep: {
       enabled: rep.enabled,
       channelId: repChannelId,
