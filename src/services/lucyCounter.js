@@ -22,10 +22,10 @@ function dayKey(date = new Date()) {
   return `${p.year}-${p.month}-${p.day}`;
 }
 function guildData(all, guildId) {
-  if (!all[guildId]) all[guildId] = { users: {}, challengeKey: '', challengeCount: 0, notified: false };
+  if (!all[guildId]) all[guildId] = { users: {}, challengeDayKey: '', challengeCount: 0, notified: false };
   const g = all[guildId];
   g.users ||= {};
-  g.challengeKey ||= '';
+  g.challengeDayKey ||= '';
   g.challengeCount ||= 0;
   g.notified ||= false;
   return g;
@@ -46,19 +46,6 @@ function leaderboardEmbed(guild, day, allTime = false) {
     .setDescription(desc).setFooter({ text: `${allTime ? 'Sepanjang masa' : 'Harian'} • ${dayKey()}` });
 }
 function admin(message) { return Boolean(message.member?.permissions?.has(PermissionFlagsBits.ManageGuild)); }
-function toWibTimestamp(value) {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value || '')) return null;
-  const timestamp = Date.parse(value + ':00+07:00');
-  return Number.isFinite(timestamp) ? timestamp : null;
-}
-function challengeKey(config) {
-  return [config.targetGoal, config.challengeStartAt, config.challengeEndAt].join('|');
-}
-function inChallenge(messageTimestamp, config) {
-  const start = toWibTimestamp(config.challengeStartAt);
-  const end = toWibTimestamp(config.challengeEndAt);
-  return start !== null && end !== null && end > start && messageTimestamp >= start && messageTimestamp <= end;
-}
 async function handleCommand(message) {
   if (!message.guildId || message.author?.bot) return false;
   const settings = getGuildSettings(message.guildId);
@@ -81,9 +68,16 @@ async function handleCommand(message) {
   if (sub === 'status') {
     const data = guildData(read(), message.guildId);
     const totalCount = ranking(data, null).reduce((n, r) => n + r.count, 0);
-    const start = config.challengeStartAt ? config.challengeStartAt.replace('T', ' ') + ' WIB' : 'belum diatur';
-    const end = config.challengeEndAt ? config.challengeEndAt.replace('T', ' ') + ' WIB' : 'belum diatur';
-    return message.reply({ content: `🎯 Target Lucy: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target: **${config.targetGoal || 0}** • Progress challenge: **${data.challengeCount || 0}/${config.targetGoal || 0}** • Total Lucy terhitung: **${totalCount}**\nRentang challenge: ${start} – ${end}`, allowedMentions: { parse: [] } });
+    const today = dayKey();
+    if (data.challengeDayKey !== today) {
+      data.challengeDayKey = today;
+      data.challengeCount = 0;
+      data.notified = false;
+      const all = read();
+      all[message.guildId] = data;
+      write(all);
+    }
+    return message.reply({ content: `🎯 Target Lucy harian: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target: **${config.targetGoal || 0}** • Progress hari ini: **${data.challengeCount || 0}/${config.targetGoal || 0}** • Total Lucy terhitung: **${totalCount}**`, allowedMentions: { parse: [] } });
   }
   if (!admin(message)) return message.reply('Pengaturan Lucy hanya untuk moderator/admin dengan izin Manage Server.');
 
@@ -145,20 +139,19 @@ async function handleMessage(message) {
   user.name = message.member?.displayName || message.author.username;
   user.days[today] = (user.days[today] || 0) + count;
 
-  // Counting/leaderboards are independent of target challenge state.
-  const targetKey = challengeKey(currentConfig);
-  if (data.challengeKey !== targetKey) {
-    data.challengeKey = targetKey;
+  // The target challenge repeats every day and resets at 00:00 WIB.
+  // Counter/leaderboards continue independently of whether the target is ON.
+  if (data.challengeDayKey !== today) {
+    data.challengeDayKey = today;
     data.challengeCount = 0;
     data.notified = false;
   }
-  const targetTime = messageTime;
-  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && inChallenge(targetTime, currentConfig)) {
+  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0) {
     data.challengeCount += count;
   }
   write(all);
 
-  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && data.challengeCount >= currentConfig.targetGoal && !data.notified && inChallenge(targetTime, currentConfig)) {
+  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && data.challengeCount >= currentConfig.targetGoal && !data.notified) {
     data.notified = true;
     write(all);
     const channel = currentConfig.targetChannelId ? await message.guild.channels.fetch(currentConfig.targetChannelId).catch(() => null) : message.channel;
