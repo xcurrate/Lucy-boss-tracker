@@ -45,14 +45,32 @@ function publicSettings(settings) {
     prefix: settings.prefix || '!',
     lastBossTimestamp: settings.lastBossTimestamp,
     autoThreadRep: { ...settings.autoThreadRep, channelId: settings.autoThreadRep.channelId || '' },
-    lucyCounter: { enabled: Boolean(settings.lucyCounter?.enabled) }
+    lucyCounter: { enabled: Boolean(settings.lucyCounter?.enabled), targetEnabled: Boolean(settings.lucyCounter?.targetEnabled), targetGoal: Number(settings.lucyCounter?.targetGoal || 0), targetMessage: settings.lucyCounter?.targetMessage || '🎉 Target Lucy tercapai!', targetChannelId: settings.lucyCounter?.targetChannelId || '', challengeStartAt: settings.lucyCounter?.challengeStartAt || '', challengeEndAt: settings.lucyCounter?.challengeEndAt || '' }
   };
 }
 function validateSettings(input) {
   if (!input || typeof input !== 'object') throw new Error('Pengaturan tidak valid.');
   if (typeof input.enabled !== 'boolean') throw new Error('Status Boss Tracker tidak valid.');
-  const lucyCounter = input.lucyCounter || { enabled: false };
-  if (typeof lucyCounter.enabled !== 'boolean') throw new Error('Status Lucy Counter tidak valid.');
+  const lucyCounter = input.lucyCounter || {};
+  if (typeof lucyCounter.enabled !== 'boolean' || typeof (lucyCounter.targetEnabled ?? false) !== 'boolean') throw new Error('Status Lucy Counter/target tidak valid.');
+  const targetGoal = Number(lucyCounter.targetGoal || 0);
+  if (!Number.isSafeInteger(targetGoal) || targetGoal < 0) throw new Error('Jumlah target Lucy harus bilangan bulat 0 atau lebih.');
+  const targetChannelId = lucyCounter.targetChannelId || null;
+  if (targetChannelId && !/^\d{17,20}$/.test(targetChannelId)) throw new Error('ID channel laporan target tidak valid.');
+  const targetMessage = typeof lucyCounter.targetMessage === 'string' ? lucyCounter.targetMessage.trim() : '';
+  if (targetMessage.length > 1500) throw new Error('Pesan target maksimal 1500 karakter.');
+  const parseWibDateTime = value => {
+    if (!value) return '';
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) throw new Error('Waktu challenge harus format YYYY-MM-DDTHH:mm (WIB).');
+    const timestamp = Date.parse(value + ':00+07:00');
+    if (!Number.isFinite(timestamp)) throw new Error('Waktu challenge tidak valid.');
+    return value;
+  };
+  const challengeStartAt = parseWibDateTime(lucyCounter.challengeStartAt || '');
+  const challengeEndAt = parseWibDateTime(lucyCounter.challengeEndAt || '');
+  if ((challengeStartAt && !challengeEndAt) || (!challengeStartAt && challengeEndAt) || (challengeStartAt && Date.parse(challengeEndAt + ':00+07:00') <= Date.parse(challengeStartAt + ':00+07:00'))) {
+    throw new Error('Isi waktu mulai dan batas challenge; batas harus setelah waktu mulai.');
+  }
   const channelId = input.channelId || null;
   const roleId = input.roleId || null;
   if (channelId && !/^\d{17,20}$/.test(channelId)) throw new Error('ID channel notifikasi tidak valid.');
@@ -77,7 +95,7 @@ function validateSettings(input) {
     channelId,
     roleId,
     prefix: input.prefix,
-    lucyCounter: { enabled: lucyCounter.enabled },
+    lucyCounter: { enabled: lucyCounter.enabled, targetEnabled: Boolean(lucyCounter.targetEnabled), targetGoal, targetMessage: targetMessage || '🎉 Target Lucy tercapai!', targetChannelId, challengeStartAt, challengeEndAt },
     autoThreadRep: {
       enabled: rep.enabled,
       channelId: repChannelId,
@@ -138,7 +156,7 @@ function startDashboard(client, tracker) {
         const value = validateSettings(input.settings);
         if (value.enabled && (!value.channelId || !value.roleId)) throw new Error('Pilih channel dan role sebelum mengaktifkan Boss Tracker.');
         if (value.autoThreadRep.enabled && !value.autoThreadRep.channelId) throw new Error('Pilih channel Auto Thread Rep sebelum mengaktifkan fitur tersebut.');
-        for (const [id, label] of [[value.channelId, 'Channel notifikasi'], [value.autoThreadRep.channelId, 'Channel Auto Thread Rep']]) {
+        for (const [id, label] of [[value.channelId, 'Channel notifikasi'], [value.autoThreadRep.channelId, 'Channel Auto Thread Rep'], [value.lucyCounter.targetChannelId, 'Channel laporan target Lucy']]) {
           if (!id) continue;
           const channel = await guild.channels.fetch(id);
           if (!channel || channel.guildId !== guild.id || !channel.isTextBased() || channel.isThread?.()) {
