@@ -32,6 +32,35 @@ function guildData(all, guildId) {
   g.notified ||= false;
   return g;
 }
+function timeParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: WIB, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(date);
+  const p = Object.fromEntries(parts.map(x => [x.type, x.value]));
+  return { hour: Number(p.hour), minute: Number(p.minute), minutes: Number(p.hour) * 60 + Number(p.minute) };
+}
+function previousDayKey(key) {
+  const d = new Date(key + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+function targetSchedule(config = {}) {
+  const parse = (value, fallback) => {
+    const match = /^([01]\\d|2[0-3]):([0-5]\\d)$/.exec(value || fallback);
+    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+  };
+  return { startMinutes: parse(config.targetStartTime, DEFAULT_TARGET_START), stopMinutes: parse(config.targetStopTime, DEFAULT_TARGET_STOP) };
+}
+function challengeCycleKey(date = new Date(), config = {}) {
+  const today = dayKey(date);
+  return timeParts(date).minutes >= targetSchedule(config).startMinutes ? today : previousDayKey(today);
+}
+function isTargetWindow(date, config = {}) {
+  const now = timeParts(date).minutes;
+  const { startMinutes, stopMinutes } = targetSchedule(config);
+  if (startMinutes === null || stopMinutes === null || startMinutes === stopMinutes) return false;
+  return startMinutes > stopMinutes
+    ? now >= startMinutes || now < stopMinutes
+    : now >= startMinutes && now < stopMinutes;
+}
 function countLucy(content) { return (String(content || '').match(/\blucy\b/gi) || []).length; }
 function total(user, day) {
   return Object.entries(user.days || {}).filter(([key]) => !day || key === day).reduce((sum, [, n]) => sum + n, 0);
@@ -155,7 +184,7 @@ async function handleMessage(message) {
   }
   write(all);
 
-  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && data.challengeCount >= currentConfig.targetGoal && !data.notified) {
+  if (currentConfig.targetEnabled && currentConfig.targetGoal > 0 && isTargetWindow(new Date(messageTime), currentConfig) && data.challengeCount >= currentConfig.targetGoal && !data.notified) {
     data.notified = true;
     write(all);
     const channel = currentConfig.targetChannelId ? await message.guild.channels.fetch(currentConfig.targetChannelId).catch(() => null) : message.channel;
