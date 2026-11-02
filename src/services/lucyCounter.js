@@ -145,7 +145,10 @@ async function handleMessage(message) {
   const settings = getGuildSettings(message.guildId);
   const config = settings.lucyCounter;
   const blacklistedChannelIds = config.blacklistedChannelIds || [];
-  if (!config.enabled || blacklistedChannelIds.includes(message.channelId) || !countLucy(message.content)) return;
+  const whitelistedChannelIds = config.whitelistedChannelIds || [];
+  if (!config.enabled || blacklistedChannelIds.includes(message.channelId)) return;
+  if (whitelistedChannelIds.length > 0 && !whitelistedChannelIds.includes(message.channelId)) return;
+  if (!countLucy(message.content)) return;
 
   const count = countLucy(message.content);
   const currentSettings = getGuildSettings(message.guildId);
