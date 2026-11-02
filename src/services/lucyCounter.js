@@ -1,9 +1,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
 
 const file = path.resolve(process.cwd(), 'data', 'lucy-counter.json');
 const WIB = 'Asia/Jakarta';
+const DEFAULT_TARGET_MESSAGE = '🎉 Target Lucy tercapai!';
+
 function read() {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return {}; }
 }
@@ -14,104 +17,144 @@ function write(data) {
   fs.renameSync(tmp, file);
 }
 function dayKey(date = new Date()) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: WIB, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: WIB, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+  const p = Object.fromEntries(parts.map(x => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
 }
 function guildData(all, guildId) {
-  if (!all[guildId]) all[guildId] = { enabled: false, users: {}, targets: { goal: 0, message: '🎉 Target Lucy tercapai!', channelId: null, startAt: null, deadlineAt: null } };
+  if (!all[guildId]) all[guildId] = { users: {}, challengeKey: '', challengeCount: 0, notified: false };
   const g = all[guildId];
   g.users ||= {};
-  g.targets ||= { goal: 0, message: '🎉 Target Lucy tercapai!', channelId: null, startAt: null, deadlineAt: null };
+  g.challengeKey ||= '';
+  g.challengeCount ||= 0;
+  g.notified ||= false;
   return g;
 }
 function countLucy(content) { return (String(content || '').match(/\blucy\b/gi) || []).length; }
-function validCount(content) { return countLucy(content); }
 function total(user, day) {
   return Object.entries(user.days || {}).filter(([key]) => !day || key === day).reduce((sum, [, n]) => sum + n, 0);
 }
 function ranking(guild, day) {
   return Object.entries(guild.users).map(([id, u]) => ({ id, name: u.name || id, count: total(u, day) }))
-    .filter(x => x.count > 0).sort((a,b) => b.count-a.count || a.name.localeCompare(b.name)).slice(0, 25);
+    .filter(x => x.count > 0).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, 25);
 }
 function leaderboardEmbed(guild, day, allTime = false) {
   const rows = ranking(guild, allTime ? null : day);
-  const medals = ['🥇','🥈','🥉'];
-  const desc = rows.length ? rows.map((r,i) => `${medals[i] || (i+1)+'.'} ${r.count} - ${r.name}`).join('\n') : 'Belum ada data Lucy yang terhitung.';
+  const medals = ['🥇', '🥈', '🥉'];
+  const desc = rows.length ? rows.map((r, i) => `${medals[i] || (i + 1) + '.'} ${r.count} - ${r.name}`).join('\n') : 'Belum ada data Lucy yang terhitung.';
   return new EmbedBuilder().setColor(0xFEE75C).setTitle('Daily Server Lucy Leaderboard')
     .setDescription(desc).setFooter({ text: `${allTime ? 'Sepanjang masa' : 'Harian'} • ${dayKey()}` });
 }
 function admin(message) { return Boolean(message.member?.permissions?.has(PermissionFlagsBits.ManageGuild)); }
+function toWibTimestamp(value) {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value || '')) return null;
+  const timestamp = Date.parse(value + ':00+07:00');
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+function challengeKey(config) {
+  return [config.targetGoal, config.challengeStartAt, config.challengeEndAt].join('|');
+}
+function inChallenge(messageTimestamp, config) {
+  const start = toWibTimestamp(config.challengeStartAt);
+  const end = toWibTimestamp(config.challengeEndAt);
+  return start !== null && end !== null && end > start && messageTimestamp >= start && messageTimestamp <= end;
+}
 async function handleCommand(message) {
   if (!message.guildId || message.author?.bot) return false;
-  const all = read(), g = guildData(all, message.guildId);
-  const prefix = require('../utils/storage').getGuildSettings(message.guildId).prefix || '!';
+  const settings = getGuildSettings(message.guildId);
+  const config = settings.lucyCounter;
+  const prefix = settings.prefix || '!';
   const text = message.content.trim();
   const lower = text.toLowerCase();
-  if (![prefix+'lcount', prefix+'lcountd', prefix+'lcountall', prefix+'lucy count', prefix+'lucytarget'].some(c => lower === c || lower.startsWith(c+' '))) return false;
-  if ([prefix+'lcount', prefix+'lcountd', prefix+'lcountall', prefix+'lucy count'].includes(lower)) {
-    await message.reply({ embeds: [leaderboardEmbed(g, dayKey(), lower.endsWith('all'))], allowedMentions: { parse: [] } });
+  const leaderboardCommands = [prefix + 'lcount', prefix + 'lcountd', prefix + 'lcountall', prefix + 'lucy count'];
+  if (![...leaderboardCommands, prefix + 'lucytarget'].some(c => lower === c || lower.startsWith(c + ' '))) return false;
+
+  if (leaderboardCommands.includes(lower)) {
+    const data = guildData(read(), message.guildId);
+    await message.reply({ embeds: [leaderboardEmbed(data, dayKey(), lower.endsWith('all'))], allowedMentions: { parse: [] } });
     return true;
   }
+
   const parts = text.slice(prefix.length).trim().split(/\s+/);
   const sub = (parts[1] || '').toLowerCase();
-  const t = g.targets;
+  const targetSub = (parts[2] || '').toLowerCase();
   if (sub === 'status') {
-    const count = ranking(g, null).reduce((n, r) => n + r.count, 0);
-    return message.reply({ content: `🎯 Target Lucy: **${t.goal || 0}** • Total terhitung: **${count}**\nStatus: ${t.goal && count >= t.goal ? 'tercapai' : 'berjalan'}${t.startAt ? '\nMulai: '+new Date(t.startAt).toLocaleString('id-ID',{timeZone:WIB})+' WIB' : ''}${t.deadlineAt ? '\nBatas laporan: '+new Date(t.deadlineAt).toLocaleString('id-ID',{timeZone:WIB})+' WIB' : ''}`, allowedMentions: { parse: [] } });
+    const data = guildData(read(), message.guildId);
+    const totalCount = ranking(data, null).reduce((n, r) => n + r.count, 0);
+    const start = config.challengeStartAt ? config.challengeStartAt.replace('T', ' ') + ' WIB' : 'belum diatur';
+    const end = config.challengeEndAt ? config.challengeEndAt.replace('T', ' ') + ' WIB' : 'belum diatur';
+    return message.reply({ content: `🎯 Target Lucy: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target: **${config.targetGoal || 0}** • Total Lucy terhitung: **${totalCount}**\nRentang challenge: ${start} – ${end}`, allowedMentions: { parse: [] } });
   }
   if (!admin(message)) return message.reply('Pengaturan Lucy hanya untuk moderator/admin dengan izin Manage Server.');
+
   if (sub === 'on' || sub === 'off') {
-    g.enabled = sub === 'on'; write(all);
-    return message.reply(`Lucy Counter ${g.enabled ? 'diaktifkan' : 'dimatikan'} untuk server ini.`);
+    updateGuildSettings(message.guildId, s => ({ ...s, lucyCounter: { ...s.lucyCounter, enabled: sub === 'on' } }));
+    return message.reply(`Lucy Counter ${sub === 'on' ? 'diaktifkan' : 'dimatikan'} untuk server ini.`);
   }
-  if (sub === 'message') {
-    const value = parts.slice(2).join(' ').trim();
-    if (!value || value.length > 1500) return message.reply(`Format: ${prefix}lucytarget message <pesan>`);
-    t.message = value; write(all); return message.reply('Pesan target tercapai berhasil disimpan.');
+  if (sub === 'target' && (targetSub === 'on' || targetSub === 'off')) {
+    updateGuildSettings(message.guildId, s => ({ ...s, lucyCounter: { ...s.lucyCounter, targetEnabled: targetSub === 'on' } }));
+    return message.reply(`Target Lucy ${targetSub === 'on' ? 'diaktifkan' : 'dimatikan'}.`);
   }
   if (sub === 'set') {
     const goal = Number(parts[2]);
     if (!Number.isSafeInteger(goal) || goal < 1) return message.reply(`Format: ${prefix}lucytarget set <jumlah>`);
-    t.goal = goal; t.notified = false; t.startAt = null; t.deadlineAt = null; t.channelId = null; t.challengeCount = 0; write(all); return message.reply(`Target Lucy disetel ke ${goal}.`);
+    updateGuildSettings(message.guildId, s => ({ ...s, lucyCounter: { ...s.lucyCounter, targetGoal: goal } }));
+    return message.reply(`Target Lucy disetel ke ${goal}.`);
   }
-  if (sub === 'challenge') {
-    const goal = Number(parts[2]), start = parts[3], deadline = parts[4], channelId = (parts[5] || '').match(/^<#?(\d+)>?$/)?.[1];
-    const parse = (time) => {
-      if (!/^\d{2}:\d{2}$/.test(time || '')) return null;
-      const [h,m] = time.split(':').map(Number); if (h>23 || m>59) return null;
-      const now = new Date(), parts = new Intl.DateTimeFormat('en-CA',{timeZone:WIB,year:'numeric',month:'2-digit',day:'2-digit'}).format(now).split('-');
-      return new Date(`${parts[0]}-${parts[1]}-${parts[2]}T${time}:00+07:00`).getTime();
-    };
-    const startAt = parse(start), deadlineAt = parse(deadline);
-    if (!Number.isSafeInteger(goal) || goal<1 || !startAt || !deadlineAt || deadlineAt<=startAt || !channelId) return message.reply(`Format: ${prefix}lucytarget challenge <jumlah> <mulai-HH:mm> <batas-HH:mm> #channel (WIB hari ini)`);
-    t.goal = goal; t.startAt = startAt; t.deadlineAt = deadlineAt; t.channelId = channelId; t.challengeCount = 0; t.notified = false; write(all);
-    return message.reply('Challenge disimpan. Waktu challenge tidak mengubah reset leaderboard harian.');
+  if (sub === 'message') {
+    const value = parts.slice(2).join(' ').trim();
+    if (!value || value.length > 1500) return message.reply(`Format: ${prefix}lucytarget message <pesan>`);
+    updateGuildSettings(message.guildId, s => ({ ...s, lucyCounter: { ...s.lucyCounter, targetMessage: value } }));
+    return message.reply('Pesan target tercapai berhasil disimpan.');
   }
-  return message.reply(`Perintah: ${prefix}lucytarget on|off|set <jumlah>|message <pesan>|challenge <jumlah> <mulai-HH:mm> <batas-HH:mm> #channel|status`);
+  return message.reply(`Perintah: ${prefix}lucytarget on|off|target on|off|set <jumlah>|message <pesan>|status`);
 }
 async function handleMessage(message) {
   if (!message.guildId || message.author?.bot || !message.content) return;
-  const all = read(), g = guildData(all, message.guildId);
-  const prefix = require('../utils/storage').getGuildSettings(message.guildId).prefix || '!';
   if (await handleCommand(message)) return;
-  if (/^\s*(?:lcountd|lcountall|lcount)$/i.test(message.content.slice(prefix.length).trim()) && message.content.startsWith(prefix)) return;
-  if (!g.enabled || !/\blucy\b/i.test(message.content)) return;
-  const count = validCount(message.content);
-  if (!count) return;
-  try { await message.react('✅'); } catch {}
+  const prefix = getGuildSettings(message.guildId).prefix || '!';
+  if (message.content.startsWith(prefix) && /^\s*(?:lcountd|lcountall|lcount|lucy count|lucytarget)(?:\s|$)/i.test(message.content.slice(prefix.length))) return;
+
+  const settings = getGuildSettings(message.guildId);
+  const config = settings.lucyCounter;
+  if (!config.enabled || !countLucy(message.content)) return;
+
+  // The checkmark is proof that the message survived the full 10-second verification window.
   await new Promise(resolve => setTimeout(resolve, 10000));
-  const current = read(), currentGuild = guildData(current, message.guildId);
-  if (!currentGuild.enabled) return;
-  const today = dayKey();
-  const user = currentGuild.users[message.author.id] ||= { name: message.author.username, days: {} };
-  user.name = message.member?.displayName || message.author.username;
+  let verifiedMessage;
+  try { verifiedMessage = await message.fetch(); } catch { return; }
+  const count = countLucy(verifiedMessage.content);
+  if (!count) return;
+  try { await verifiedMessage.react('✅'); } catch (error) {
+    console.warn('[LucyCounter] Gagal memberi reaksi verifikasi:', error.message);
+    return;
+  }
+
+  const all = read();
+  const data = guildData(all, message.guildId);
+  const today = dayKey(new Date(verifiedMessage.createdTimestamp));
+  const user = data.users[verifiedMessage.author.id] ||= { name: verifiedMessage.author.username, days: {} };
+  user.name = verifiedMessage.member?.displayName || verifiedMessage.author.username;
   user.days[today] = (user.days[today] || 0) + count;
-  const target = currentGuild.targets;
-  const totalCount = ranking(currentGuild, null).reduce((n, row) => n + row.count, 0);
-  write(current);
-  if (target.goal > 0 && !target.notified && totalCount >= target.goal) {
-    target.notified = true; write(current);
-    const channel = target.channelId ? await message.guild.channels.fetch(target.channelId).catch(() => null) : message.channel;
-    if (channel?.isTextBased()) await channel.send({ content: target.message || '🎉 Target Lucy tercapai!', allowedMentions: { parse: [] } }).catch(() => {});
+
+  // Counting/leaderboards are independent of target challenge state.
+  const targetKey = challengeKey(config);
+  if (data.challengeKey !== targetKey) {
+    data.challengeKey = targetKey;
+    data.challengeCount = 0;
+    data.notified = false;
+  }
+  const targetTime = verifiedMessage.createdTimestamp || Date.now();
+  if (config.targetEnabled && config.targetGoal > 0 && inChallenge(targetTime, config)) {
+    data.challengeCount += count;
+  }
+  write(all);
+
+  if (config.targetEnabled && config.targetGoal > 0 && data.challengeCount >= config.targetGoal && !data.notified && inChallenge(targetTime, config)) {
+    data.notified = true;
+    write(all);
+    const channel = config.targetChannelId ? await verifiedMessage.guild.channels.fetch(config.targetChannelId).catch(() => null) : verifiedMessage.channel;
+    if (channel?.isTextBased()) await channel.send({ content: config.targetMessage || DEFAULT_TARGET_MESSAGE, allowedMentions: { parse: [] } }).catch(() => {});
   }
 }
 module.exports = { handleMessage, handleCommand, countLucy, dayKey, leaderboardEmbed };
