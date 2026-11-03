@@ -16,6 +16,7 @@
       <a class="nav" href="#boss">🐉 <span>Boss Tracker</span></a>
       <a class="nav" href="#rep">🧵 <span>Auto Thread Rep</span></a>
       <a class="nav" href="#lucy-counter">🔢 <span>Lucy Counter</span></a>
+      <a class="nav" href="#boss-rewards">🎁 <span>Boss Reward Reminder</span></a>
       <a class="nav" href="#logs">▤ <span>System Logs</span></a>
       <div class="sidebar-bottom"><span class="live-dot"></span> Local runtime monitor <span class="muted">●</span></div>
     </aside>
@@ -67,6 +68,18 @@
             <div class="field"><label for="lucy-target-stop">BERHENTI TARGET (WIB)</label><input id="lucy-target-stop" type="time" value="10:00" required><small>Jam berhenti di hari berikutnya jika lebih awal dari waktu mulai.</small></div>
 </div>
           <p>Leaderboard: <code>[prefix]lcountd</code> (hari ini), <code>[prefix]lcountall</code> (sepanjang masa), <code>[prefix]lucytarget status</code> (status target).</p>
+        </section>
+        <section class="panel" id="boss-rewards">
+          <div class="panel-heading"><div><div class="eyebrow">CATEGORY 04 / REWARD ALERTS</div><h2>🎁 Boss Reward Reminder</h2><p>Notifikasi role server saat jumlah reward pada gambar Lucy mencapai target. Pengaturan ini tersedia melalui dashboard developer.</p></div><label class="switch"><input id="reward-enabled" type="checkbox"><span></span></label></div>
+          <div class="form-grid">
+            <div class="field"><label for="reward-channel">CHANNEL NOTIFIKASI REWARD</label><select id="reward-channel"></select><small>Channel teks untuk pengumuman saat target reward tercapai.</small></div>
+            <div class="field"><label for="reward-role">ROLE YANG DI-TAG</label><select id="reward-role"></select><small>Role server yang menerima pengingat.</small></div>
+            <div class="field"><label for="reward-ws">WEAPON SHARDS TARGET</label><input id="reward-ws" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"><small>Kosongkan untuk tidak memantau kategori ini.</small></div>
+            <div class="field"><label for="reward-wc">WEAPON CRATE TARGET</label><input id="reward-wc" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"></div>
+            <div class="field"><label for="reward-flb">FABLED LOOTBOX TARGET</label><input id="reward-flb" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"></div>
+            <div class="field"><label for="reward-xp">EXPERIENCE TARGET</label><input id="reward-xp" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"></div>
+          </div>
+          <p>Target server menggunakan operator minimal (≥). Setelah notifikasi berhasil dikirim, kategori yang terpenuhi otomatis dihapus dari target server. Target personal anggota tetap dikelola melalui perintah chat.</p>
         </section>
         <section class="panel" id="rep">
           <div class="panel-heading"><div><div class="eyebrow">CATEGORY 02 / AUTOMATION</div><h2>🧵 Auto Thread Rep</h2><p>Buat thread otomatis dari pesan *rep dengan mention target yang benar.</p></div><label class="switch"><input id="rep-enabled" type="checkbox"><span></span></label></div>
