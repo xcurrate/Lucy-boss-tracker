@@ -67,9 +67,13 @@ function claimProcessed(guildId, imageKey) {
 }
 
 const NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1000;
+function cooldownRemaining(sentAt, now = Date.now()) {
+  const timestamp = Number(sentAt || 0);
+  return Math.max(0, timestamp + NOTIFICATION_COOLDOWN_MS - now);
+}
 function getCooldownRemaining(guildId, key, now = Date.now()) {
   const sentAt = Number(readAll().notificationCooldowns?.[guildId]?.[key] || 0);
-  return Math.max(0, sentAt + NOTIFICATION_COOLDOWN_MS - now);
+  return cooldownRemaining(sentAt, now);
 }
 function isOnCooldown(guildId, key, now = Date.now()) {
   return getCooldownRemaining(guildId, key, now) > 0;
@@ -83,4 +87,4 @@ function markNotified(guildId, key, sentAt = Date.now()) {
   });
 }
 
-module.exports = { getCooldownRemaining, isOnCooldown, markNotified, NOTIFICATION_COOLDOWN_MS, getPersonal, getPersonalGuild, setPersonal, getServer, setServer, isProcessed, claimProcessed };
+module.exports = { getCooldownRemaining, cooldownRemaining, isOnCooldown, markNotified, NOTIFICATION_COOLDOWN_MS, getPersonal, getPersonalGuild, setPersonal, getServer, setServer, isProcessed, claimProcessed };
