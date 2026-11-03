@@ -81,6 +81,7 @@ async function evaluatePersonal(guild, rewards, sourceChannel) {
   for (const [userId, saved] of Object.entries(users)) {
     const matched = rewardLines(rewards, saved);
     if (!matched.length) continue;
+    console.info('[BossRewards][personal:matched] guild=' + guild.id + ' user=' + userId + ' categories=' + matched.length);
     const content = '🎉 <@' + userId + '> Target reward kamu terpenuhi!\n' + matched.join('\n');
     try {
       const member = await guild.members.fetch(userId).catch(() => null);
