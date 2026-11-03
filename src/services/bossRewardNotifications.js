@@ -26,7 +26,7 @@ function findRewardImage(message) {
       if (Array.isArray(value)) { for (const child of value) walk(child); return; }
       const type = Number(value.type);
       const text = [value.content, value.text, value.title].filter(x => typeof x === 'string').join(' ');
-      if (type === 10 && /##\\s*Hadiah/i.test(text)) hasRewardHeading = true;
+      if (type === 10 && /##\s*Hadiah/i.test(text)) hasRewardHeading = true;
       if (type === 12 && !imageUrl) {
         const candidate = value.items?.[0]?.media?.url || value.media?.url;
         if (typeof candidate === 'string') imageUrl = candidate;
