@@ -51,13 +51,15 @@ function setServer(guildId, config) {
     return data.server[guildId];
   });
 }
-function isProcessed(guildId, imageKey) {\n  return readAll().processed?.[guildId]?.[imageKey] === imageKey;\n}\nfunction claimProcessed(guildId, messageId, imageKey) {
+function isProcessed(guildId, imageKey) {\n  return readAll().processed?.[guildId]?.[imageKey] === imageKey;\n}\nfunction isProcessed(guildId, imageKey) {
+  return readAll().processed?.[guildId]?.[imageKey] === imageKey;
+}
+function claimProcessed(guildId, imageKey) {
   return update(data => {
     data.processed ||= {};
     data.processed[guildId] ||= {};
-    const old = data.processed[guildId][messageId];
-    if (old === imageKey) return false;
-    data.processed[guildId][messageId] = imageKey;
+    if (data.processed[guildId][imageKey] === imageKey) return false;
+    data.processed[guildId][imageKey] = imageKey;
     const ids = Object.keys(data.processed[guildId]);
     if (ids.length > 500) for (const id of ids.slice(0, ids.length - 500)) delete data.processed[guildId][id];
     return true;
