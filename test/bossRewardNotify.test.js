@@ -2,6 +2,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { parseAmount, parseTargets } = require('../src/commands/bossRewardNotify');
 const { findRewardImage, reached, isRewardSourceChannel, isBossEnded } = require('../src/services/bossRewardNotifications');
+const { cooldownRemaining, NOTIFICATION_COOLDOWN_MS } = require('../src/utils/bossRewardStorage');
 
 describe('boss reward target parser', () => {
   it('normalizes plain, comma, and k amounts', () => {
@@ -97,5 +98,15 @@ describe('Lucy boss end-state filter', () => {
       { type: 10, content: '⏳ Berakhir dalam 20 menit' }
     ] }] };
     assert.equal(isBossEnded(message), false);
+  });
+});
+
+describe('reward notification cooldown', () => {
+  it('holds notification for 30 minutes after successful send timestamp', () => {
+    const sentAt = 1000000;
+    assert.equal(cooldownRemaining(sentAt, sentAt), NOTIFICATION_COOLDOWN_MS);
+    assert.equal(cooldownRemaining(sentAt, sentAt + 10 * 60 * 1000), 20 * 60 * 1000);
+    assert.equal(cooldownRemaining(sentAt, sentAt + 30 * 60 * 1000), 0);
+    assert.equal(cooldownRemaining(sentAt, sentAt + 35 * 60 * 1000), 0);
   });
 });
