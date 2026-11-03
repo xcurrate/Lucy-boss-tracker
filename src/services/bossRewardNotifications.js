@@ -11,6 +11,7 @@ const LABELS = {
 const queue = [];
 let running = false;
 const inFlight = new Set();
+const pendingEdits = new Map();
 
 function findRewardImage(message) {
   const raw = typeof message?.toJSON === 'function' ? message.toJSON() : message;
@@ -143,12 +144,17 @@ async function drain() {
       const item = queue.shift();
       try { await processMessage(item); }
       catch (error) { console.error('[BossRewards] Processing failed:', error.message); }
-      finally { inFlight.delete(item.id); }
+      finally {
+        const latest = pendingEdits.get(item.id);
+        if (latest) { pendingEdits.delete(item.id); queue.push(latest); }
+        else inFlight.delete(item.id);
+      }
     }
   } finally { running = false; }
 }
 function enqueue(message) {
-  if (!message?.id || inFlight.has(message.id)) return;
+  if (!message?.id) return;
+  if (inFlight.has(message.id)) { pendingEdits.set(message.id, message); return; }
   inFlight.add(message.id);
   queue.push(message);
   setImmediate(() => drain().catch(error => console.error('[BossRewards] Queue error:', error)));
