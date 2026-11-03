@@ -80,9 +80,6 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   if (sub === 'notify') {
     const mode = (args[0] || '').toLowerCase();
     if (!['dm', 'channel', 'both'].includes(mode)) return handlePersonalCommand(message, args, prefix);
-    if (!['dm', 'channel', 'both'].includes(mode)) {
-      return _sendText(message, 'Pilih mode: `' + prefix + 'boss notify dm`, `channel`, atau `both`.');
-    }
     setUserMode(message.guildId, message.author.id, mode);
     return _sendText(message, '✅ Pilihan notifikasi kamu: **' + modeLabel(mode) + '**. Notifikasi channel server tetap berlaku untuk semua anggota.');
   }
