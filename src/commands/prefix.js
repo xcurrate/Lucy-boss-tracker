@@ -1,6 +1,7 @@
 const { getGuildSettings, updateGuildSettings, setUserMode, setUserWarnSeconds } = require('../utils/storage');
 const { modeLabel, warnLabel, personalPanel, statusEmbed, helpEmbed } = require('../ui/panel');
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { handlePersonalCommand } = require('./bossRewardNotify');
 
 const ALIASES = {
   help: ['bantuan', 'help', '?'],
