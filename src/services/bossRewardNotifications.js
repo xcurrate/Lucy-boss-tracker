@@ -26,7 +26,8 @@ function findRewardImage(message) {
     const text = [value.content, value.text, value.title].filter(x => typeof x === 'string').join(' ');
     if (type === 10 && /##\s*Hadiah/i.test(text)) hasRewardHeading = true;
     if (type === 12 && !imageUrl) {
-      const candidate = value.items?.[0]?.media?.url || value.media?.url;\n      if (typeof candidate === 'string') imageUrl = candidate;
+      const candidate = value.items?.[0]?.media?.url || value.media?.url;
+      if (typeof candidate === 'string') imageUrl = candidate;
     }
     for (const [key, child] of Object.entries(value)) {
       if (['media', 'url', 'proxy_url'].includes(key)) continue;
@@ -124,14 +125,13 @@ async function processMessage(message) {
   const bytes = await downloadRewardImage(url);
   const imageHash = crypto.createHash('sha256').update(bytes).digest('hex');
   const rewards = await readRewards(bytes);
-  if (!store.claimProcessed(message.guildId, message.id, imageHash)) return;
   if (!Object.values(rewards).some(value => value !== null)) {
     console.warn('[BossRewards] OCR tidak menghasilkan angka valid; notifikasi dilewati.');
     return;
   }
-  const guild = message.guild;
-  await evaluatePersonal(guild, rewards, message.channel);
-  await evaluateServer(guild, rewards);
+  if (!store.claimProcessed(message.guildId, message.id, imageHash)) return;
+  await evaluatePersonal(message.guild, rewards, message.channel);
+  await evaluateServer(message.guild, rewards);
   console.log('[BossRewards] Reward processed:', message.guildId, message.id, imageHash, rewards);
 }
 async function drain() {
