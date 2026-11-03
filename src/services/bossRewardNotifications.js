@@ -21,13 +21,18 @@ function findRewardImage(message) {
     let imageUrl = null;
     const seen = new Set();
     function walk(value) {
-      if (!value || typeof value !== 'object' || seen.has(value)) return;
+      if (!value || typeof value !== 'object' || seen.has(value) || imageUrl) return;
       seen.add(value);
-      if (Array.isArray(value)) { for (const child of value) walk(child); return; }
+      if (Array.isArray(value)) {
+        for (const child of value) walk(child);
+        return;
+      }
       const type = Number(value.type);
-      const text = [value.content, value.text, value.title].filter(x => typeof x === 'string').join(' ');
-      if (type === 10 && /##\s*Hadiah/i.test(text)) hasRewardHeading = true;
-      if (type === 12 && !imageUrl) {
+      const text = [value.content, value.text, value.title]
+        .filter(x => typeof x === 'string').join(' ');
+      if (type === 10 && /##\\s*Hadiah\\b/i.test(text)) hasRewardHeading = true;
+      // Abaikan gambar sebelum heading Hadiah (misalnya raid.png).
+      if (type === 12 && hasRewardHeading) {
         const candidate = value.items?.[0]?.media?.url || value.media?.url;
         if (typeof candidate === 'string') imageUrl = candidate;
       }
@@ -37,7 +42,7 @@ function findRewardImage(message) {
       }
     }
     walk(container);
-    if (!hasRewardHeading || !imageUrl) continue;
+    if (!imageUrl) continue;
     let parsed;
     try { parsed = new URL(imageUrl); } catch { continue; }
     if (parsed.protocol === 'https:') return parsed.toString();
