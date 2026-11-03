@@ -3,8 +3,13 @@ name: Boss Reward Tests
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [feature/boss-reward-notifications]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: boss-reward-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   parser-and-static-checks:
@@ -16,8 +21,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install dependencies and sync lockfile
+        run: |
+          npm install --no-audit --no-fund
+          if ! git diff --quiet -- package-lock.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore: sync lockfile for reward OCR dependencies"
+            git push
+          fi
       - name: Run parser and unit tests
         run: npm test
       - name: Run syntax checks
