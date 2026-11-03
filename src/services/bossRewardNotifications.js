@@ -76,16 +76,19 @@ function rewardLines(rewards, targets) {
 
 async function evaluatePersonal(guild, rewards, sourceChannel) {
   const users = store.getPersonalGuild(guild.id);
+  const userIds = Object.keys(users);
+  console.info('[BossRewards][personal:evaluate] guild=' + guild.id + ' configuredUsers=' + userIds.length);
   for (const [userId, saved] of Object.entries(users)) {
     const matched = rewardLines(rewards, saved);
     if (!matched.length) continue;
     const content = '🎉 <@' + userId + '> Target reward kamu terpenuhi!\n' + matched.join('\n');
     try {
       const member = await guild.members.fetch(userId).catch(() => null);
-      if (!member) continue;
+      if (!member) { console.warn('[BossRewards][personal:member-missing] guild=' + guild.id + ' user=' + userId); continue; }
       const channel = sourceChannel?.isTextBased?.() ? sourceChannel : (guild.systemChannel || guild.channels.cache.find(c => c.isTextBased?.() && c.permissionsFor(guild.members.me)?.has('SendMessages')));
-      if (!channel) continue;
+      if (!channel) { console.warn('[BossRewards][personal:no-channel] guild=' + guild.id + ' user=' + userId); continue; }
       await channel.send({ content, allowedMentions: { parse: [], users: [userId] } });
+      console.info('[BossRewards][personal:sent] guild=' + guild.id + ' user=' + userId + ' channel=' + channel.id);
       const next = { ...saved };
       for (const line of matched) {
         const key = Object.keys(LABELS).find(k => line.startsWith(LABELS[k]));
@@ -98,9 +101,11 @@ async function evaluatePersonal(guild, rewards, sourceChannel) {
 
 async function evaluateServer(guild, rewards) {
   const config = store.getServer(guild.id);
+  console.info('[BossRewards][server:evaluate] guild=' + guild.id + ' enabled=' + config.enabled + ' channel=' + (config.channelId || '-') + ' role=' + (config.roleId || '-') + ' targetCount=' + Object.keys(config.targets || {}).length);
   if (!config.enabled || !config.channelId || !config.roleId) return;
   const matched = rewardLines(rewards, config.targets);
-  if (!matched.length) return;
+  if (!matched.length) { console.info('[BossRewards][server:no-match] guild=' + guild.id); return; }
+  console.info('[BossRewards][server:matched] guild=' + guild.id + ' categories=' + matched.length);
   const channel = await guild.channels.fetch(config.channelId).catch(() => null);
   const role = await guild.roles.fetch(config.roleId).catch(() => null);
   if (!channel?.isTextBased?.() || !role) {
@@ -108,7 +113,7 @@ async function evaluateServer(guild, rewards) {
     return;
   }
   const permissions = channel.permissionsFor(guild.members.me);
-  if (!permissions?.has('SendMessages')) return;
+  if (!permissions?.has('SendMessages')) { console.warn('[BossRewards][server:no-send-permission] guild=' + guild.id + ' channel=' + channel.id); return; }
   if (!role.mentionable && !permissions.has('MentionEveryone')) {
     console.warn('[BossRewards] Bot cannot mention configured role in guild', guild.id);
     return;
@@ -116,6 +121,7 @@ async function evaluateServer(guild, rewards) {
   const content = '🎉 **BOSS REWARD REMINDER**\n<@&' + role.id + '>\nReward target server telah terpenuhi!\n' + matched.join('\n');
   try {
     await channel.send({ content, allowedMentions: { parse: [], roles: [role.id] } });
+    console.info('[BossRewards][server:sent] guild=' + guild.id + ' channel=' + channel.id + ' role=' + role.id);
     const next = { ...config.targets };
     for (const line of matched) {
       const key = Object.keys(LABELS).find(k => line.startsWith(LABELS[k]));
