@@ -25,7 +25,7 @@ function findRewardImage(message) {
     const type = Number(value.type);
     const text = [value.content, value.text, value.title].filter(x => typeof x === 'string').join(' ');
     if (type === 10 && /##\\s*Hadiah/i.test(text)) hasRewardHeading = true;
-    if (type === 12 && typeof value.media?.url === 'string' && !imageUrl) imageUrl = value.media.url;
+    if (type === 12 && !imageUrl) {\n      const candidate = value.items?.[0]?.media?.url || value.media?.url;\n      if (typeof candidate === 'string') imageUrl = candidate;\n    }
     for (const [key, child] of Object.entries(value)) {
       if (['media', 'url', 'proxy_url'].includes(key)) continue;
       walk(child);
