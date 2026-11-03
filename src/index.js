@@ -7,6 +7,7 @@ const { getGuildSettings } = require('./utils/storage');
 const logBuffer = require('./utils/logBuffer');
 const { startDashboard } = require('./dashboard/server');
 const lucyCounter = require('./services/lucyCounter');
+const bossRewards = require('./services/bossRewardNotifications');
 
 logBuffer.install();
 if (!process.env.DISCORD_TOKEN || !process.env.LUCY_BOT_ID) {
@@ -52,6 +53,7 @@ client.once(Events.ClientReady, async c => {
 client.on(Events.MessageCreate, async message => {
   lucyCounter.handleMessage(message).catch(e => console.error('[LucyCounter]', e));
   tracker.handleMessage(message).catch(console.error);
+  bossRewards.enqueue(message);
   handlePrefixMessage(message).catch(e => {
     console.error('[PrefixCommand]', e);
     message.reply({ content: 'Terjadi kesalahan saat menjalankan perintah.' }).catch(() => {});
@@ -62,6 +64,7 @@ client.on(Events.MessageUpdate, async (_old, message) => {
   try {
     if (message.partial) message = await message.fetch();
     await tracker.handleMessage(message);
+    bossRewards.enqueue(message);
   } catch (e) { console.error('[MessageUpdate]', e.message); }
 });
 client.on(Events.InteractionCreate, async i => {
