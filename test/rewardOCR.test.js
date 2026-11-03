@@ -18,11 +18,11 @@ const FONT = {
 
 function drawNumber(image, centerX, centerY, text) {
   const scale = 8;
-  const glyphWidth = 3 * scale;
+  const glyphWidth = 5 * scale;
   const gap = scale;
   const totalWidth = text.length * glyphWidth + (text.length - 1) * gap;
   const startX = Math.round(centerX - totalWidth / 2);
-  const startY = Math.round(centerY - (5 * scale) / 2);
+  const startY = Math.round(centerY - (7 * scale) / 2);
   for (let index = 0; index < text.length; index++) {
     const rows = FONT[text[index]];
     for (let y = 0; y < rows.length; y++) {
