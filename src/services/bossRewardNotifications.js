@@ -19,6 +19,29 @@ function isRewardSourceChannel(message, settings) {
   return Boolean(message?.guildId && message?.channelId && settings?.channelId && message.channelId === settings.channelId);
 }
 
+
+function isBossEnded(message) {
+  const raw = typeof message?.toJSON === 'function' ? message.toJSON() : message;
+  const texts = [];
+  const seen = new Set();
+  function walk(value) {
+    if (!value || typeof value !== 'object' || seen.has(value)) return;
+    seen.add(value);
+    if (Array.isArray(value)) { for (const child of value) walk(child); return; }
+    for (const key of ['content', 'text', 'title']) {
+      if (typeof value[key] === 'string') texts.push(value[key]);
+    }
+    for (const child of Object.values(value)) walk(child);
+  }
+  walk(raw?.components || []);
+  walk(raw?.content || '');
+  const combined = texts.join('\n').normalize('NFKC');
+  return /guild\\s*boss\\s+telah\\s+dikalahkan/i.test(combined)
+    || /guild\\s*boss\\s+kabur\\b/i.test(combined)
+    || /boss\\s+(?:telah\\s+)?dikalahkan/i.test(combined)
+    || /boss\\s+kabur\\b/i.test(combined);
+}
+
 function findRewardImage(message) {
   const raw = typeof message?.toJSON === 'function' ? message.toJSON() : message;
   const containers = (raw?.components || []).filter(component => Number(component?.type) === 17);
@@ -92,6 +115,9 @@ async function evaluatePersonal(guild, rewards, sourceChannel) {
   for (const [userId, saved] of Object.entries(users)) {
     const matched = rewardLines(rewards, saved);
     if (!matched.length) continue;
+    const cooldownKey = 'personal:' + userId;
+    const remaining = store.getCooldownRemaining(guild.id, cooldownKey);
+    if (remaining > 0) { console.info('[BossRewards][cooldown:skip] guild=' + guild.id + ' scope=' + cooldownKey + ' remainingMs=' + remaining); continue; }
     console.info('[BossRewards][personal:matched] guild=' + guild.id + ' user=' + userId + ' categories=' + matched.length);
     const content = '🎉 <@' + userId + '> Target reward kamu terpenuhi!\n' + matched.join('\n');
     try {
@@ -100,6 +126,7 @@ async function evaluatePersonal(guild, rewards, sourceChannel) {
       const channel = sourceChannel?.isTextBased?.() ? sourceChannel : (guild.systemChannel || guild.channels.cache.find(c => c.isTextBased?.() && c.permissionsFor(guild.members.me)?.has('SendMessages')));
       if (!channel) { console.warn('[BossRewards][personal:no-channel] guild=' + guild.id + ' user=' + userId); continue; }
       await channel.send({ content, allowedMentions: { parse: [], users: [userId] } });
+      store.markNotified(guild.id, cooldownKey);
       console.info('[BossRewards][personal:sent] guild=' + guild.id + ' user=' + userId + ' channel=' + channel.id);
       const next = { ...saved };
       for (const line of matched) {
@@ -117,6 +144,9 @@ async function evaluateServer(guild, rewards) {
   if (!config.enabled || !config.channelId || !config.roleId) return;
   const matched = rewardLines(rewards, config.targets);
   if (!matched.length) { console.info('[BossRewards][server:no-match] guild=' + guild.id); return; }
+  const cooldownKey = 'server';
+  const remaining = store.getCooldownRemaining(guild.id, cooldownKey);
+  if (remaining > 0) { console.info('[BossRewards][cooldown:skip] guild=' + guild.id + ' scope=server remainingMs=' + remaining); return; }
   console.info('[BossRewards][server:matched] guild=' + guild.id + ' categories=' + matched.length);
   const channel = await guild.channels.fetch(config.channelId).catch(() => null);
   const role = await guild.roles.fetch(config.roleId).catch(() => null);
@@ -133,6 +163,7 @@ async function evaluateServer(guild, rewards) {
   const content = '🎉 **BOSS REWARD REMINDER**\n<@&' + role.id + '>\nReward target server telah terpenuhi!\n' + matched.join('\n');
   try {
     await channel.send({ content, allowedMentions: { parse: [], roles: [role.id] } });
+    store.markNotified(guild.id, cooldownKey);
     console.info('[BossRewards][server:sent] guild=' + guild.id + ' channel=' + channel.id + ' role=' + role.id);
     const next = { ...config.targets };
     for (const line of matched) {
@@ -154,6 +185,10 @@ async function processMessage(message) {
   const guildSettings = getGuildSettings(message.guildId);
   if (!isRewardSourceChannel(message, guildSettings)) return;
   const raw = typeof message.toJSON === 'function' ? message.toJSON() : message;
+  if (isBossEnded(raw)) {
+    console.info('[BossRewards][skip:boss-ended] guild=' + message.guildId + ' message=' + message.id + ' status=defeated-or-escaped');
+    return;
+  }
   const topTypes = (raw?.components || []).map(component => component?.type ?? 'unknown');
   console.info('[BossRewards][message:lucy] guild=' + message.guildId + ' message=' + message.id + ' components=' + JSON.stringify(topTypes));
   const url = findRewardImage(message);
@@ -208,4 +243,4 @@ function enqueue(message) {
   queue.push(message);
   setImmediate(() => drain().catch(error => console.error('[BossRewards] Queue error:', error)));
 }
-module.exports = { enqueue, findRewardImage, downloadRewardImage, reached, isRewardSourceChannel };
+module.exports = { enqueue, findRewardImage, downloadRewardImage, reached, isRewardSourceChannel, isBossEnded };
