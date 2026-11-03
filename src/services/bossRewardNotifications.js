@@ -36,7 +36,7 @@ function findRewardImage(message) {
       const type = Number(value.type);
       const text = [value.content, value.text, value.title]
         .filter(x => typeof x === 'string').join(' ');
-      if (type === 10 && /##\s*Hadiah\\b/i.test(text)) hasRewardHeading = true;
+      if (type === 10 && /##\s*Hadiah\b/i.test(text)) hasRewardHeading = true;
       // Abaikan gambar sebelum heading Hadiah (misalnya raid.png).
       if (type === 12 && hasRewardHeading) {
         const candidate = value.items?.[0]?.media?.url || value.media?.url;
