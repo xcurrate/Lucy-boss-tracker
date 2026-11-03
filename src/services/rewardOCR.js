@@ -52,7 +52,7 @@ async function readRewards(input) {
   const results = {};
   for (const [name, [start, end]] of Object.entries(REGIONS)) {
     const { data } = await worker.recognize(cropNumber(image, start, end));
-    const digits = String(data.text || '').replace(/[^\\d]/g, '');
+    const digits = String(data.text || '').replace(/[^\d]/g, '');
     const value = digits ? Number(digits) : null;
     results[name] = Number.isSafeInteger(value) ? value : null;
     console.log('[RewardOCR]', name, results[name], 'confidence:', Number(data.confidence || 0).toFixed(1) + '%');
