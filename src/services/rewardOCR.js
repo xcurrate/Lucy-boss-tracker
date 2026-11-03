@@ -51,11 +51,12 @@ async function readRewards(input) {
   const worker = await getWorker();
   const results = {};
   for (const [name, [start, end]] of Object.entries(REGIONS)) {
-    const { data } = await worker.recognize(cropNumber(image, start, end));
+    const crop = cropNumber(image, start, end);
+    const { data } = await worker.recognize(crop);
     const digits = String(data.text || '').replace(/[^\d]/g, '');
     const value = digits ? Number(digits) : null;
     results[name] = Number.isSafeInteger(value) ? value : null;
-    console.log('[RewardOCR]', name, results[name], 'confidence:', Number(data.confidence || 0).toFixed(1) + '%');
+    console.info('[RewardOCR][region] category=' + name + ' cropBytes=' + crop.length + ' raw=' + JSON.stringify(String(data.text || '').trim()) + ' digits=' + digits + ' parsed=' + results[name] + ' confidence=' + Number(data.confidence || 0).toFixed(1) + '%');
   }
   return results;
 }
