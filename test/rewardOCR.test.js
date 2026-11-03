@@ -1,74 +1,22 @@
 const { describe, it, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { PNG } = require('pngjs');
 const { readRewards, shutdownOCR } = require('../src/services/rewardOCR');
 
-const FONT = {
-  '0': ['01110','10001','10011','10101','11001','10001','01110'],
-  '1': ['00100','01100','00100','00100','00100','00100','01110'],
-  '2': ['01110','10001','00001','00010','00100','01000','11111'],
-  '3': ['11110','00001','00001','01110','00001','00001','11110'],
-  '4': ['00010','00110','01010','10010','11111','00010','00010'],
-  '5': ['11111','10000','10000','11110','00001','00001','11110'],
-  '6': ['01110','10000','10000','11110','10001','10001','01110'],
-  '7': ['11111','00001','00010','00100','01000','01000','01000'],
-  '8': ['01110','10001','10001','01110','10001','10001','01110'],
-  '9': ['01110','10001','10001','01111','00001','00001','01110']
-};
-
-function drawNumber(image, centerX, centerY, text) {
-  const scale = 8;
-  const glyphWidth = 5 * scale;
-  const gap = scale;
-  const totalWidth = text.length * glyphWidth + (text.length - 1) * gap;
-  const startX = Math.round(centerX - totalWidth / 2);
-  const startY = Math.round(centerY - (7 * scale) / 2);
-  for (let index = 0; index < text.length; index++) {
-    const rows = FONT[text[index]];
-    for (let y = 0; y < rows.length; y++) {
-      for (let x = 0; x < rows[y].length; x++) {
-        if (rows[y][x] !== '1') continue;
-        for (let sy = 0; sy < scale; sy++) {
-          for (let sx = 0; sx < scale; sx++) {
-            const px = startX + index * (glyphWidth + gap) + x * scale + sx;
-            const py = startY + y * scale + sy;
-            const offset = (py * image.width + px) * 4;
-            image.data[offset] = 255;
-            image.data[offset + 1] = 255;
-            image.data[offset + 2] = 255;
-            image.data[offset + 3] = 255;
-          }
-        }
-      }
-    }
-  }
-}
-
-function makeSyntheticRewardImage() {
-  const image = new PNG({ width: 1200, height: 500 });
-  for (let i = 0; i < image.data.length; i += 4) {
-    image.data[i] = 30;
-    image.data[i + 1] = 32;
-    image.data[i + 2] = 38;
-    image.data[i + 3] = 255;
-  }
-  const centers = [0.1725, 0.4215, 0.667, 0.913].map(x => x * image.width);
-  ['123', '45', '678', '90'].forEach((value, index) => drawNumber(image, centers[index], image.height * 0.42, value));
-  return PNG.sync.write(image);
-}
+// Gambar reward Lucy asli (1536x208), diubah ke hitam-putih agar fixture ringkas.
+const LUCY_REWARD_FIXTURE = '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';
 
 after(async () => {
   await shutdownOCR();
 });
 
 describe('reward OCR integration', () => {
-  it('reads all four numeric reward regions from a controlled PNG fixture', async () => {
-    const rewards = await readRewards(makeSyntheticRewardImage());
+  it('reads all four reward values from the real Lucy reward-card layout', async () => {
+    const rewards = await readRewards(Buffer.from(LUCY_REWARD_FIXTURE, 'base64'));
     assert.deepEqual(rewards, {
-      weapon_shards: 123,
-      weapon_crate: 45,
-      fabled_lootbox: 678,
-      experience: 90
+      weapon_shards: 99,
+      weapon_crate: 4,
+      fabled_lootbox: 6,
+      experience: 10174
     });
   });
 });
