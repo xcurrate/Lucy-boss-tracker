@@ -126,7 +126,13 @@ async function evaluateServer(guild, rewards) {
 }
 
 async function processMessage(message) {
-  if (!message.guildId || message.author?.id !== process.env.LUCY_BOT_ID) return;
+  if (!message.guildId) return;
+  if (message.author?.id !== process.env.LUCY_BOT_ID) {
+    if (message.author?.bot && (message.components?.length || 0) > 0) {
+      console.warn('[BossRewards][skip:not-lucy] guild=' + message.guildId + ' message=' + message.id + ' author=' + message.author.id + ' configuredLucyBotId=' + (process.env.LUCY_BOT_ID || '(empty)'));
+    }
+    return;
+  }
   const raw = typeof message.toJSON === 'function' ? message.toJSON() : message;
   const topTypes = (raw?.components || []).map(component => component?.type ?? 'unknown');
   console.info('[BossRewards][message:lucy] guild=' + message.guildId + ' message=' + message.id + ' components=' + JSON.stringify(topTypes));
