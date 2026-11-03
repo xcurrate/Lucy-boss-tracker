@@ -19,17 +19,42 @@ function cropNumber(image, xStart, xEnd) {
   const y2 = Math.floor(image.height * 0.57);
   if (x2 <= x || y2 <= y) throw new Error('Area OCR tidak valid.');
   const crop = new PNG({ width: x2 - x, height: y2 - y });
+  let luminance = 0;
+  for (let cy = 0; cy < crop.height; cy++) {
+    for (let cx = 0; cx < crop.width; cx++) {
+      const si = ((y + cy) * image.width + (x + cx)) * 4;
+      const gray = 0.299 * image.data[si] + 0.587 * image.data[si + 1] + 0.114 * image.data[si + 2];
+      luminance += gray;
+    }
+  }
+  const darkBackground = luminance / (crop.width * crop.height) < 128;
   for (let cy = 0; cy < crop.height; cy++) {
     for (let cx = 0; cx < crop.width; cx++) {
       const si = ((y + cy) * image.width + (x + cx)) * 4;
       const ti = (cy * crop.width + cx) * 4;
       const gray = 0.299 * image.data[si] + 0.587 * image.data[si + 1] + 0.114 * image.data[si + 2];
-      const value = gray > 150 ? 0 : 255;
+      const value = darkBackground ? (gray > 150 ? 0 : 255) : (gray > 150 ? 255 : 0);
       crop.data[ti] = crop.data[ti + 1] = crop.data[ti + 2] = value;
       crop.data[ti + 3] = 255;
     }
   }
-  return PNG.sync.write(crop);
+  const scale = 3;
+  const enlarged = new PNG({ width: crop.width * scale, height: crop.height * scale });
+  for (let cy = 0; cy < crop.height; cy++) {
+    for (let cx = 0; cx < crop.width; cx++) {
+      const si = (cy * crop.width + cx) * 4;
+      for (let sy = 0; sy < scale; sy++) {
+        for (let sx = 0; sx < scale; sx++) {
+          const ti = (((cy * scale + sy) * enlarged.width) + (cx * scale + sx)) * 4;
+          enlarged.data[ti] = crop.data[si];
+          enlarged.data[ti + 1] = crop.data[si + 1];
+          enlarged.data[ti + 2] = crop.data[si + 2];
+          enlarged.data[ti + 3] = 255;
+        }
+      }
+    }
+  }
+  return PNG.sync.write(enlarged);
 }
 
 async function getWorker() {
