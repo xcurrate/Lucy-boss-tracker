@@ -1,11 +1,10 @@
 const store = require('../utils/bossRewardStorage');
 
 const ALIASES = Object.freeze({
-  ws: 'weapon_shards',
-  wc: 'weapon_crate',
-  flb: 'fabled_lootbox',
-  flootbox: 'fabled_lootbox',
-  xp: 'experience'
+  ws: 'weapon_shards', weapon_shards: 'weapon_shards',
+  wc: 'weapon_crate', weapon_crate: 'weapon_crate',
+  flb: 'fabled_lootbox', flootbox: 'fabled_lootbox', fabled_lootbox: 'fabled_lootbox',
+  xp: 'experience', experience: 'experience'
 });
 const LABELS = {
   weapon_shards: 'Weapon Shards',
@@ -14,7 +13,7 @@ const LABELS = {
   experience: 'Experience'
 };
 function parseAmount(token) {
-  const match = String(token).match(/^(\\d+(?:,\\d{3})*|\\d+)(?:\\.(\\d+))?([kKmM])?(\\+\\+)?$/);
+  const match = String(token).match(/^(\d+(?:,\d{3})*|\d+)(?:\.(\d+))?([kKmM])?(\+\+)?$/);
   if (!match) return null;
   const base = Number(match[1].replace(/,/g, '') + (match[2] ? '.' + match[2] : ''));
   const multiplier = match[3]?.toLowerCase() === 'k' ? 1000 : match[3]?.toLowerCase() === 'm' ? 1000000 : 1;
@@ -36,7 +35,7 @@ function parseTargets(tokens) {
 function display(targets) {
   const entries = Object.entries(targets || {});
   if (!entries.length) return 'Belum ada target reward personal yang aktif.';
-  return entries.map(([key, value]) => '• **' + LABELS[key] + '**: ' + (value.operator === '>' ? 'lebih dari ' : 'minimal ') + value.target.toLocaleString('en-US')).join('\\n');
+  return entries.map(([key, value]) => '• **' + LABELS[key] + '**: ' + (value.operator === '>' ? 'lebih dari ' : 'minimal ') + value.target.toLocaleString('en-US')).join('\n');
 }
 async function handlePersonalCommand(message, args, prefix = '!') {
   if (!message.guildId || message.author?.bot) return false;
@@ -44,7 +43,7 @@ async function handlePersonalCommand(message, args, prefix = '!') {
   const sub = (args[0] || '').toLowerCase();
   let targets = store.getPersonal(message.guildId, userId);
   if (!sub || sub === 'list') {
-    await message.reply({ content: '🎯 **Target reward personal kamu**\\n' + display(targets), allowedMentions: { parse: [] } });
+    await message.reply({ content: '🎯 **Target reward personal kamu**\n' + display(targets), allowedMentions: { parse: [] } });
     return true;
   }
   if (sub === 'clear') {
@@ -64,9 +63,9 @@ async function handlePersonalCommand(message, args, prefix = '!') {
     const parsed = parseTargets(args);
     targets = { ...targets, ...parsed };
     store.setPersonal(message.guildId, userId, targets);
-    await message.reply({ content: '✅ Target reward personal diperbarui.\\n' + display(targets), allowedMentions: { parse: [] } });
+    await message.reply({ content: '✅ Target reward personal diperbarui.\n' + display(targets), allowedMentions: { parse: [] } });
   } catch (error) {
-    await message.reply({ content: '❌ ' + error.message + '\\nContoh: `' + prefix + 'boss notify ws 100 xp 10,000++ flb 5`', allowedMentions: { parse: [] } });
+    await message.reply({ content: '❌ ' + error.message + '\nContoh: `' + prefix + 'boss notify ws 100 xp 10,000++ flb 5`', allowedMentions: { parse: [] } });
   }
   return true;
 }
