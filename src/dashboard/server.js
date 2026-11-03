@@ -158,8 +158,8 @@ function startDashboard(client, tracker) {
         if (typeof value.enabled !== 'boolean') throw new Error('Status Server Reward Reminder tidak valid.');
         const channelId = value.channelId || null;
         const roleId = value.roleId || null;
-        if (channelId && !/^\\d{17,20}$/.test(channelId)) throw new Error('ID channel reward tidak valid.');
-        if (roleId && !/^\\d{17,20}$/.test(roleId)) throw new Error('ID role reward tidak valid.');
+        if (channelId && !/^\d{17,20}$/.test(channelId)) throw new Error('ID channel reward tidak valid.');
+        if (roleId && !/^\d{17,20}$/.test(roleId)) throw new Error('ID role reward tidak valid.');
         const targets = {};
         for (const key of ['weapon_shards', 'weapon_crate', 'fabled_lootbox', 'experience']) {
           const raw = value.targets?.[key];
