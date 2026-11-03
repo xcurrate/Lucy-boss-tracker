@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { parseAmount, parseTargets } = require('../src/commands/bossRewardNotify');
-const { findRewardImage, reached, isRewardSourceChannel } = require('../src/services/bossRewardNotifications');
+const { findRewardImage, reached, isRewardSourceChannel, isBossEnded } = require('../src/services/bossRewardNotifications');
 
 describe('boss reward target parser', () => {
   it('normalizes plain, comma, and k amounts', () => {
@@ -69,5 +69,33 @@ describe('Lucy reward source channel filter', () => {
     assert.equal(isRewardSourceChannel({ guildId: '1183952709427150859', channelId: '1552409627826585631' }, settings), false);
     assert.equal(isRewardSourceChannel({ guildId: '1183952709427150859', channelId: '1552409627826585630' }, { channelId: null }), false);
     assert.equal(isRewardSourceChannel({ channelId: '1552409627826585630' }, settings), false);
+  });
+});
+
+describe('Lucy boss end-state filter', () => {
+  it('skips defeated boss result even when reward image exists', () => {
+    const message = { components: [{ type: 17, components: [
+      { type: 10, content: '## <:lucy_yay:123> Guild Boss Telah Dikalahkan!' },
+      { type: 12, items: [{ media: { url } }] },
+      { type: 10, content: '## Hadiah' },
+      { type: 12, items: [{ media: { url } }] },
+      { type: 10, content: '☠ Dikalahkan 7 menit yang lalu' }
+    ] }] };
+    assert.equal(isBossEnded(message), true);
+  });
+  it('skips escaped boss message', () => {
+    const message = { components: [{ type: 17, components: [
+      { type: 10, content: '## GUILD BOSS KABUR!' },
+      { type: 2, disabled: true, custom_id: 'raid:fight' }
+    ] }] };
+    assert.equal(isBossEnded(message), true);
+  });
+  it('allows active boss messages', () => {
+    const message = { components: [{ type: 17, components: [
+      { type: 10, content: '## <:lucy_think:123> Guild Boss Telah Muncul!' },
+      { type: 12, items: [{ media: { url } }] },
+      { type: 10, content: '⏳ Berakhir dalam 20 menit' }
+    ] }] };
+    assert.equal(isBossEnded(message), false);
   });
 });
