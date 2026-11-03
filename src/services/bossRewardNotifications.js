@@ -36,10 +36,10 @@ function isBossEnded(message) {
   walk(raw?.components || []);
   walk(raw?.content || '');
   const combined = texts.join('\n').normalize('NFKC');
-  return /guild\\s*boss\\s+telah\\s+dikalahkan/i.test(combined)
-    || /guild\\s*boss\\s+kabur\\b/i.test(combined)
-    || /boss\\s+(?:telah\\s+)?dikalahkan/i.test(combined)
-    || /boss\\s+kabur\\b/i.test(combined);
+  return /guild\s*boss\s+telah\s+dikalahkan/i.test(combined)
+    || /guild\s*boss\s+kabur\b/i.test(combined)
+    || /boss\s+(?:telah\s+)?dikalahkan/i.test(combined)
+    || /boss\s+kabur\b/i.test(combined);
 }
 
 function findRewardImage(message) {
