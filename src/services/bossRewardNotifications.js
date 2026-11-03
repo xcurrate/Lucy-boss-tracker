@@ -1,6 +1,7 @@
 const crypto = require('node:crypto');
 const { readRewards } = require('./rewardOCR');
 const store = require('../utils/bossRewardStorage');
+const { getGuildSettings } = require('../utils/storage');
 
 const LABELS = {
   weapon_shards: '💎 Weapon Shards',
@@ -12,6 +13,11 @@ const queue = [];
 let running = false;
 const inFlight = new Set();
 const pendingEdits = new Map();
+const noRewardSignatures = new Map();
+
+function isRewardSourceChannel(message, settings) {
+  return Boolean(message?.guildId && message?.channelId && settings?.channelId && message.channelId === settings.channelId);
+}
 
 function findRewardImage(message) {
   const raw = typeof message?.toJSON === 'function' ? message.toJSON() : message;
@@ -30,7 +36,7 @@ function findRewardImage(message) {
       const type = Number(value.type);
       const text = [value.content, value.text, value.title]
         .filter(x => typeof x === 'string').join(' ');
-      if (type === 10 && /##\\s*Hadiah\\b/i.test(text)) hasRewardHeading = true;
+      if (type === 10 && /##\s*Hadiah\\b/i.test(text)) hasRewardHeading = true;
       // Abaikan gambar sebelum heading Hadiah (misalnya raid.png).
       if (type === 12 && hasRewardHeading) {
         const candidate = value.items?.[0]?.media?.url || value.media?.url;
@@ -145,14 +151,21 @@ async function processMessage(message) {
     }
     return;
   }
+  const guildSettings = getGuildSettings(message.guildId);
+  if (!isRewardSourceChannel(message, guildSettings)) return;
   const raw = typeof message.toJSON === 'function' ? message.toJSON() : message;
   const topTypes = (raw?.components || []).map(component => component?.type ?? 'unknown');
   console.info('[BossRewards][message:lucy] guild=' + message.guildId + ' message=' + message.id + ' components=' + JSON.stringify(topTypes));
   const url = findRewardImage(message);
   if (!url) {
-    console.warn('[BossRewards][image:not-found] guild=' + message.guildId + ' message=' + message.id + ' topTypes=' + JSON.stringify(topTypes) + ' contentLength=' + String(message.content || '').length);
+    const signature = crypto.createHash('sha256').update(JSON.stringify(raw?.components || [])).digest('hex');
+    if (noRewardSignatures.get(message.id) === signature) return;
+    noRewardSignatures.set(message.id, signature);
+    if (noRewardSignatures.size > 1000) noRewardSignatures.delete(noRewardSignatures.keys().next().value);
+    console.info('[BossRewards][skip:not-reward-message] guild=' + message.guildId + ' channel=' + message.channelId + ' message=' + message.id + ' components=' + JSON.stringify(topTypes));
     return;
   }
+  noRewardSignatures.delete(message.id);
   const bytes = await downloadRewardImage(url);
   const imageHash = crypto.createHash('sha256').update(bytes).digest('hex');
   console.info('[BossRewards][image:hash] message=' + message.id + ' sha256=' + imageHash);
@@ -195,4 +208,4 @@ function enqueue(message) {
   queue.push(message);
   setImmediate(() => drain().catch(error => console.error('[BossRewards] Queue error:', error)));
 }
-module.exports = { enqueue, findRewardImage, downloadRewardImage, reached };
+module.exports = { enqueue, findRewardImage, downloadRewardImage, reached, isRewardSourceChannel };
