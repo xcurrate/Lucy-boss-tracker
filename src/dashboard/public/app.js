@@ -94,6 +94,8 @@ async function loadGuild(id) {
   selectOptions($('lucy-blacklisted-channels'), data.channels, 'Pilih channel untuk di-blacklist', '');
   selectOptions($('lucy-whitelisted-channels'), data.channels, 'Pilih channel untuk di-whitelist', '');
   selectOptions($('role-id'), data.roles, 'Pilih role', data.settings.roleId);
+  selectOptions($('reward-channel'), data.channels, 'Pilih channel reward', data.bossRewards?.channelId);
+  selectOptions($('reward-role'), data.roles, 'Pilih role reward', data.bossRewards?.roleId);
   renderSettings(data.settings);
   renderBossRewards(data.bossRewards || {});
   setStatus('Konfigurasi dimuat. Perubahan belum disimpan.');
