@@ -3,10 +3,10 @@ const { PNG } = require('pngjs');
 const { createWorker } = require('tesseract.js');
 
 const REGIONS = Object.freeze({
-  weapon_shards: [0.10, 0.245],
-  weapon_crate: [0.35, 0.493],
-  fabled_lootbox: [0.596, 0.738],
-  experience: [0.842, 0.984]
+  weapon_shards: [0.08, 0.245],
+  weapon_crate: [0.32, 0.493],
+  fabled_lootbox: [0.57, 0.738],
+  experience: [0.82, 0.984]
 });
 
 let workerPromise;
@@ -23,8 +23,7 @@ function cropNumber(image, xStart, xEnd) {
   for (let cy = 0; cy < crop.height; cy++) {
     for (let cx = 0; cx < crop.width; cx++) {
       const si = ((y + cy) * image.width + (x + cx)) * 4;
-      const gray = 0.299 * image.data[si] + 0.587 * image.data[si + 1] + 0.114 * image.data[si + 2];
-      luminance += gray;
+      luminance += 0.299 * image.data[si] + 0.587 * image.data[si + 1] + 0.114 * image.data[si + 2];
     }
   }
   const darkBackground = luminance / (crop.width * crop.height) < 128;
