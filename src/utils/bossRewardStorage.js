@@ -5,7 +5,7 @@ const file = path.resolve(process.cwd(), 'data', 'boss-rewards.json');
 function readAll() {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (error) {
     if (error.code !== 'ENOENT') console.error('[BossRewards] Read failed:', error.message);
-    return { personal: {}, server: {}, processed: {} };
+    return { personal: {}, server: {}, processed: {}, notificationCooldowns: {} };
   }
 }
 function writeAll(data) {
@@ -65,4 +65,22 @@ function claimProcessed(guildId, imageKey) {
     return true;
   });
 }
-module.exports = { getPersonal, getPersonalGuild, setPersonal, getServer, setServer, isProcessed, claimProcessed };
+
+const NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1000;
+function getCooldownRemaining(guildId, key, now = Date.now()) {
+  const sentAt = Number(readAll().notificationCooldowns?.[guildId]?.[key] || 0);
+  return Math.max(0, sentAt + NOTIFICATION_COOLDOWN_MS - now);
+}
+function isOnCooldown(guildId, key, now = Date.now()) {
+  return getCooldownRemaining(guildId, key, now) > 0;
+}
+function markNotified(guildId, key, sentAt = Date.now()) {
+  return update(data => {
+    data.notificationCooldowns ||= {};
+    data.notificationCooldowns[guildId] ||= {};
+    data.notificationCooldowns[guildId][key] = sentAt;
+    return sentAt;
+  });
+}
+
+module.exports = { getCooldownRemaining, isOnCooldown, markNotified, NOTIFICATION_COOLDOWN_MS, getPersonal, getPersonalGuild, setPersonal, getServer, setServer, isProcessed, claimProcessed };
