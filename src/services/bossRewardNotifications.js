@@ -15,32 +15,34 @@ const pendingEdits = new Map();
 
 function findRewardImage(message) {
   const raw = typeof message?.toJSON === 'function' ? message.toJSON() : message;
-  const roots = raw?.components || [];
-  let hasRewardHeading = false;
-  let imageUrl = null;
-  const seen = new Set();
-  function walk(value) {
-    if (!value || typeof value !== 'object' || seen.has(value)) return;
-    seen.add(value);
-    if (Array.isArray(value)) { for (const child of value) walk(child); return; }
-    const type = Number(value.type);
-    const text = [value.content, value.text, value.title].filter(x => typeof x === 'string').join(' ');
-    if (type === 10 && /##\s*Hadiah/i.test(text)) hasRewardHeading = true;
-    if (type === 12 && !imageUrl) {
-      const candidate = value.items?.[0]?.media?.url || value.media?.url;
-      if (typeof candidate === 'string') imageUrl = candidate;
+  const containers = (raw?.components || []).filter(component => Number(component?.type) === 17);
+  for (const container of containers) {
+    let hasRewardHeading = false;
+    let imageUrl = null;
+    const seen = new Set();
+    function walk(value) {
+      if (!value || typeof value !== 'object' || seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) { for (const child of value) walk(child); return; }
+      const type = Number(value.type);
+      const text = [value.content, value.text, value.title].filter(x => typeof x === 'string').join(' ');
+      if (type === 10 && /##\\s*Hadiah/i.test(text)) hasRewardHeading = true;
+      if (type === 12 && !imageUrl) {
+        const candidate = value.items?.[0]?.media?.url || value.media?.url;
+        if (typeof candidate === 'string') imageUrl = candidate;
+      }
+      for (const [key, child] of Object.entries(value)) {
+        if (['media', 'url', 'proxy_url'].includes(key)) continue;
+        walk(child);
+      }
     }
-    for (const [key, child] of Object.entries(value)) {
-      if (['media', 'url', 'proxy_url'].includes(key)) continue;
-      walk(child);
-    }
+    walk(container);
+    if (!hasRewardHeading || !imageUrl) continue;
+    let parsed;
+    try { parsed = new URL(imageUrl); } catch { continue; }
+    if (parsed.protocol === 'https:') return parsed.toString();
   }
-  walk(roots);
-  if (!hasRewardHeading || !imageUrl) return null;
-  let parsed;
-  try { parsed = new URL(imageUrl); } catch { return null; }
-  if (parsed.protocol !== 'https:') return null;
-  return parsed.toString();
+  return null;
 }
 
 async function downloadRewardImage(url) {
