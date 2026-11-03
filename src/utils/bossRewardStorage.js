@@ -51,7 +51,7 @@ function setServer(guildId, config) {
     return data.server[guildId];
   });
 }
-function isProcessed(guildId, imageKey) {\n  return readAll().processed?.[guildId]?.[imageKey] === imageKey;\n}\nfunction isProcessed(guildId, imageKey) {
+function isProcessed(guildId, imageKey) {
   return readAll().processed?.[guildId]?.[imageKey] === imageKey;
 }
 function claimProcessed(guildId, imageKey) {
