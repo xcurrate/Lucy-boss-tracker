@@ -51,7 +51,7 @@ function setServer(guildId, config) {
     return data.server[guildId];
   });
 }
-function claimProcessed(guildId, messageId, imageKey) {
+function isProcessed(guildId, imageKey) {\n  return readAll().processed?.[guildId]?.[imageKey] === imageKey;\n}\nfunction claimProcessed(guildId, messageId, imageKey) {
   return update(data => {
     data.processed ||= {};
     data.processed[guildId] ||= {};
@@ -63,4 +63,4 @@ function claimProcessed(guildId, messageId, imageKey) {
     return true;
   });
 }
-module.exports = { getPersonal, getPersonalGuild, setPersonal, getServer, setServer, claimProcessed };
+module.exports = { getPersonal, getPersonalGuild, setPersonal, getServer, setServer, isProcessed, claimProcessed };
