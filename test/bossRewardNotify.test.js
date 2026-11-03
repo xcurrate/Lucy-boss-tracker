@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { parseAmount, parseTargets } = require('../src/commands/bossRewardNotify');
-const { findRewardImage, reached } = require('../src/services/bossRewardNotifications');
+const { findRewardImage, reached, isRewardSourceChannel } = require('../src/services/bossRewardNotifications');
 
 describe('boss reward target parser', () => {
   it('normalizes plain, comma, and k amounts', () => {
@@ -59,5 +59,15 @@ describe('reward threshold evaluation', () => {
     assert.equal(reached(100, { target: 100, operator: '>' }), false);
     assert.equal(reached(101, { target: 100, operator: '>' }), true);
     assert.equal(reached(null, { target: 100, operator: '>=' }), false);
+  });
+});
+
+describe('Lucy reward source channel filter', () => {
+  it('only accepts Lucy messages from the Boss Tracker notification channel', () => {
+    const settings = { channelId: '1552409627826585630' };
+    assert.equal(isRewardSourceChannel({ guildId: '1183952709427150859', channelId: '1552409627826585630' }, settings), true);
+    assert.equal(isRewardSourceChannel({ guildId: '1183952709427150859', channelId: '1552409627826585631' }, settings), false);
+    assert.equal(isRewardSourceChannel({ guildId: '1183952709427150859', channelId: '1552409627826585630' }, { channelId: null }), false);
+    assert.equal(isRewardSourceChannel({ channelId: '1552409627826585630' }, settings), false);
   });
 });
