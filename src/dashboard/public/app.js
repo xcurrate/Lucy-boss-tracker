@@ -48,6 +48,42 @@ function renderSettings(settings) {
   $('rep-state').textContent = rep.enabled ? 'Aktif' : 'Nonaktif';
   $('rep-detail').textContent = rep.channelId ? 'Channel: ' + ($('rep-channel-id').selectedOptions[0]?.textContent || rep.channelId) : 'Channel belum dipilih';
 }
+function renderBossRewards(settings) {
+  $('reward-enabled').checked = Boolean(settings.enabled);
+  $('reward-channel').value = settings.channelId || '';
+  $('reward-role').value = settings.roleId || '';
+  const targets = settings.targets || {};
+  $('reward-ws').value = targets.weapon_shards?.target ?? '';
+  $('reward-wc').value = targets.weapon_crate?.target ?? '';
+  $('reward-flb').value = targets.fabled_lootbox?.target ?? '';
+  $('reward-xp').value = targets.experience?.target ?? '';
+}
+function collectBossRewards() {
+  return {
+    enabled: $('reward-enabled').checked,
+    channelId: $('reward-channel').value,
+    roleId: $('reward-role').value,
+    targets: {
+      weapon_shards: $('reward-ws').value,
+      weapon_crate: $('reward-wc').value,
+      fabled_lootbox: $('reward-flb').value,
+      experience: $('reward-xp').value
+    }
+  };
+}
+async function saveBossRewards() {
+  if (!guildId) return;
+  $('reward-save').disabled = true;
+  try {
+    const data = await api('/api/boss-rewards', { method: 'PUT', body: JSON.stringify({ guildId, settings: collectBossRewards() }) });
+    renderBossRewards(data.settings);
+    setStatus('Pengaturan Boss Reward Reminder tersimpan.');
+  } catch (error) {
+    setStatus(error.message, true);
+  } finally {
+    $('reward-save').disabled = false;
+  }
+}
 async function loadGuild(id) {
   guildId = id;
   setStatus('Memuat konfigurasi…');
@@ -59,6 +95,7 @@ async function loadGuild(id) {
   selectOptions($('lucy-whitelisted-channels'), data.channels, 'Pilih channel untuk di-whitelist', '');
   selectOptions($('role-id'), data.roles, 'Pilih role', data.settings.roleId);
   renderSettings(data.settings);
+  renderBossRewards(data.bossRewards || {});
   setStatus('Konfigurasi dimuat. Perubahan belum disimpan.');
 }
 function collectSettings() {
@@ -176,5 +213,6 @@ async function boot() {
   }
 }
 $('save').addEventListener('click', saveSettings);
+$('reward-save').addEventListener('click', saveBossRewards);
 $('clear-logs').addEventListener('click', () => { logRows = []; renderLogs(); });
 boot();
