@@ -27,7 +27,11 @@ describe('boss reward target parser', () => {
 describe('Lucy reward image component detection', () => {
   const url = 'https://cdn.discordapp.com/attachments/123456789012345678/123456789012345678/reward.png';
   it('finds image nested in Components V2 Hadiah container', () => {
+    const raidUrl = 'https://cdn.discordapp.com/attachments/123456789012345678/123456789012345679/raid.png';
     const message = { components: [{ type: 17, components: [
+      { type: 10, content: '## Guild Boss Telah Muncul!' },
+      { type: 12, items: [{ media: { url: raidUrl } }] },
+      { type: 14, divider: true },
       { type: 10, content: '## Hadiah' },
       { type: 12, items: [{ media: { url } }] }
     ] }] };
