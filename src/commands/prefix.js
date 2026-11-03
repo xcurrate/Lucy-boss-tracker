@@ -5,7 +5,7 @@ const { handlePersonalCommand } = require('./bossRewardNotify');
 
 const ALIASES = {
   help: ['bantuan', 'help', '?'],
-  notify: ['notif', 'pengingat', 'notify'],
+  notify: ['notif', 'pengingat', 'notify', 'n'],
   on: ['nyalakan', 'aktifkan', 'enable', 'on'],
   off: ['matikan', 'nonaktifkan', 'disable', 'off'],
   status: ['cek', 'info', 'state', 'status'],
