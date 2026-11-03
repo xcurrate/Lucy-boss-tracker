@@ -24,8 +24,10 @@ function findRewardImage(message) {
     if (Array.isArray(value)) { for (const child of value) walk(child); return; }
     const type = Number(value.type);
     const text = [value.content, value.text, value.title].filter(x => typeof x === 'string').join(' ');
-    if (type === 10 && /##\\s*Hadiah/i.test(text)) hasRewardHeading = true;
-    if (type === 12 && !imageUrl) {\n      const candidate = value.items?.[0]?.media?.url || value.media?.url;\n      if (typeof candidate === 'string') imageUrl = candidate;\n    }
+    if (type === 10 && /##\s*Hadiah/i.test(text)) hasRewardHeading = true;
+    if (type === 12 && !imageUrl) {
+      const candidate = value.items?.[0]?.media?.url || value.media?.url;\n      if (typeof candidate === 'string') imageUrl = candidate;
+    }
     for (const [key, child] of Object.entries(value)) {
       if (['media', 'url', 'proxy_url'].includes(key)) continue;
       walk(child);
@@ -59,7 +61,7 @@ function reached(value, target) {
   if (value === null || !Number.isSafeInteger(value) || !target || !Number.isSafeInteger(target.target)) return false;
   return target.operator === '>' ? value > target.target : value >= target.target;
 }
-function rewardLines(rewards, targets, personal = false) {
+function rewardLines(rewards, targets) {
   return Object.entries(targets).filter(([key, target]) => reached(rewards[key], target))
     .map(([key, target]) => LABELS[key] + ': ' + formatNumber(rewards[key]) + ' / ' + formatNumber(target.target));
 }
@@ -69,7 +71,7 @@ async function evaluatePersonal(guild, rewards, sourceChannel) {
   for (const [userId, saved] of Object.entries(users)) {
     const matched = rewardLines(rewards, saved);
     if (!matched.length) continue;
-    const content = '🎉 <@' + userId + '> Target reward kamu terpenuhi!\\n' + matched.join('\\n');
+    const content = '🎉 <@' + userId + '> Target reward kamu terpenuhi!\n' + matched.join('\n');
     try {
       const member = await guild.members.fetch(userId).catch(() => null);
       if (!member) continue;
@@ -103,7 +105,7 @@ async function evaluateServer(guild, rewards) {
     console.warn('[BossRewards] Bot cannot mention configured role in guild', guild.id);
     return;
   }
-  const content = '🎉 **BOSS REWARD REMINDER**\\n<@&' + role.id + '>\\nReward target server telah terpenuhi!\\n' + matched.join('\\n');
+  const content = '🎉 **BOSS REWARD REMINDER**\n<@&' + role.id + '>\nReward target server telah terpenuhi!\n' + matched.join('\n');
   try {
     await channel.send({ content, allowedMentions: { parse: [], roles: [role.id] } });
     const next = { ...config.targets };
@@ -119,11 +121,10 @@ async function processMessage(message) {
   if (!message.guildId || message.author?.id !== process.env.LUCY_BOT_ID) return;
   const url = findRewardImage(message);
   if (!url) return;
-  const key = crypto.createHash('sha256').update(url).digest('hex');
-  if (!store.claimProcessed(message.guildId, message.id, key)) return;
   const bytes = await downloadRewardImage(url);
   const imageHash = crypto.createHash('sha256').update(bytes).digest('hex');
   const rewards = await readRewards(bytes);
+  if (!store.claimProcessed(message.guildId, message.id, imageHash)) return;
   if (!Object.values(rewards).some(value => value !== null)) {
     console.warn('[BossRewards] OCR tidak menghasilkan angka valid; notifikasi dilewati.');
     return;
