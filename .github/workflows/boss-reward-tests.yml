@@ -29,7 +29,7 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add package-lock.json
             git commit -m "chore: sync lockfile for reward OCR dependencies"
-            git push
+            git push origin HEAD:${{ github.head_ref }}
           fi
       - name: Run parser and unit tests
         run: npm test
