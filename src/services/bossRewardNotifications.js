@@ -124,6 +124,7 @@ async function processMessage(message) {
   if (!url) return;
   const bytes = await downloadRewardImage(url);
   const imageHash = crypto.createHash('sha256').update(bytes).digest('hex');
+  if (store.isProcessed(message.guildId, imageHash)) return;
   const rewards = await readRewards(bytes);
   if (!Object.values(rewards).some(value => value !== null)) {
     console.warn('[BossRewards] OCR tidak menghasilkan angka valid; notifikasi dilewati.');
