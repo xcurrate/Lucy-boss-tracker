@@ -46,6 +46,9 @@ function findRewardImage(message) {
 }
 
 async function downloadRewardImage(url) {
+  let safeHost = 'unknown';
+  try { safeHost = new URL(url).host; } catch {}
+  console.info('[BossRewards][download:start] host=' + safeHost);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
   try {
@@ -57,6 +60,7 @@ async function downloadRewardImage(url) {
     if (declared > 8 * 1024 * 1024) throw new Error('Gambar reward melebihi batas 8 MB.');
     const bytes = Buffer.from(await response.arrayBuffer());
     if (!bytes.length || bytes.length > 8 * 1024 * 1024) throw new Error('Ukuran gambar reward tidak valid.');
+    console.info('[BossRewards][download:ok] host=' + safeHost + ' contentType=' + type + ' bytes=' + bytes.length);
     return bytes;
   } finally { clearTimeout(timer); }
 }
@@ -123,20 +127,32 @@ async function evaluateServer(guild, rewards) {
 
 async function processMessage(message) {
   if (!message.guildId || message.author?.id !== process.env.LUCY_BOT_ID) return;
+  const raw = typeof message.toJSON === 'function' ? message.toJSON() : message;
+  const topTypes = (raw?.components || []).map(component => component?.type ?? 'unknown');
+  console.info('[BossRewards][message:lucy] guild=' + message.guildId + ' message=' + message.id + ' components=' + JSON.stringify(topTypes));
   const url = findRewardImage(message);
-  if (!url) return;
+  if (!url) {
+    console.warn('[BossRewards][image:not-found] guild=' + message.guildId + ' message=' + message.id + ' topTypes=' + JSON.stringify(topTypes) + ' contentLength=' + String(message.content || '').length);
+    return;
+  }
   const bytes = await downloadRewardImage(url);
   const imageHash = crypto.createHash('sha256').update(bytes).digest('hex');
-  if (store.isProcessed(message.guildId, imageHash)) return;
+  console.info('[BossRewards][image:hash] message=' + message.id + ' sha256=' + imageHash);
+  if (store.isProcessed(message.guildId, imageHash)) {
+    console.info('[BossRewards][dedupe:skip] message=' + message.id + ' image already processed');
+    return;
+  }
+  console.info('[BossRewards][ocr:start] message=' + message.id + ' imageBytes=' + bytes.length);
   const rewards = await readRewards(bytes);
+  console.info('[BossRewards][ocr:result] message=' + message.id + ' rewards=' + JSON.stringify(rewards));
   if (!Object.values(rewards).some(value => value !== null)) {
-    console.warn('[BossRewards] OCR tidak menghasilkan angka valid; notifikasi dilewati.');
+    console.warn('[BossRewards][ocr:empty] message=' + message.id + ' no valid numeric values; notifications skipped.');
     return;
   }
   if (!store.claimProcessed(message.guildId, imageHash)) return;
   await evaluatePersonal(message.guild, rewards, message.channel);
   await evaluateServer(message.guild, rewards);
-  console.log('[BossRewards] Reward processed:', message.guildId, message.id, imageHash, rewards);
+  console.log('[BossRewards][processed] guild=' + message.guildId + ' message=' + message.id + ' image=' + imageHash);
 }
 async function drain() {
   if (running) return;
@@ -145,7 +161,7 @@ async function drain() {
     while (queue.length) {
       const item = queue.shift();
       try { await processMessage(item); }
-      catch (error) { console.error('[BossRewards] Processing failed:', error.message); }
+      catch (error) { console.error('[BossRewards][processing:error] guild=' + item.guildId + ' message=' + item.id + ' name=' + error.name + ' code=' + (error.code || '-') + ' message=' + error.message, error.stack || ''); }
       finally {
         const latest = pendingEdits.get(item.id);
         if (latest) { pendingEdits.delete(item.id); queue.push(latest); }
