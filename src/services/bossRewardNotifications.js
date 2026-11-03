@@ -133,7 +133,7 @@ async function processMessage(message) {
     console.warn('[BossRewards] OCR tidak menghasilkan angka valid; notifikasi dilewati.');
     return;
   }
-  if (!store.claimProcessed(message.guildId, imageHash, imageHash)) return;
+  if (!store.claimProcessed(message.guildId, imageHash)) return;
   await evaluatePersonal(message.guild, rewards, message.channel);
   await evaluateServer(message.guild, rewards);
   console.log('[BossRewards] Reward processed:', message.guildId, message.id, imageHash, rewards);
