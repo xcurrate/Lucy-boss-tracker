@@ -64,7 +64,7 @@ function rewardLines(rewards, targets, personal = false) {
     .map(([key, target]) => LABELS[key] + ': ' + formatNumber(rewards[key]) + ' / ' + formatNumber(target.target));
 }
 
-async function evaluatePersonal(guild, rewards) {
+async function evaluatePersonal(guild, rewards, sourceChannel) {
   const users = store.getPersonalGuild(guild.id);
   for (const [userId, saved] of Object.entries(users)) {
     const matched = rewardLines(rewards, saved);
@@ -73,7 +73,7 @@ async function evaluatePersonal(guild, rewards) {
     try {
       const member = await guild.members.fetch(userId).catch(() => null);
       if (!member) continue;
-      const channel = guild.systemChannel || guild.channels.cache.find(c => c.isTextBased?.() && c.permissionsFor(guild.members.me)?.has('SendMessages'));
+      const channel = sourceChannel?.isTextBased?.() ? sourceChannel : (guild.systemChannel || guild.channels.cache.find(c => c.isTextBased?.() && c.permissionsFor(guild.members.me)?.has('SendMessages')));
       if (!channel) continue;
       await channel.send({ content, allowedMentions: { parse: [], users: [userId] } });
       const next = { ...saved };
@@ -129,7 +129,7 @@ async function processMessage(message) {
     return;
   }
   const guild = message.guild;
-  await evaluatePersonal(guild, rewards);
+  await evaluatePersonal(guild, rewards, message.channel);
   await evaluateServer(guild, rewards);
   console.log('[BossRewards] Reward processed:', message.guildId, message.id, imageHash, rewards);
 }
