@@ -211,6 +211,13 @@ async function processMessage(message) {
   console.info('[BossRewards][ocr:start] message=' + message.id + ' imageBytes=' + bytes.length);
   const rewards = await readRewards(bytes);
   console.info('[BossRewards][ocr:result] message=' + message.id + ' rewards=' + JSON.stringify(rewards));
+  console.info('[BossRewards][reward:count] guild=' + message.guildId
+    + ' message=' + message.id
+    + ' weapon_shards=' + (rewards.weapon_shards ?? 'unreadable')
+    + ' weapon_crate=' + (rewards.weapon_crate ?? 'unreadable')
+    + ' fabled_lootbox=' + (rewards.fabled_lootbox ?? 'unreadable')
+    + ' experience=' + (rewards.experience ?? 'unreadable'));
+
   if (!Object.values(rewards).some(value => value !== null)) {
     console.warn('[BossRewards][ocr:empty] message=' + message.id + ' no valid numeric values; notifications skipped.');
     return;
