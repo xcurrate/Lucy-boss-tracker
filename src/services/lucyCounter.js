@@ -136,7 +136,7 @@ async function handleCommand(message) {
   const prefix = settings.prefix || '!';
   const text = message.content.trim();
   const lower = text.toLowerCase();
-  const commandParts = text.slice(prefix.length).trim().split(/\\s+/);
+  const commandParts = text.slice(prefix.length).trim().split(/\s+/);
   const command = (commandParts[0] || '').toLowerCase();
   const subcommand = (commandParts[1] || '').toLowerCase();
   const page = parsePage(commandParts[command === 'lucy' ? 2 : 1]);
