@@ -14,6 +14,7 @@ let running = false;
 const inFlight = new Set();
 const pendingEdits = new Map();
 const noRewardSignatures = new Map();
+console.info('[BossRewards][dedupe:version] strategy=discord-message-id version=2');
 
 function isRewardSourceChannel(message, settings) {
   return Boolean(message?.guildId && message?.channelId && settings?.channelId && message.channelId === settings.channelId);
@@ -178,7 +179,7 @@ async function processMessage(message) {
   if (!message.guildId) return;
   if (message.author?.id !== process.env.LUCY_BOT_ID) {
     if (message.author?.bot && (message.components?.length || 0) > 0) {
-      console.warn('[BossRewards][skip:not-lucy] guild=' + message.guildId + ' message=' + message.id + ' author=' + message.author.id + ' configuredLucyBotId=' + (process.env.LUCY_BOT_ID || '(empty)'));
+      console.info('[BossRewards][skip:not-lucy] guild=' + message.guildId + ' message=' + message.id + ' author=' + message.author.id);
     }
     return;
   }
