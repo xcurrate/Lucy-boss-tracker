@@ -204,8 +204,9 @@ async function processMessage(message) {
   const bytes = await downloadRewardImage(url);
   const imageHash = crypto.createHash('sha256').update(bytes).digest('hex');
   console.info('[BossRewards][image:hash] message=' + message.id + ' sha256=' + imageHash);
-  if (store.isProcessed(message.guildId, imageHash)) {
-    console.info('[BossRewards][dedupe:skip] message=' + message.id + ' image already processed');
+  // Dedupe per Discord message, not image bytes: Lucy can reuse identical reward art/values across different boss runs.
+  if (store.isProcessed(message.guildId, message.id)) {
+    console.info('[BossRewards][dedupe:skip] message=' + message.id + ' message already processed');
     return;
   }
   console.info('[BossRewards][ocr:start] message=' + message.id + ' imageBytes=' + bytes.length);
@@ -222,7 +223,10 @@ async function processMessage(message) {
     console.warn('[BossRewards][ocr:empty] message=' + message.id + ' no valid numeric values; notifications skipped.');
     return;
   }
-  if (!store.claimProcessed(message.guildId, imageHash)) return;
+  if (!store.claimProcessed(message.guildId, message.id)) {
+    console.info('[BossRewards][dedupe:skip] message=' + message.id + ' message was claimed by another worker');
+    return;
+  }
   await evaluatePersonal(message.guild, rewards, message.channel);
   await evaluateServer(message.guild, rewards);
   console.log('[BossRewards][processed] guild=' + message.guildId + ' message=' + message.id + ' image=' + imageHash);
