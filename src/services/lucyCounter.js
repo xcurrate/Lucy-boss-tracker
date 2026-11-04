@@ -82,7 +82,7 @@ function formatLeaderboard(rows, page, emptyText, footerLabel) {
   const medals = ['🥇', '🥈', '🥉'];
   const offset = (result.page - 1) * LEADERBOARD_PAGE_SIZE;
   const desc = result.rows.length
-    ? result.rows.map((r, i) => `${medals[offset + i] || (offset + i + 1) + '.'} **${r.count.toLocaleString('id-ID')}** — ${r.name}`).join('\\n')
+    ? result.rows.map((r, i) => \`\${medals[offset + i] || (offset + i + 1) + '.'} **\${r.count.toLocaleString('id-ID')}** — \${r.name}\`).join('\n')
     : emptyText;
   return { description: desc, footer: `${footerLabel} • Halaman ${result.page}/${result.totalPages} • ${result.total} peserta` };
 }
@@ -148,9 +148,9 @@ async function handleCommand(message) {
     return true;
   }
   if (['ltarget', 'ltargetlb'].includes(command) ||
-      (command === 'lucytarget' && (subcommand === '' || subcommand === 'leaderboard' || /^\\d+$/.test(subcommand)))) {
+      (command === 'lucytarget' && (subcommand === '' || subcommand === 'leaderboard' || /^\d+$/.test(subcommand)))) {
     const data = guildData(read(), message.guildId);
-    const targetPage = command === 'lucytarget' && /^\\d+$/.test(subcommand) ? parsePage(subcommand) : parsePage(commandParts[command === 'lucytarget' ? 2 : 1]);
+    const targetPage = command === 'lucytarget' && /^\d+$/.test(subcommand) ? parsePage(subcommand) : parsePage(commandParts[command === 'lucytarget' ? 2 : 1]);
     await message.reply({ embeds: [targetLeaderboardEmbed(data, config, targetPage)], allowedMentions: { parse: [] } });
     return true;
   }
@@ -207,7 +207,7 @@ async function handleMessage(message) {
   if (!message.guildId || message.author?.bot || !message.content) return;
   if (await handleCommand(message)) return;
   const prefix = getGuildSettings(message.guildId).prefix || '!';
-  if (message.content.startsWith(prefix) && /^\s*(?:lcountd|lcountall|lcount|lucy count|lucytarget)(?:\s|$)/i.test(message.content.slice(prefix.length))) return;
+  if (message.content.startsWith(prefix) && /^\s*(?:lcountd|lcountall|lcount|lucycount|lucy\s+count|ltarget|ltargetlb|lservers|lserver|lserverlb|lucytarget)(?:\s|$)/i.test(message.content.slice(prefix.length))) return;
 
   const settings = getGuildSettings(message.guildId);
   const config = settings.lucyCounter;
