@@ -28,8 +28,8 @@ test('all-time leaderboard has the correct title and paginates ten rows', () => 
   for (let i = 1; i <= 23; i++) users['u' + i] = { name: 'User ' + i, days: { '2026-11-04': 1 } };
   const embed = leaderboardEmbed({ users }, '2026-11-04', true, 2);
   assert.equal(embed.data.title, 'All-Time Server Lucy Leaderboard');
-  assert.equal(embed.data.description.split('\\n').length, 10);
-  assert.match(embed.data.footer.text, /Halaman 2\\/3/);
+  assert.equal(embed.data.description.split('\n').length, 10);
+  assert.ok(embed.data.footer.text.includes('Halaman 2/3'));
 });
 
 test('Lucy target leaderboard is separate and uses current challenge cycle progress', () => {
@@ -48,8 +48,8 @@ test('server leaderboard aggregates Lucy totals by guild and paginates ten entri
   for (let i = 1; i <= 12; i++) all['g' + i] = { users: { u: { days: { '2026-11-04': i } } } };
   const embed = serverLeaderboardEmbed(all, null, 1);
   assert.equal(embed.data.title, 'All-Time Lucy Server Leaderboard');
-  assert.equal(embed.data.description.split('\\n').length, 10);
-  assert.match(embed.data.footer.text, /Halaman 1\\/2/);
+  assert.equal(embed.data.description.split('\n').length, 10);
+  assert.ok(embed.data.footer.text.includes('Halaman 1/2'));
 });
 
 test('leaderboard page helper clamps page and keeps page size at ten', () => {
