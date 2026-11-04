@@ -68,15 +68,66 @@ function total(user, day) {
 }
 function ranking(guild, day) {
   return Object.entries(guild.users).map(([id, u]) => ({ id, name: u.name || id, count: total(u, day) }))
-    .filter(x => x.count > 0).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, 25);
+    .filter(x => x.count > 0).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
-function leaderboardEmbed(guild, day, allTime = false) {
-  const rows = ranking(guild, allTime ? null : day);
+const LEADERBOARD_PAGE_SIZE = 10;
+function pageRows(rows, page = 1) {
+  const totalPages = Math.max(1, Math.ceil(rows.length / LEADERBOARD_PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, Number(page) || 1), totalPages);
+  const start = (currentPage - 1) * LEADERBOARD_PAGE_SIZE;
+  return { rows: rows.slice(start, start + LEADERBOARD_PAGE_SIZE), page: currentPage, totalPages, total: rows.length };
+}
+function formatLeaderboard(rows, page, emptyText, footerLabel) {
+  const result = pageRows(rows, page);
   const medals = ['🥇', '🥈', '🥉'];
-  const desc = rows.length ? rows.map((r, i) => `${medals[i] || (i + 1) + '.'} ${r.count} - ${r.name}`).join('\n') : 'Belum ada data Lucy yang terhitung.';
-  return new EmbedBuilder().setColor(0xFEE75C).setTitle('Daily Server Lucy Leaderboard')
-    .setDescription(desc).setFooter({ text: `${allTime ? 'Sepanjang masa' : 'Harian'} • ${dayKey()}` });
+  const offset = (result.page - 1) * LEADERBOARD_PAGE_SIZE;
+  const desc = result.rows.length
+    ? result.rows.map((r, i) => `${medals[offset + i] || (offset + i + 1) + '.'} **${r.count.toLocaleString('id-ID')}** — ${r.name}`).join('\\n')
+    : emptyText;
+  return { description: desc, footer: `${footerLabel} • Halaman ${result.page}/${result.totalPages} • ${result.total} peserta` };
 }
+function leaderboardEmbed(guild, day, allTime = false, page = 1) {
+  const rows = ranking(guild, allTime ? null : day);
+  const formatted = formatLeaderboard(rows, page, 'Belum ada data Lucy yang terhitung.', allTime ? 'All-time' : 'Harian');
+  return new EmbedBuilder().setColor(0xFEE75C)
+    .setTitle(allTime ? 'All-Time Server Lucy Leaderboard' : 'Daily Server Lucy Leaderboard')
+    .setDescription(formatted.description).setFooter({ text: formatted.footer + ' • ' + dayKey() });
+}
+function targetRanking(guild, cycleKey) {
+  return Object.entries(guild.users).map(([id, user]) => ({
+    id, name: user.name || id,
+    count: user.challengeDayKey === cycleKey ? Number(user.challengeCount || 0) : 0
+  })).filter(row => row.count > 0)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+function targetLeaderboardEmbed(guild, config, page = 1, date = new Date()) {
+  const cycle = challengeCycleKey(date, config);
+  const rows = targetRanking(guild, cycle);
+  const formatted = formatLeaderboard(rows, page, 'Belum ada progres Target Lucy pada siklus ini.', 'Target Lucy');
+  return new EmbedBuilder().setColor(0x57F287).setTitle('Lucy Target Leaderboard')
+    .setDescription(formatted.description)
+    .setFooter({ text: formatted.footer + ' • Siklus mulai ' + cycle + ' (WIB)' });
+}
+function serverRanking(all, client) {
+  return Object.entries(all).map(([guildId, data]) => {
+    const count = Object.values(data.users || {}).reduce((sum, user) => sum + total(user, null), 0);
+    const guild = client?.guilds?.cache?.get(guildId);
+    return { id: guildId, name: guild?.name || ('Server ' + guildId), count };
+  }).filter(row => row.count > 0)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+function serverLeaderboardEmbed(all, client, page = 1) {
+  const rows = serverRanking(all, client);
+  const formatted = formatLeaderboard(rows, page, 'Belum ada data Lucy dari server mana pun.', 'All-time per server');
+  return new EmbedBuilder().setColor(0x5865F2).setTitle('All-Time Lucy Server Leaderboard')
+    .setDescription(formatted.description).setFooter({ text: formatted.footer });
+}
+function parsePage(value) {
+  if (value === undefined || value === null || value === '') return 1;
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : 1;
+}
+
 function admin(message) { return Boolean(message.member?.permissions?.has(PermissionFlagsBits.ManageGuild)); }
 async function handleCommand(message) {
   if (!message.guildId || message.author?.bot) return false;
@@ -85,12 +136,27 @@ async function handleCommand(message) {
   const prefix = settings.prefix || '!';
   const text = message.content.trim();
   const lower = text.toLowerCase();
-  const leaderboardCommands = [prefix + 'lcount', prefix + 'lcountd', prefix + 'lcountall', prefix + 'lucy count'];
-  if (![...leaderboardCommands, prefix + 'lucytarget'].some(c => lower === c || lower.startsWith(c + ' '))) return false;
-
-  if (leaderboardCommands.includes(lower)) {
+  const commandParts = text.slice(prefix.length).trim().split(/\\s+/);
+  const command = (commandParts[0] || '').toLowerCase();
+  const subcommand = (commandParts[1] || '').toLowerCase();
+  const page = parsePage(commandParts[command === 'lucy' ? 2 : 1]);
+  if (['lcount', 'lcountd', 'lcountall', 'lucycount'].includes(command) ||
+      (command === 'lucy' && subcommand === 'count')) {
     const data = guildData(read(), message.guildId);
-    await message.reply({ embeds: [leaderboardEmbed(data, dayKey(), lower.endsWith('all'))], allowedMentions: { parse: [] } });
+    const allTime = command === 'lcountall';
+    await message.reply({ embeds: [leaderboardEmbed(data, dayKey(), allTime, page)], allowedMentions: { parse: [] } });
+    return true;
+  }
+  if (['ltarget', 'ltargetlb'].includes(command) ||
+      (command === 'lucytarget' && (subcommand === '' || subcommand === 'leaderboard' || /^\\d+$/.test(subcommand)))) {
+    const data = guildData(read(), message.guildId);
+    const targetPage = command === 'lucytarget' && /^\\d+$/.test(subcommand) ? parsePage(subcommand) : parsePage(commandParts[command === 'lucytarget' ? 2 : 1]);
+    await message.reply({ embeds: [targetLeaderboardEmbed(data, config, targetPage)], allowedMentions: { parse: [] } });
+    return true;
+  }
+  if (['lservers', 'lserver', 'lserverlb'].includes(command)) {
+    const all = read();
+    await message.reply({ embeds: [serverLeaderboardEmbed(all, message.client, page)], allowedMentions: { parse: [] } });
     return true;
   }
 
@@ -198,4 +264,4 @@ async function handleMessage(message) {
     if (channel?.isTextBased()) await channel.send({ content: report, allowedMentions: { parse: [] } }).catch(() => {});
   }
 }
-module.exports = { handleMessage, handleCommand, countLucy, dayKey, leaderboardEmbed, targetSchedule, challengeCycleKey, isTargetWindow };
+module.exports = { handleMessage, handleCommand, countLucy, dayKey, leaderboardEmbed, targetLeaderboardEmbed, serverLeaderboardEmbed, ranking, targetRanking, serverRanking, pageRows, LEADERBOARD_PAGE_SIZE, targetSchedule, challengeCycleKey, isTargetWindow };
