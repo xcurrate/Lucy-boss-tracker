@@ -77,9 +77,9 @@ describe('Lucy boss end-state filter', () => {
   it('skips defeated boss result even when reward image exists', () => {
     const message = { components: [{ type: 17, components: [
       { type: 10, content: '## <:lucy_yay:123> Guild Boss Telah Dikalahkan!' },
-      { type: 12, items: [{ media: { url } }] },
+      { type: 12, items: [{ media: { url: 'https://cdn.discordapp.com/attachments/123456789012345678/123456789012345678/reward.png' } }] },
       { type: 10, content: '## Hadiah' },
-      { type: 12, items: [{ media: { url } }] },
+      { type: 12, items: [{ media: { url: 'https://cdn.discordapp.com/attachments/123456789012345678/123456789012345678/reward.png' } }] },
       { type: 10, content: '☠ Dikalahkan 7 menit yang lalu' }
     ] }] };
     assert.equal(isBossEnded(message), true);
@@ -94,7 +94,7 @@ describe('Lucy boss end-state filter', () => {
   it('allows active boss messages', () => {
     const message = { components: [{ type: 17, components: [
       { type: 10, content: '## <:lucy_think:123> Guild Boss Telah Muncul!' },
-      { type: 12, items: [{ media: { url } }] },
+      { type: 12, items: [{ media: { url: 'https://cdn.discordapp.com/attachments/123456789012345678/123456789012345678/reward.png' } }] },
       { type: 10, content: '⏳ Berakhir dalam 20 menit' }
     ] }] };
     assert.equal(isBossEnded(message), false);
