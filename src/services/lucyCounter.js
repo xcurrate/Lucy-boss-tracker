@@ -135,6 +135,7 @@ async function handleCommand(message) {
   const config = settings.lucyCounter;
   const prefix = settings.prefix || '!';
   const text = message.content.trim();
+  if (!text.startsWith(prefix)) return false;
   const lower = text.toLowerCase();
   const commandParts = text.slice(prefix.length).trim().split(/\s+/);
   const command = (commandParts[0] || '').toLowerCase();
