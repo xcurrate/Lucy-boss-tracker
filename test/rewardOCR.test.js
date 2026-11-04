@@ -11,7 +11,12 @@ after(async () => {
 
 describe('reward OCR integration', () => {
   it('reads all four reward values from the real Lucy reward-card layout', async () => {
-    const rewards = await readRewards(Buffer.from(LUCY_REWARD_FIXTURE, 'base64'));
+    const decoded = Buffer.from(LUCY_REWARD_FIXTURE, 'base64');
+    // Discard accidental bytes after the PNG IEND chunk; PNG decoders reject trailing data.
+    const iend = decoded.lastIndexOf(Buffer.from([0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]));
+    assert.notEqual(iend, -1, 'fixture must contain a complete PNG IEND chunk');
+    const png = decoded.subarray(0, iend + 12);
+    const rewards = await readRewards(png);
     assert.deepEqual(rewards, {
       weapon_shards: 99,
       weapon_crate: 4,
