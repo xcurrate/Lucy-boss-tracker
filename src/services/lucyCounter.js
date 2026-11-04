@@ -82,7 +82,7 @@ function formatLeaderboard(rows, page, emptyText, footerLabel) {
   const medals = ['🥇', '🥈', '🥉'];
   const offset = (result.page - 1) * LEADERBOARD_PAGE_SIZE;
   const desc = result.rows.length
-    ? result.rows.map((r, i) => \`\${medals[offset + i] || (offset + i + 1) + '.'} **\${r.count.toLocaleString('id-ID')}** — \${r.name}\`).join('\n')
+    ? result.rows.map((r, i) => (medals[offset + i] || (offset + i + 1) + '.') + ' **' + r.count.toLocaleString('id-ID') + '** — ' + r.name).join('\n')
     : emptyText;
   return { description: desc, footer: `${footerLabel} • Halaman ${result.page}/${result.totalPages} • ${result.total} peserta` };
 }
