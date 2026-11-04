@@ -3,6 +3,8 @@ name: Boss Reward Tests
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [feature/boss-reward-notifications]
 
 permissions:
   contents: write
