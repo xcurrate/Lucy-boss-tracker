@@ -201,7 +201,7 @@ async function handleCommand(message) {
     updateGuildSettings(message.guildId, s => ({ ...s, lucyCounter: { ...s.lucyCounter, targetMessage: value } }));
     return message.reply('Pesan target tercapai berhasil disimpan.');
   }
-  return message.reply(\`Perintah Target: \${prefix}lucytarget on|off|target on|off|set <jumlah>|message <pesan>|status|leaderboard [halaman]\nLeaderboard: \${prefix}lcount [halaman] (harian), \${prefix}lcountall [halaman] (all-time), \${prefix}ltarget [halaman] (alias: \${prefix}ltargetlb / \${prefix}lucytarget leaderboard), \${prefix}lservers [halaman] (alias: \${prefix}lserver).\`);
+  return message.reply('Perintah Target: ' + prefix + 'lucytarget on|off|target on|off|set <jumlah>|message <pesan>|status|leaderboard [halaman]\nLeaderboard: ' + prefix + 'lcount [halaman] (harian), ' + prefix + 'lcountall [halaman] (all-time), ' + prefix + 'ltarget [halaman] (alias: ' + prefix + 'ltargetlb / ' + prefix + 'lucytarget leaderboard), ' + prefix + 'lservers [halaman] (alias: ' + prefix + 'lserver).');
 }
 async function handleMessage(message) {
   if (!message.guildId || message.author?.bot || !message.content) return;
