@@ -129,18 +129,11 @@ const NAV_BUTTONS = [
   { action: 'next', label: '▶️', style: ButtonStyle.Primary },
   { action: 'last', label: '⏭️', style: ButtonStyle.Secondary }
 ];
-function navRow(type, page, totalPages) {
-  const atFirst = page <= 1;
-  const atLast = page >= totalPages;
-  const buttons = NAV_BUTTONS.map(b => {
-    const disabled = (b.action === 'first' || b.action === 'prev') ? atFirst
-      : (b.action === 'next' || b.action === 'last') ? atLast : false;
-    return new ButtonBuilder()
-      .setCustomId(`${LUCY_NAV}:${type}:${b.action}`)
-      .setLabel(b.label)
-      .setStyle(b.style)
-      .setDisabled(disabled);
-  });
+function navRow(type) {
+  const buttons = NAV_BUTTONS.map(b => new ButtonBuilder()
+    .setCustomId(`${LUCY_NAV}:${type}:${b.action}`)
+    .setLabel(b.label)
+    .setStyle(b.style));
   return new ActionRowBuilder().addComponents(...buttons);
 }
 function buildLeaderboard(type, page, client) {
@@ -176,7 +169,7 @@ async function handleNavigation(i, deps = {}) {
     : action === 'prev' ? Math.max(1, current.page - 1)
     : Math.min(current.totalPages, current.page + 1);
   const view = buildLeaderboard(type, target, client);
-  await i.update({ embeds: [view.embed], components: [navRow(type, view.page, view.totalPages)] });
+  await i.update({ embeds: [view.embed], components: [navRow(type)] });
   return true;
 }
 function parsePage(value) {
@@ -203,19 +196,19 @@ async function handleCommand(message) {
     const allTime = command === 'lcountall';
     const type = allTime ? 'alltime' : 'daily';
     const view = dailyLeaderboardView(store.getGuildData(message.guildId), dayKey(), allTime, page);
-    await message.reply({ embeds: [view.embed], components: [navRow(type, view.page, view.totalPages)], allowedMentions: { parse: [] } });
+    await message.reply({ embeds: [view.embed], components: [navRow(type)], allowedMentions: { parse: [] } });
     return true;
   }
   if (['ltarget', 'ltargetlb'].includes(command) ||
       (command === 'lucytarget' && (subcommand === '' || subcommand === 'leaderboard' || /^\d+$/.test(subcommand)))) {
     const targetPage = command === 'lucytarget' && /^\d+$/.test(subcommand) ? parsePage(subcommand) : parsePage(commandParts[command === 'lucytarget' ? 2 : 1]);
     const view = targetLeaderboardView(store.getGuildData(message.guildId), config, targetPage);
-    await message.reply({ embeds: [view.embed], components: [navRow('target', view.page, view.totalPages)], allowedMentions: { parse: [] } });
+    await message.reply({ embeds: [view.embed], components: [navRow('target')], allowedMentions: { parse: [] } });
     return true;
   }
   if (['lservers', 'lserver', 'lserverlb'].includes(command)) {
     const view = serverLeaderboardView(store.getAllData(), message.client, page);
-    await message.reply({ embeds: [view.embed], components: [navRow('servers', view.page, view.totalPages)], allowedMentions: { parse: [] } });
+    await message.reply({ embeds: [view.embed], components: [navRow('servers')], allowedMentions: { parse: [] } });
     return true;
   }
 

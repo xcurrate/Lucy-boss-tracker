@@ -52,7 +52,7 @@ Menghitung pesan yang memuat kata "lucy" per anggota (cooldown 10 detik per angg
 - !lservers [halaman] — leaderboard all-time per server (alias: !lserver).
 - !lucytarget on|off, !lucytarget target on|off, !lucytarget set <jumlah>, !lucytarget message <pesan>, !lucytarget status — pengaturan Target Lucy (moderator/admin).
 
-Setiap leaderboard memiliki tombol navigasi ⏮️ ◀️ ▶️ ⏭️ (awal, sebelumnya, berikutnya, akhir). Tombol membaca ulang data dari SQLite setiap kali ditekan, sehingga jumlah Lucy yang tampil selalu sinkron dengan data terbaru. Tombol dinonaktifkan otomatis saat sudah di halaman pertama/terakhir.
+Setiap leaderboard memiliki tombol navigasi ⏮️ ◀️ ▶️ ⏭️ (awal, sebelumnya, berikutnya, akhir). Tombol membaca ulang data dari SQLite setiap kali ditekan, sehingga jumlah Lucy yang tampil selalu sinkron dengan data terbaru. Tombol tetap aktif di halaman pertama/terakhir (halaman otomatis di-clamp ke rentang yang valid).
 
 ## Untuk moderator/admin
 Membutuhkan izin Discord Manage Server (Administrator juga diizinkan):

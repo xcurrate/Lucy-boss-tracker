@@ -63,17 +63,11 @@ test('leaderboard page helper clamps page and keeps page size at ten', () => {
   assert.equal(pageRows([1, 2], 9).page, 1);
 });
 
-test('navigation row disables first/prev on the first page and next/last on the last', () => {
-  const first = navRow('daily', 1, 3).components;
-  assert.equal(first.length, 4);
-  assert.deepEqual(first.map(b => b.data.label), ['⏮️', '◀️', '▶️', '⏭️']);
-  assert.deepEqual(first.map(b => b.data.disabled), [true, true, false, false]);
-
-  const last = navRow('daily', 3, 3).components;
-  assert.deepEqual(last.map(b => b.data.disabled), [false, false, true, true]);
-
-  const middle = navRow('daily', 2, 3).components;
-  assert.deepEqual(middle.map(b => b.data.disabled), [false, false, false, false]);
+test('navigation row always renders four enabled buttons', () => {
+  const buttons = navRow('daily').components;
+  assert.equal(buttons.length, 4);
+  assert.deepEqual(buttons.map(b => b.data.label), ['⏮️', '◀️', '▶️', '⏭️']);
+  assert.ok(buttons.every(b => !b.data.disabled), 'semua tombol harus aktif (tidak disabled)');
 });
 
 test('navigation custom ids carry type and action', () => {
@@ -81,7 +75,7 @@ test('navigation custom ids carry type and action', () => {
   assert.ok(isLucyNav('lcnav:servers:last'));
   assert.equal(isLucyNav('boss_panel_refresh:123'), false);
   assert.equal(isLucyNav(undefined), false);
-  const ids = navRow('alltime', 1, 2).components.map(b => b.data.custom_id);
+  const ids = navRow('alltime').components.map(b => b.data.custom_id);
   assert.deepEqual(ids, ['lcnav:alltime:first', 'lcnav:alltime:prev', 'lcnav:alltime:next', 'lcnav:alltime:last']);
 });
 
@@ -110,7 +104,7 @@ test('navigation reloads live counts from SQLite on each interaction', async () 
 
     await svc.handleNavigation(makeInteraction('next'));
     assert.match(updates[0].embeds[0].data.footer.text, /Halaman 2\/3/);
-    assert.equal(updates[0].components[0].components[0].data.disabled, false);
+    assert.ok(updates[0].components[0].components.every(b => !b.data.disabled));
 
     await svc.handleNavigation(makeInteraction('last'));
     assert.match(updates[1].embeds[0].data.footer.text, /Halaman 3\/3/);
