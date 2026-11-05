@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { parseAmount, parseTargets } = require('../src/commands/bossRewardNotify');
-const { findRewardImage, reached, isRewardSourceChannel, isBossEnded } = require('../src/services/bossRewardNotifications');
+const { findRewardImage, reached, isRewardSourceChannel, isBossEnded, processMessage } = require('../src/services/bossRewardNotifications');
 const { cooldownRemaining, NOTIFICATION_COOLDOWN_MS } = require('../src/utils/bossRewardStorage');
 
 describe('boss reward target parser', () => {
@@ -108,5 +108,27 @@ describe('reward notification cooldown', () => {
     assert.equal(cooldownRemaining(sentAt, sentAt + 10 * 60 * 1000), 20 * 60 * 1000);
     assert.equal(cooldownRemaining(sentAt, sentAt + 30 * 60 * 1000), 0);
     assert.equal(cooldownRemaining(sentAt, sentAt + 35 * 60 * 1000), 0);
+  });
+});
+
+describe('reward source channel gating', () => {
+  it('stays silent for bot messages outside the configured channel', async () => {
+    const logs = [];
+    const original = console.info;
+    console.info = (...args) => logs.push(args.join(' '));
+    try {
+      // guildId tanpa channelId terkonfigurasi → pesan bot lain tidak diproses.
+      await processMessage({
+        guildId: 'guild-without-channel',
+        channelId: 'some-channel',
+        id: '1',
+        author: { id: 'other-bot', bot: true },
+        components: [{ type: 17 }]
+      });
+    } finally {
+      console.info = original;
+    }
+    assert.equal(logs.filter(line => line.includes('skip:not-lucy')).length, 0);
+    assert.equal(logs.length, 0);
   });
 });

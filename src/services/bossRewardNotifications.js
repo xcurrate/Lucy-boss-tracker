@@ -177,14 +177,12 @@ async function evaluateServer(guild, rewards) {
 
 async function processMessage(message) {
   if (!message.guildId) return;
-  if (message.author?.id !== process.env.LUCY_BOT_ID) {
-    if (message.author?.bot && (message.components?.length || 0) > 0) {
-      console.info('[BossRewards][skip:not-lucy] guild=' + message.guildId + ' message=' + message.id + ' author=' + message.author.id);
-    }
-    return;
-  }
+  // Batasi lebih dulu ke channel notifikasi yang dikonfigurasi, baru periksa
+  // pengirim. Dengan begitu pesan dari bot lain di channel lain tidak lagi
+  // menghasilkan log berulang.
   const guildSettings = getGuildSettings(message.guildId);
   if (!isRewardSourceChannel(message, guildSettings)) return;
+  if (message.author?.id !== process.env.LUCY_BOT_ID) return;
   const raw = typeof message.toJSON === 'function' ? message.toJSON() : message;
   if (isBossEnded(raw)) {
     console.info('[BossRewards][skip:boss-ended] guild=' + message.guildId + ' message=' + message.id + ' status=defeated-or-escaped');
@@ -255,4 +253,4 @@ function enqueue(message) {
   queue.push(message);
   setImmediate(() => drain().catch(error => console.error('[BossRewards] Queue error:', error)));
 }
-module.exports = { enqueue, findRewardImage, downloadRewardImage, reached, isRewardSourceChannel, isBossEnded };
+module.exports = { enqueue, processMessage, findRewardImage, downloadRewardImage, reached, isRewardSourceChannel, isBossEnded };

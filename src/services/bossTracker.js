@@ -1,6 +1,16 @@
 const { getGuildSettings, updateGuildSettings, getUserSettings } = require('../utils/storage');
 const { warnLabel } = require('../ui/panel');
-const TITLE = 'Guild Boss Telah Dikalahkan!';
+
+// Urutan penting: pesan "kabur" dan "dikalahkan" juga memuat kata "boss", jadi
+// keduanya harus diperiksa sebelum pola spawn agar tidak salah klasifikasi.
+const BOSS_ESCAPE = /boss\s+kabur/i;
+const BOSS_DEFEAT = /boss\s+telah\s+dikalahkan/i;
+const BOSS_SPAWN = /boss\s+telah\s+muncul/i;
+
+// Prediksi "Boss baru" dan spawn nyata hanya berbeda beberapa detik. Notifikasi
+// yang jatuh dalam jendela ini dianggap peristiwa yang sama agar tidak dobel.
+const NOTIFY_DEDUPE_WINDOW_SECONDS = 900;
+
 function collect(value, out = []) {
   if (typeof value === 'string') out.push(value);
   else if (Array.isArray(value)) value.forEach(v => collect(v, out));
@@ -9,20 +19,47 @@ function collect(value, out = []) {
   }
   return out;
 }
-function extractNextBossTimestamp(message) {
+
+function messageText(message) {
   const raw = typeof message?.toJSON === 'function' ? message.toJSON() : message;
-
-  const text = [
-    raw.content || '',
-    ...collect(raw.embeds),
-    ...collect(raw.components),
+  return [
+    raw?.content || '',
+    ...collect(raw?.embeds),
+    ...collect(raw?.components),
   ].join('\n');
+}
 
-  if (!text.toLowerCase().includes(TITLE.toLowerCase())) return null;
+// Waktu pesan dalam detik. Pakai createdTimestamp bila ada, jika tidak decode
+// snowflake Discord: (id >> 22) + epoch.
+function messageTimestampSeconds(message) {
+  if (Number.isFinite(message?.createdTimestamp)) return Math.floor(message.createdTimestamp / 1000);
+  const raw = typeof message?.toJSON === 'function' ? message.toJSON() : message;
+  const id = raw?.id;
+  if (typeof id === 'string' && /^\d{15,20}$/.test(id)) {
+    return Math.floor(Number((BigInt(id) >> 22n) + 1420070400000n) / 1000);
+  }
+  return null;
+}
 
-  const line = text.split('\n').find(s => /Boss baru/i.test(s));
-  const match = line && line.match(/<t:(\d{9,12})(?::[tTdDfFR])?>/);
-  return match ? Number(match[1]) : null;
+// Kenali jenis pesan boss Lucy berdasarkan format di boss.json:
+//  - spawn  : "Guild Boss Telah Muncul!" / "Global Raid Boss Telah Muncul!" → boss muncul sekarang
+//  - defeat : "Guild Boss Telah Dikalahkan!" → baris "Boss baru <t:...>" = jadwal spawn berikutnya
+//  - escape : "GUILD BOSS KABUR!" → tidak ada jadwal baru
+function parseBossMessage(message) {
+  const text = messageText(message);
+  if (BOSS_ESCAPE.test(text)) return { kind: 'escape' };
+  if (BOSS_DEFEAT.test(text)) {
+    const line = text.split('\n').find(s => /Boss baru/i.test(s));
+    const match = line && line.match(/<t:(\d{9,12})(?::[tTdDfFR])?>/);
+    return { kind: 'defeat', nextAt: match ? Number(match[1]) : null };
+  }
+  if (BOSS_SPAWN.test(text)) return { kind: 'spawn', appearAt: messageTimestampSeconds(message) };
+  return null;
+}
+
+function extractNextBossTimestamp(message) {
+  const event = parseBossMessage(message);
+  return event?.kind === 'defeat' ? event.nextAt : null;
 }
 class BossTracker {
   constructor(client) {
@@ -33,13 +70,39 @@ class BossTracker {
   async handleMessage(message) {
     if (!message.guildId || message.author?.id !== process.env.LUCY_BOT_ID) return;
     if (process.env.LUCY_CHANNEL_ID && message.channelId !== process.env.LUCY_CHANNEL_ID) return;
-    const ts = extractNextBossTimestamp(message);
-    if (!ts) return;
-    const id = message.guildId, settings = getGuildSettings(id);
-    if (settings.lastBossTimestamp === ts) return;
-    updateGuildSettings(id, s => ({ ...s, lastBossTimestamp: ts }));
-    if (getGuildSettings(id).enabled) this.scheduleGuild(id, ts);
-    console.log('[BossTracker] Timestamp detected:', ts, 'guild:', id);
+    const event = parseBossMessage(message);
+    if (!event) return;
+    const id = message.guildId;
+
+    if (event.kind === 'defeat') {
+      if (!event.nextAt) return;
+      const settings = getGuildSettings(id);
+      if (settings.lastBossTimestamp === event.nextAt) return;
+      updateGuildSettings(id, s => ({ ...s, lastBossTimestamp: event.nextAt }));
+      if (getGuildSettings(id).enabled) this.scheduleGuild(id, event.nextAt);
+      console.log('[BossTracker] Jadwal boss berikutnya:', event.nextAt, 'guild:', id);
+      return;
+    }
+
+    if (event.kind === 'spawn') {
+      const settings = getGuildSettings(id);
+      if (!settings.enabled) return;
+      if (settings.lastBossTimestamp === event.appearAt) return;
+      // Boss sudah muncul sekarang, jadi jadwalkan notifikasi tepat waktu.
+      updateGuildSettings(id, s => ({ ...s, lastBossTimestamp: event.appearAt }));
+      this.scheduleGuild(id, event.appearAt);
+      console.log('[BossTracker] Boss muncul:', event.appearAt, 'guild:', id);
+      return;
+    }
+
+    if (event.kind === 'escape') {
+      const settings = getGuildSettings(id);
+      if (!settings.enabled || settings.lastBossTimestamp === null) return;
+      // Boss kabur tanpa jadwal baru: hentikan timer yang menunggu.
+      this.stopGuild(id);
+      updateGuildSettings(id, s => ({ ...s, lastBossTimestamp: null }));
+      console.log('[BossTracker] Boss kabur, jadwal dibatalkan. guild:', id);
+    }
   }
   async restoreSchedules() {
     for (const guild of this.client.guilds.cache.values()) {
@@ -100,9 +163,12 @@ class BossTracker {
   }
   async notifyBoss(id, ts) {
     const s = getGuildSettings(id);
-    if (!s.enabled || s.lastNotifiedTimestamp === ts) return;
+    if (!s.enabled) return;
     const guild = this.client.guilds.cache.get(id);
     if (!guild) return;
+    // Abaikan bila notifikasi untuk peristiwa boss yang sama (jarak waktu dekat)
+    // sudah pernah dikirim, sehingga prediksi dan spawn nyata tidak dobel.
+    if (s.lastNotifiedTimestamp && Math.abs(s.lastNotifiedTimestamp - ts) <= NOTIFY_DEDUPE_WINDOW_SECONDS) return;
     updateGuildSettings(id, v => ({ ...v, lastNotifiedTimestamp: ts }));
     if (s.channelId) {
       try {
@@ -137,5 +203,5 @@ class BossTracker {
     this.stopWarns(id);
   }
 }
-module.exports = { BossTracker, extractNextBossTimestamp };
+module.exports = { BossTracker, extractNextBossTimestamp, parseBossMessage };
   
