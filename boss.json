@@ -1,0 +1,437 @@
+
+// BOSS MUNCUL 
+[
+  {
+    "capturedAt": "2026-11-02T09:37:51.411Z",
+    "messageType": "components",
+    "message": {
+      "id": "1566748163186892976",
+      "content": "",
+      "author": {
+        "id": "1438615298012872817",
+        "bot": true,
+        "system": false,
+        "flags": 65536,
+        "username": "Lucy",
+        "globalName": null,
+        "discriminator": "3614",
+        "avatar": "fbb822548bfc77dbd5412f8d60c907b0",
+        "avatarDecorationData": null,
+        "primaryGuild": null,
+        "collectibles": null,
+        "createdTimestamp": 1763063015226,
+        "defaultAvatarURL": "https://cdn.discordapp.com/embed/avatars/4.png",
+        "tag": "Lucy#3614",
+        "avatarURL": "https://cdn.discordapp.com/avatars/1438615298012872817/fbb822548bfc77dbd5412f8d60c907b0.webp",
+        "displayAvatarURL": "https://cdn.discordapp.com/avatars/1438615298012872817/fbb822548bfc77dbd5412f8d60c907b0.webp",
+        "guildTagBadgeURL": null
+      },
+      "channelId": "1554454470211936266",
+      "guildId": "1554454222416646145",
+      "embeds": [],
+      "components": [
+        {
+          "type": 17,
+          "components": [
+            {
+              "type": 10,
+              "content": "## <:lucy_think:1550898966130852032> Guild Boss Telah Muncul!"
+            },
+            {
+              "type": 12,
+              "items": [
+                {
+                  "media": {
+                    "width": 1536,
+                    "url": "https://cdn.discordapp.com/attachments/1554454470211936266/1566748162863923266/raid.png?ex=6ae9ab6e&is=6ae859ee&hm=67cc48694ae79a8598d6048e7950223d0a9b3609af4256a69b583643d1beae41&",
+                    "proxy_url": "https://media.discordapp.net/attachments/1554454470211936266/1566748162863923266/raid.png?ex=6ae9ab6e&is=6ae859ee&hm=67cc48694ae79a8598d6048e7950223d0a9b3609af4256a69b583643d1beae41&",
+                    "placeholder_version": 1,
+                    "placeholder": "zwcGC4KGZzd3eAeIZ3dgVwg=",
+                    "loading_state": 2,
+                    "id": "1566748163732283563",
+                    "height": 680,
+                    "content_type": "image/png",
+                    "content_scan_metadata": {
+                      "version": 4,
+                      "flags": 0
+                    },
+                    "attachment_id": "1566748162863923266"
+                  },
+                  "description": null,
+                  "spoiler": false
+                }
+              ]
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "## 10 Damage Terbesar\n-# Belum ada damage diberikan — Jadilah yang pertama menyerang!"
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "## Hadiah"
+            },
+            {
+              "type": 12,
+              "items": [
+                {
+                  "media": {
+                    "width": 1536,
+                    "url": "https://cdn.discordapp.com/attachments/1554454470211936266/1566748163170377749/rewards.png?ex=6ae9ab6e&is=6ae859ee&hm=ea4cf8e7a63c770b67a2be689d45d943f66eafd1ea4868c567768fed43ff9568&",
+                    "proxy_url": "https://media.discordapp.net/attachments/1554454470211936266/1566748163170377749/rewards.png?ex=6ae9ab6e&is=6ae859ee&hm=ea4cf8e7a63c770b67a2be689d45d943f66eafd1ea4868c567768fed43ff9568&",
+                    "placeholder_version": 1,
+                    "placeholder": "j/eBAYA7d4mIeIChh6B/N3eHhYiAaCg=",
+                    "loading_state": 2,
+                    "id": "1566748163732283564",
+                    "height": 208,
+                    "content_type": "image/png",
+                    "content_scan_metadata": {
+                      "version": 4,
+                      "flags": 0
+                    },
+                    "attachment_id": "1566748163170377749"
+                  },
+                  "description": null,
+                  "spoiler": false
+                }
+              ]
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "⏳ Berakhir <t:1793615870:R>\n⚔ **0** fighter • ☠ **0** damage diberikan\n-# Fight kamu: 0/3 • Damage kamu: 0"
+            },
+            {
+              "components": [
+                {
+                  "custom_id": "raid:fight",
+                  "disabled": false,
+                  "emoji": {
+                    "name": "⚔️",
+                    "animated": false
+                  },
+                  "label": "Fight!",
+                  "style": 4,
+                  "type": 2,
+                  "url": null
+                }
+              ],
+              "type": 1
+            }
+          ],
+          "spoiler": false
+        }
+      ],
+      "attachments": []
+    }
+  }
+]
+
+
+
+
+
+// BOSS KALAH
+
+[
+  {
+    "capturedAt": "2026-10-16T14:34:02.923Z",
+    "messageType": "components",
+    "message": {
+      "id": "1560662109745061930",
+      "content": "",
+      "author": {
+        "id": "1438615298012872817",
+        "bot": true,
+        "system": false,
+        "flags": 65536,
+        "username": "Lucy",
+        "globalName": null,
+        "discriminator": "3614",
+        "avatar": "24e8989c8f3f63f7f4f8ff62d77b9a90",
+        "avatarDecorationData": null,
+        "primaryGuild": null,
+        "collectibles": null,
+        "createdTimestamp": 1763063015226,
+        "defaultAvatarURL": "https://cdn.discordapp.com/embed/avatars/4.png",
+        "tag": "Lucy#3614",
+        "avatarURL": "https://cdn.discordapp.com/avatars/1438615298012872817/24e8989c8f3f63f7f4f8ff62d77b9a90.webp",
+        "displayAvatarURL": "https://cdn.discordapp.com/avatars/1438615298012872817/24e8989c8f3f63f7f4f8ff62d77b9a90.webp",
+        "guildTagBadgeURL": null
+      },
+      "channelId": "1552409627826585630",
+      "guildId": "1183952709427150859",
+      "embeds": [],
+      "components": [
+        {
+          "type": 17,
+          "components": [
+            {
+              "type": 10,
+              "content": "## <:lucy_yay:1550898994111058040> Guild Boss Telah Dikalahkan!"
+            },
+            {
+              "type": 12,
+              "items": [
+                {
+                  "media": {
+                    "width": 1536,
+                    "url": "https://cdn.discordapp.com/attachments/1552409627826585630/1560662108335636490/raid.png?ex=6ad3875a&is=6ad235da&hm=b6e2dc431eaf5f68e3ce9f6d6a1c2d9d3d253a1ef97ad0cf427c01784eb310c1&",
+                    "proxy_url": "https://media.discordapp.net/attachments/1552409627826585630/1560662108335636490/raid.png?ex=6ad3875a&is=6ad235da&hm=b6e2dc431eaf5f68e3ce9f6d6a1c2d9d3d253a1ef97ad0cf427c01784eb310c1&",
+                    "placeholder_version": 1,
+                    "placeholder": "yfcBC4BHhwWJhxioo3sAppc=",
+                    "loading_state": 2,
+                    "id": "1560662109745061932",
+                    "height": 680,
+                    "content_type": "image/png",
+                    "content_scan_metadata": {
+                      "version": 4,
+                      "flags": 0
+                    },
+                    "attachment_id": "1560662108335636490"
+                  },
+                  "description": null,
+                  "spoiler": false
+                }
+              ]
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "## 10 Damage Terbesar\n1. `94,448` - **@xruntr** `⚔️⚔️⚔️`\n2. `93,290` - **@yth_dzula** `⚔️⚔️⚔️`\n3. `56,554` - **@ebek_1922** `⚔️⚔️⚔️`\n4. `21,196` - **@rasheed.21** `⚔️⚔️⚔️`\n5. `12,812` - **@setia7062** `⚔️⚔️⚔️`\n6. `9,107` - **@zzzginnn_** `⚔️⚔️⚔️`\n7. `7,482` - **@sylent.1** `⚔️⚔️⚔️`\n8. `1,576` - **@hazelcafe** `⚔️`"
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "## Hadiah"
+            },
+            {
+              "type": 12,
+              "items": [
+                {
+                  "media": {
+                    "width": 1536,
+                    "url": "https://cdn.discordapp.com/attachments/1552409627826585630/1560662108897550376/rewards.png?ex=6ad3875a&is=6ad235da&hm=2e0716f6835666ee0a53b41127e4ff6232e2996f7b48455c2696c94bea5b43d8&",
+                    "proxy_url": "https://media.discordapp.net/attachments/1552409627826585630/1560662108897550376/rewards.png?ex=6ad3875a&is=6ad235da&hm=2e0716f6835666ee0a53b41127e4ff6232e2996f7b48455c2696c94bea5b43d8&",
+                    "placeholder_version": 1,
+                    "placeholder": "j/eBAYA7dah4eKCgh6B/N3eHhYiAaCg=",
+                    "loading_state": 2,
+                    "id": "1560662109745061933",
+                    "height": 208,
+                    "content_type": "image/png",
+                    "content_scan_metadata": {
+                      "version": 4,
+                      "flags": 0
+                    },
+                    "attachment_id": "1560662108897550376"
+                  },
+                  "description": null,
+                  "spoiler": false
+                }
+              ]
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "☠ Dikalahkan 7 menit yang lalu\n⚔ **8** fighter • ☠ **296,465** damage diberikan\n⌛ Boss baru <t:1792162619:R>\n-# Fight kamu: 3/3 • Damage kamu: 29,763\n-# Limit fight reset <t:1792170000:R> (reset daily jam 12 malam)."
+            },
+            {
+              "components": [
+                {
+                  "custom_id": "raid:fight",
+                  "disabled": true,
+                  "emoji": {
+                    "name": "⚔️",
+                    "animated": false
+                  },
+                  "label": "Fight!",
+                  "style": 4,
+                  "type": 2,
+                  "url": null
+                }
+              ],
+              "type": 1
+            }
+          ],
+          "spoiler": false
+        }
+      ],
+      "attachments": []
+    }
+  }
+]
+
+
+
+// BOSS KABUR
+"GUILD BOSS KABUR!"
+"custom_id": "raid:fight",
+                  "disabled": true,
+                  
+      
+ 
+// BOSS GLOBAL 
+[
+  {
+    "capturedAt": "2026-11-02T09:58:49.166Z",
+    "messageType": "components",
+    "message": {
+      "id": "1566753427659432016",
+      "content": "",
+      "author": {
+        "id": "1438615298012872817",
+        "bot": true,
+        "system": false,
+        "flags": 65536,
+        "username": "Lucy",
+        "globalName": null,
+        "discriminator": "3614",
+        "avatar": "fbb822548bfc77dbd5412f8d60c907b0",
+        "avatarDecorationData": null,
+        "primaryGuild": null,
+        "collectibles": null,
+        "createdTimestamp": 1763063015226,
+        "defaultAvatarURL": "https://cdn.discordapp.com/embed/avatars/4.png",
+        "tag": "Lucy#3614",
+        "avatarURL": "https://cdn.discordapp.com/avatars/1438615298012872817/fbb822548bfc77dbd5412f8d60c907b0.webp",
+        "displayAvatarURL": "https://cdn.discordapp.com/avatars/1438615298012872817/fbb822548bfc77dbd5412f8d60c907b0.webp",
+        "guildTagBadgeURL": null
+      },
+      "channelId": "1554454470211936266",
+      "guildId": "1554454222416646145",
+      "embeds": [],
+      "components": [
+        {
+          "type": 17,
+          "components": [
+            {
+              "type": 10,
+              "content": "## <:lucy_think:1550898966130852032> Global Raid Boss Telah Muncul!"
+            },
+            {
+              "type": 12,
+              "items": [
+                {
+                  "media": {
+                    "width": 1536,
+                    "url": "https://cdn.discordapp.com/attachments/1554454470211936266/1566753427030020157/raid.png?ex=6ae9b055&is=6ae85ed5&hm=6f3527aafbabc56d52f6938ba6a220d63ded4e46b9e0ef1deb20729e9f69a828&",
+                    "proxy_url": "https://media.discordapp.net/attachments/1554454470211936266/1566753427030020157/raid.png?ex=6ae9b055&is=6ae85ed5&hm=6f3527aafbabc56d52f6938ba6a220d63ded4e46b9e0ef1deb20729e9f69a828&",
+                    "placeholder_version": 1,
+                    "placeholder": "zQcGC4LpFiR4hwhlaHrwhDg=",
+                    "loading_state": 2,
+                    "id": "1566753427659432018",
+                    "height": 680,
+                    "content_type": "image/png",
+                    "content_scan_metadata": {
+                      "version": 4,
+                      "flags": 0
+                    },
+                    "attachment_id": "1566753427030020157"
+                  },
+                  "description": null,
+                  "spoiler": false
+                }
+              ]
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "## 10 Damage Terbesar\n1. `76,783` - **@razh.21** `⚔️⚔️⚔️`\n2. `70,967` - **@arizzzzzzzzzz** `⚔️⚔️⚔️`\n3. `59,073` - **@ebek_1922** `⚔️⚔️⚔️`\n4. `54,039` - **@mauiwowieeee** `⚔️⚔️⚔️`\n5. `27,358` - **@nnneozen** `⚔️⚔️`\n6. `25,853` - **@kiraeel** `⚔️`\n7. `23,652` - **@kyys4dboy** `⚔️⚔️⚔️`\n8. `22,059` - **@w0nbeen.** `⚔️`\n9. `21,680` - **@izukaez** `⚔️⚔️⚔️`\n10. `19,677` - **@6n_6.** `⚔️⚔️⚔️`"
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "## Hadiah"
+            },
+            {
+              "type": 12,
+              "items": [
+                {
+                  "media": {
+                    "width": 1536,
+                    "url": "https://cdn.discordapp.com/attachments/1554454470211936266/1566753427306840124/rewards.png?ex=6ae9b055&is=6ae85ed5&hm=f74a5136cff9a35487bcafe7c5e765e83f903ed9bcf82b156851b888cf0e33e7&",
+                    "proxy_url": "https://media.discordapp.net/attachments/1554454470211936266/1566753427306840124/rewards.png?ex=6ae9b055&is=6ae85ed5&hm=f74a5136cff9a35487bcafe7c5e765e83f903ed9bcf82b156851b888cf0e33e7&",
+                    "placeholder_version": 1,
+                    "placeholder": "jveBAYA7eJmIeHChhqB/N3eHhYiAaCg=",
+                    "loading_state": 2,
+                    "id": "1566753427659432019",
+                    "height": 208,
+                    "content_type": "image/png",
+                    "content_scan_metadata": {
+                      "version": 4,
+                      "flags": 0
+                    },
+                    "attachment_id": "1566753427306840124"
+                  },
+                  "description": null,
+                  "spoiler": false
+                }
+              ]
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "⏳ Berakhir <t:1793719068:R>\n⚔ **26** fighter • ☠ **541,809** damage diberikan\n-# Fight kamu: 2/3 • Damage kamu: 14,139"
+            },
+            {
+              "components": [
+                {
+                  "custom_id": "raid:fight",
+                  "disabled": false,
+                  "emoji": {
+                    "name": "⚔️",
+                    "animated": false
+                  },
+                  "label": "Fight!",
+                  "style": 4,
+                  "type": 2,
+                  "url": null
+                }
+              ],
+              "type": 1
+            }
+          ],
+          "spoiler": false
+        }
+      ],
+      "attachments": []
+    }
+  }
+]
