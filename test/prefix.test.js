@@ -106,4 +106,20 @@ describe('prefix command handler', () => {
     await handlePrefixCommand(makeMessage('!hello world'), null, deps);
     assert.strictEqual(deps.calls.length, 0);
   });
+
+  it('responds to ping with latency info', async () => {
+    const { handlePrefixCommand } = require('../src/commands/prefix');
+    const deps = makeDeps();
+    await handlePrefixCommand(makeMessage('!ping'), null, deps);
+    assert.strictEqual(deps.calls.length, 1);
+    assert.match(deps.calls[0].content, /Pong/);
+    assert.match(deps.calls[0].content, /Roundtrip/);
+  });
+
+  it('responds to the ping short alias', async () => {
+    const { handlePrefixCommand } = require('../src/commands/prefix');
+    const deps = makeDeps();
+    await handlePrefixCommand(makeMessage('!p'), null, deps);
+    assert.match(deps.calls[0].content, /Pong/);
+  });
 });

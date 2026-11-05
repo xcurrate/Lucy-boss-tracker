@@ -42,6 +42,7 @@ Versi prefix (prefix default !):
 - !boss notify dm / !boss notify channel / !boss notify both
 - !boss warn <detik> — DM peringatan sebelum boss muncul (0 untuk matikan)
 - !boss menu, !boss status, !boss help
+- !ping (alias !p) — cek latency bot (roundtrip & WebSocket)
 
 ## Untuk moderator/admin
 Membutuhkan izin Discord Manage Server (Administrator juga diizinkan):

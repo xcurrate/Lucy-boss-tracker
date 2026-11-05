@@ -42,6 +42,26 @@ function parsePrefixInput(content, prefix) {
   };
 }
 
+// Perintah ping gaya bot Discord umum: `<prefix>ping`, berdiri sendiri di luar
+// root `boss`. Mendukung alias singkat `p`.
+function parsePingInput(content, prefix) {
+  if (typeof content !== 'string' || typeof prefix !== 'string' || !content.startsWith(prefix)) return null;
+  const rest = content.slice(prefix.length).trim();
+  const parts = rest.split(/\s+/);
+  if (!['ping', 'p'].includes((parts[0] || '').toLowerCase())) return null;
+  return { args: parts.slice(1) };
+}
+
+function pingContent(tracker, message) {
+  const created = Number.isFinite(message?.createdTimestamp) ? message.createdTimestamp : Date.now();
+  const roundtrip = Math.max(0, Date.now() - created);
+  const wsPing = tracker?.client?.ws?.ping;
+  const wsText = Number.isFinite(wsPing) && wsPing >= 0 ? wsPing + 'ms' : 'tidak tersedia';
+  return '🏓 **Pong!**\n' +
+    '⏱️ Roundtrip: **' + roundtrip + 'ms**\n' +
+    '💓 WebSocket: **' + wsText + '**';
+}
+
 function isAdmin(message) {
   return Boolean(message.member?.permissions?.has(PermissionFlagsBits.ManageGuild));
 }
@@ -58,6 +78,11 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   if (!message.guildId || message.author?.bot) return;
   const settings = getGuildSettings(message.guildId);
   const prefix = settings.prefix || '!';
+
+  if (parsePingInput(message.content, prefix)) {
+    return _sendText(message, pingContent(tracker, message));
+  }
+
   const parsed = parsePrefixInput(message.content, prefix);
   if (!parsed) return;
 
@@ -157,4 +182,4 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   return _sendText(message, 'Perintah tidak dikenal. Gunakan `' + prefix + 'boss help`.');
 }
 
-module.exports = { handlePrefixCommand, parsePrefixInput, ALIASES, ALIAS_MAP, isAdmin };
+module.exports = { handlePrefixCommand, parsePrefixInput, parsePingInput, pingContent, ALIASES, ALIAS_MAP, isAdmin };
