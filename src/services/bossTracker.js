@@ -1,10 +1,10 @@
 const { getGuildSettings, updateGuildSettings, getUserSettings } = require('../utils/storage');
 const { warnLabel } = require('../ui/panel');
 
-// Urutan penting: pesan "kabur" dan "dikalahkan" juga memuat kata "boss", jadi
-// keduanya harus diperiksa sebelum pola spawn agar tidak salah klasifikasi.
-const BOSS_ESCAPE = /boss\s+kabur/i;
-const BOSS_DEFEAT = /boss\s+telah\s+dikalahkan/i;
+// Pesan "kabur" dan "dikalahkan" memakai format yang sama: hanya judulnya yang
+// berbeda, keduanya memuat baris "Boss baru <t:...>" sebagai jadwal spawn
+// berikutnya. Keduanya diperiksa sebelum pola spawn agar tidak salah klasifikasi.
+const BOSS_ENDED = /boss\s+(?:telah\s+dikalahkan|kabur)/i;
 const BOSS_SPAWN = /boss\s+telah\s+muncul/i;
 
 // Prediksi "Boss baru" dan spawn nyata hanya berbeda beberapa detik. Notifikasi
@@ -41,17 +41,17 @@ function messageTimestampSeconds(message) {
   return null;
 }
 
-// Kenali jenis pesan boss Lucy berdasarkan format di boss.json:
-//  - spawn  : "Guild Boss Telah Muncul!" / "Global Raid Boss Telah Muncul!" → boss muncul sekarang
-//  - defeat : "Guild Boss Telah Dikalahkan!" → baris "Boss baru <t:...>" = jadwal spawn berikutnya
-//  - escape : "GUILD BOSS KABUR!" → tidak ada jadwal baru
+// Kenali jenis pesan boss Lucy:
+//  - spawn : "Guild Boss Telah Muncul!" / "Global Raid Boss Telah Muncul!" → boss muncul sekarang
+//  - ended : "Guild Boss Telah Dikalahkan!" / "GUILD BOSS KABUR!" → baris "Boss baru <t:...>"
+//            memuat jadwal spawn berikutnya. Judul dikalahkan dan kabur hanya berbeda teks,
+//            timestamp boss baru dibaca dengan cara yang sama.
 function parseBossMessage(message) {
   const text = messageText(message);
-  if (BOSS_ESCAPE.test(text)) return { kind: 'escape' };
-  if (BOSS_DEFEAT.test(text)) {
+  if (BOSS_ENDED.test(text)) {
     const line = text.split('\n').find(s => /Boss baru/i.test(s));
     const match = line && line.match(/<t:(\d{9,12})(?::[tTdDfFR])?>/);
-    return { kind: 'defeat', nextAt: match ? Number(match[1]) : null };
+    return { kind: 'ended', nextAt: match ? Number(match[1]) : null };
   }
   if (BOSS_SPAWN.test(text)) return { kind: 'spawn', appearAt: messageTimestampSeconds(message) };
   return null;
@@ -59,7 +59,7 @@ function parseBossMessage(message) {
 
 function extractNextBossTimestamp(message) {
   const event = parseBossMessage(message);
-  return event?.kind === 'defeat' ? event.nextAt : null;
+  return event?.kind === 'ended' ? event.nextAt : null;
 }
 class BossTracker {
   constructor(client) {
@@ -74,7 +74,9 @@ class BossTracker {
     if (!event) return;
     const id = message.guildId;
 
-    if (event.kind === 'defeat') {
+    // Dikalahkan dan kabur sama-sama membawa jadwal "Boss baru", jadi
+    // timestamp boss berikutnya dibaca dengan cara yang sama.
+    if (event.kind === 'ended') {
       if (!event.nextAt) return;
       const settings = getGuildSettings(id);
       if (settings.lastBossTimestamp === event.nextAt) return;
@@ -93,15 +95,6 @@ class BossTracker {
       this.scheduleGuild(id, event.appearAt);
       console.log('[BossTracker] Boss muncul:', event.appearAt, 'guild:', id);
       return;
-    }
-
-    if (event.kind === 'escape') {
-      const settings = getGuildSettings(id);
-      if (!settings.enabled || settings.lastBossTimestamp === null) return;
-      // Boss kabur tanpa jadwal baru: hentikan timer yang menunggu.
-      this.stopGuild(id);
-      updateGuildSettings(id, s => ({ ...s, lastBossTimestamp: null }));
-      console.log('[BossTracker] Boss kabur, jadwal dibatalkan. guild:', id);
     }
   }
   async restoreSchedules() {

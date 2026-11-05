@@ -14,6 +14,16 @@ describe('extractNextBossTimestamp', () => {
     assert.strictEqual(extractNextBossTimestamp(m), TS);
   });
 
+  it('extracts the next boss timestamp from a "kabur" message', () => {
+    // Pesan kabur memakai format sama seperti dikalahkan, hanya judulnya beda.
+    const m = {
+      content: 'GUILD BOSS KABUR!\nBoss baru: <t:' + TS + ':F>',
+      embeds: [],
+      components: []
+    };
+    assert.strictEqual(extractNextBossTimestamp(m), TS);
+  });
+
   it('ignores messages without boss title', () => {
     const m = {
       content: 'Boss baru <t:' + TS + ':F>',
@@ -53,7 +63,7 @@ describe('extractNextBossTimestamp', () => {
   });
 });
 describe('parseBossMessage', () => {
-  // Struktur pesan mengikuti boss.json di branch main.
+  // Struktur pesan Components V2 seperti yang dikirim bot Lucy.
   function componentsMessage(lines) {
     return { content: '', components: [{ type: 17, components: lines.map(content => ({ type: 10, content })) }] };
   }
@@ -81,16 +91,27 @@ describe('parseBossMessage', () => {
       '## <:lucy_yay:1> Guild Boss Telah Dikalahkan!',
       '☠ Dikalahkan 7 menit yang lalu\n⌛ Boss baru <t:1792162619:R>\n-# Limit fight reset <t:1792170000:R>'
     ]);
-    assert.deepStrictEqual(parseBossMessage(m), { kind: 'defeat', nextAt: 1792162619 });
+    assert.deepStrictEqual(parseBossMessage(m), { kind: 'ended', nextAt: 1792162619 });
   });
 
-  it('classifies an escaped boss message', () => {
+  it('reads the next spawn time from an escaped boss message', () => {
+    const m = {
+      content: 'GUILD BOSS KABUR!',
+      components: [
+        { type: 17, components: [{ type: 10, content: '⌛ Boss baru <t:1792162619:R>' }] },
+        { type: 2, custom_id: 'raid:fight', disabled: true }
+      ]
+    };
+    assert.deepStrictEqual(parseBossMessage(m), { kind: 'ended', nextAt: 1792162619 });
+  });
+
+  it('classifies an escaped boss message without a schedule', () => {
     const m = { content: 'GUILD BOSS KABUR!', components: [{ type: 2, custom_id: 'raid:fight', disabled: true }] };
-    assert.deepStrictEqual(parseBossMessage(m), { kind: 'escape' });
+    assert.deepStrictEqual(parseBossMessage(m), { kind: 'ended', nextAt: null });
   });
 
   it('derives spawn time from the snowflake when createdTimestamp is absent', () => {
-    // 2026-11-02T09:37:50.877Z, id dari boss.json BOSS MUNCUL.
+    // 2026-11-02T09:37:50.877Z dari id pesan BOSS MUNCUL.
     const m = componentsMessage(['## Guild Boss Telah Muncul!']);
     m.id = '1566748163186892976';
     const event = parseBossMessage(m);
@@ -100,7 +121,7 @@ describe('parseBossMessage', () => {
 
   it('does not treat the defeat line as a spawn message', () => {
     const m = componentsMessage(['## Guild Boss Telah Dikalahkan!', '⌛ Boss baru <t:1792162619:R>']);
-    assert.strictEqual(parseBossMessage(m).kind, 'defeat');
+    assert.strictEqual(parseBossMessage(m).kind, 'ended');
   });
 
   it('returns null for unrelated messages', () => {
