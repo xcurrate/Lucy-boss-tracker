@@ -1,36 +1,16 @@
-const fs = require('node:fs');
-const path = require('node:path');
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
+const store = require('../utils/lucyCounterStorage');
 
-const file = path.resolve(process.cwd(), 'data', 'lucy-counter.json');
 const WIB = 'Asia/Jakarta';
 const DEFAULT_TARGET_MESSAGE = '🎉 Target Lucy tercapai!';
 const DEFAULT_TARGET_START = '12:00';
 const DEFAULT_TARGET_STOP = '10:00';
 
-function read() {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return {}; }
-}
-function write(data) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n');
-  fs.renameSync(tmp, file);
-}
 function dayKey(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: WIB, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
   const p = Object.fromEntries(parts.map(x => [x.type, x.value]));
   return `${p.year}-${p.month}-${p.day}`;
-}
-function guildData(all, guildId) {
-  if (!all[guildId]) all[guildId] = { users: {}, challengeDayKey: '', challengeCount: 0, notified: false };
-  const g = all[guildId];
-  g.users ||= {};
-  g.challengeDayKey ||= '';
-  g.challengeCount ||= 0;
-  g.notified ||= false;
-  return g;
 }
 function timeParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: WIB, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(date);
@@ -143,20 +123,20 @@ async function handleCommand(message) {
   const page = parsePage(commandParts[command === 'lucy' ? 2 : 1]);
   if (['lcount', 'lcountd', 'lcountall', 'lucycount'].includes(command) ||
       (command === 'lucy' && subcommand === 'count')) {
-    const data = guildData(read(), message.guildId);
+    const data = store.getGuildData(message.guildId);
     const allTime = command === 'lcountall';
     await message.reply({ embeds: [leaderboardEmbed(data, dayKey(), allTime, page)], allowedMentions: { parse: [] } });
     return true;
   }
   if (['ltarget', 'ltargetlb'].includes(command) ||
       (command === 'lucytarget' && (subcommand === '' || subcommand === 'leaderboard' || /^\d+$/.test(subcommand)))) {
-    const data = guildData(read(), message.guildId);
+    const data = store.getGuildData(message.guildId);
     const targetPage = command === 'lucytarget' && /^\d+$/.test(subcommand) ? parsePage(subcommand) : parsePage(commandParts[command === 'lucytarget' ? 2 : 1]);
     await message.reply({ embeds: [targetLeaderboardEmbed(data, config, targetPage)], allowedMentions: { parse: [] } });
     return true;
   }
   if (['lservers', 'lserver', 'lserverlb'].includes(command)) {
-    const all = read();
+    const all = store.getAllData();
     await message.reply({ embeds: [serverLeaderboardEmbed(all, message.client, page)], allowedMentions: { parse: [] } });
     return true;
   }
@@ -169,20 +149,17 @@ async function handleCommand(message) {
   const sub = (parts[1] || '').toLowerCase();
   const targetSub = (parts[2] || '').toLowerCase();
   if (sub === 'status') {
-    const all = read();
-    const data = guildData(all, message.guildId);
+    const data = store.getGuildData(message.guildId);
     const totalCount = ranking(data, null).reduce((n, r) => n + r.count, 0);
     const today = challengeCycleKey(new Date(), config);
-    const memberData = data.users[message.author.id] ||= { name: message.member?.displayName || message.author.username, days: {} };
-    if (memberData.challengeDayKey !== today) {
-      memberData.challengeDayKey = today;
-      memberData.challengeCount = 0;
-      memberData.challengeNotified = false;
-      write(all);
+    const memberData = data.users[message.author.id];
+    const progress = memberData && memberData.challengeDayKey === today ? Number(memberData.challengeCount) || 0 : 0;
+    if (!memberData || memberData.challengeDayKey !== today) {
+      store.resetChallenge(message.guildId, message.author.id, message.member?.displayName || message.author.username, today);
     }
     const schedule = targetSchedule(config);
     const fmt = n => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0');
-    return message.reply({ content: `🎯 Target Lucy: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target per orang: **${config.targetGoal || 0}** • Progres kamu siklus ini: **${memberData.challengeCount || 0}/${config.targetGoal || 0}** • Jadwal WIB: **${fmt(schedule.startMinutes)}–${fmt(schedule.stopMinutes)}** • Status jadwal: **${isTargetWindow(new Date(), config) ? 'AKTIF' : 'ISTIRAHAT'}** • Total Lucy server (semua anggota): **${totalCount}**`, allowedMentions: { parse: [] } });
+    return message.reply({ content: `🎯 Target Lucy: **${config.targetEnabled ? 'ON' : 'OFF'}** • Target per orang: **${config.targetGoal || 0}** • Progres kamu siklus ini: **${progress}/${config.targetGoal || 0}** • Jadwal WIB: **${fmt(schedule.startMinutes)}–${fmt(schedule.stopMinutes)}** • Status jadwal: **${isTargetWindow(new Date(), config) ? 'AKTIF' : 'ISTIRAHAT'}** • Total Lucy server (semua anggota): **${totalCount}**`, allowedMentions: { parse: [] } });
   }
   if (!admin(message)) return message.reply('Pengaturan Lucy hanya untuk moderator/admin dengan izin Manage Server.');
 
@@ -222,50 +199,37 @@ async function handleMessage(message) {
   if (whitelistedChannelIds.length > 0 && !whitelistedChannelIds.includes(message.channelId)) return;
   if (!countLucy(message.content)) return;
 
-  const count = countLucy(message.content);
   const currentSettings = getGuildSettings(message.guildId);
   const currentConfig = currentSettings.lucyCounter;
   if (!currentConfig.enabled) return;
 
   // Per-person cooldown in this server: each member has an independent 10-second cooldown.
-  const all = read();
-  const data = guildData(all, message.guildId);
   const messageTime = message.createdTimestamp || Date.now();
-  const memberData = data.users[message.author.id] ||= { name: message.author.username, days: {} };
-  const lastLucyAt = Number(memberData.lastLucyAcceptedAt || 0);
+  const displayName = message.member?.displayName || message.author.username;
+  const lastLucyAt = store.getLastAcceptedAt(message.guildId, message.author.id);
   if (messageTime - lastLucyAt < 10000) return;
 
-  memberData.lastLucyAcceptedAt = messageTime;
-  write(all);
+  store.markAccepted(message.guildId, message.author.id, displayName, messageTime);
 
   try { await message.react('✅'); } catch (error) {
     console.warn('[LucyCounter] Gagal memberi reaksi verifikasi:', error.message);
     return;
   }
 
-  const today = dayKey(new Date(messageTime));
-  const user = data.users[message.author.id];
-  user.name = message.member?.displayName || message.author.username;
-  user.days[today] = (user.days[today] || 0) + count;
-
   // Target progress is tracked independently for each person and resets at the start of each cycle.
   // It only counts accepted Lucy messages within the configured daily start/stop window.
+  const day = dayKey(new Date(messageTime));
   const cycleKey = challengeCycleKey(new Date(messageTime), currentConfig);
-  if (user.challengeDayKey !== cycleKey) {
-    user.challengeDayKey = cycleKey;
-    user.challengeCount = 0;
-    user.challengeNotified = false;
-  }
   const targetActive = currentConfig.targetEnabled && currentConfig.targetGoal > 0 && isTargetWindow(new Date(messageTime), currentConfig);
-  if (targetActive) user.challengeCount = (user.challengeCount || 0) + count;
-  write(all);
+  const result = store.recordLucy({
+    guildId: message.guildId, userId: message.author.id, name: displayName,
+    day, cycleKey, targetActive, goal: currentConfig.targetGoal
+  });
 
-  if (targetActive && user.challengeCount >= currentConfig.targetGoal && !user.challengeNotified) {
-    user.challengeNotified = true;
-    write(all);
+  if (result.notifiedNow) {
     const channel = currentConfig.targetChannelId ? await message.guild.channels.fetch(currentConfig.targetChannelId).catch(() => null) : message.channel;
     const targetMessage = currentConfig.targetMessage || DEFAULT_TARGET_MESSAGE;
-    const report = `🎯 **${user.name}** mencapai target Lucy pribadi (${user.challengeCount}/${currentConfig.targetGoal})!\n${targetMessage}`;
+    const report = `🎯 **${displayName}** mencapai target Lucy pribadi (${result.challengeCount}/${currentConfig.targetGoal})!\n${targetMessage}`;
     if (channel?.isTextBased()) await channel.send({ content: report, allowedMentions: { parse: [] } }).catch(() => {});
   }
 }

@@ -52,7 +52,7 @@ Membutuhkan izin Discord Manage Server (Administrator juga diizinkan):
 - /boss admin-help — panduan moderator/admin.
 
 ## Instalasi
-Persyaratan: Node.js 20.11 atau lebih baru.
+Persyaratan: Node.js 22.13 atau lebih baru (leaderboard Lucy memakai `node:sqlite` bawaan Node).
 
 1. Buat aplikasi/bot di Discord Developer Portal.
 2. Undang bot dan berikan izin View Channels, Read Message History, Send Messages, Embed Links, serta izin mention role.
@@ -72,4 +72,5 @@ Isi `.env`: `DISCORD_TOKEN`, `CLIENT_ID`, dan `LUCY_BOT_ID`. `GUILD_ID` dan `LUC
 - Bot menjadwalkan waktu setelah menerima timestamp boss dari Lucy. Pastikan bot dapat membaca channel sumber.
 - Jika bot mulai setelah timestamp lewat, notifikasi akan dicoba segera saat tracker aktif, kecuali sudah diberitahukan.
 - DM dapat gagal jika pengguna menutup DM.
-- Penyimpanan JSON cocok untuk satu instance; gunakan database bersama untuk banyak instance.
+- Data leaderboard Lucy disimpan di SQLite (`data/lucy-counter.db`) memakai `node:sqlite` bawaan Node. Saat pertama dijalankan, data lama dari `data/lucy-counter.json` dimigrasikan otomatis (satu kali) lalu file JSON dibiarkan sebagai cadangan.
+- Penyimpanan berbasis file cocok untuk satu instance; gunakan database bersama untuk banyak instance.

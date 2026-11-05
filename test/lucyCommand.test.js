@@ -63,6 +63,22 @@ describe('lucy counter command routing', () => {
     assert.strictEqual(message.replies.length, 0);
   });
 
+  it('counts an accepted Lucy message into SQLite and shows it on the leaderboard', async () => {
+    const { updateGuildSettings } = require('../src/utils/storage');
+    const lucyCounter = require('../src/services/lucyCounter');
+    const store = require('../src/utils/lucyCounterStorage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: '!', lucyCounter: { ...s.lucyCounter, enabled: true } }));
+
+    await lucyCounter.handleMessage(makeMessage('halo lucy!', { userId: 'user1' }));
+    const guild = store.getGuildData('guild1');
+    const day = lucyCounter.dayKey(new Date());
+    assert.strictEqual(guild.users.user1.days[day], 1);
+
+    // Cooldown: a second message within 10 seconds is ignored.
+    await lucyCounter.handleMessage(makeMessage('lucy lagi', { userId: 'user1' }));
+    assert.strictEqual(store.getGuildData('guild1').users.user1.days[day], 1);
+  });
+
   it('still handles lucytarget status and admin settings', async () => {
     const { updateGuildSettings } = require('../src/utils/storage');
     const lucyCounter = require('../src/services/lucyCounter');
