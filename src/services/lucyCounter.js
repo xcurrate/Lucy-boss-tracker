@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
 const store = require('../utils/lucyCounterStorage');
 
@@ -64,14 +64,23 @@ function formatLeaderboard(rows, page, emptyText, footerLabel) {
   const desc = result.rows.length
     ? result.rows.map((r, i) => (medals[offset + i] || (offset + i + 1) + '.') + ' **' + r.count.toLocaleString('id-ID') + '** — ' + r.name).join('\n')
     : emptyText;
-  return { description: desc, footer: `${footerLabel} • Halaman ${result.page}/${result.totalPages} • ${result.total} peserta` };
+  return {
+    description: desc,
+    footer: `${footerLabel} • Halaman ${result.page}/${result.totalPages} • ${result.total} peserta`,
+    page: result.page,
+    totalPages: result.totalPages
+  };
 }
-function leaderboardEmbed(guild, day, allTime = false, page = 1) {
+function dailyLeaderboardView(guild, day, allTime = false, page = 1) {
   const rows = ranking(guild, allTime ? null : day);
   const formatted = formatLeaderboard(rows, page, 'Belum ada data Lucy yang terhitung.', allTime ? 'All-time' : 'Harian');
-  return new EmbedBuilder().setColor(0xFEE75C)
+  const embed = new EmbedBuilder().setColor(0xFEE75C)
     .setTitle(allTime ? 'All-Time Server Lucy Leaderboard' : 'Daily Server Lucy Leaderboard')
     .setDescription(formatted.description).setFooter({ text: formatted.footer + ' • ' + dayKey() });
+  return { embed, page: formatted.page, totalPages: formatted.totalPages };
+}
+function leaderboardEmbed(guild, day, allTime = false, page = 1) {
+  return dailyLeaderboardView(guild, day, allTime, page).embed;
 }
 function targetRanking(guild, cycleKey) {
   return Object.entries(guild.users).map(([id, user]) => ({
@@ -80,13 +89,17 @@ function targetRanking(guild, cycleKey) {
   })).filter(row => row.count > 0)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
-function targetLeaderboardEmbed(guild, config, page = 1, date = new Date()) {
+function targetLeaderboardView(guild, config, page = 1, date = new Date()) {
   const cycle = challengeCycleKey(date, config);
   const rows = targetRanking(guild, cycle);
   const formatted = formatLeaderboard(rows, page, 'Belum ada progres Target Lucy pada siklus ini.', 'Target Lucy');
-  return new EmbedBuilder().setColor(0x57F287).setTitle('Lucy Target Leaderboard')
+  const embed = new EmbedBuilder().setColor(0x57F287).setTitle('Lucy Target Leaderboard')
     .setDescription(formatted.description)
     .setFooter({ text: formatted.footer + ' • Siklus mulai ' + cycle + ' (WIB)' });
+  return { embed, page: formatted.page, totalPages: formatted.totalPages };
+}
+function targetLeaderboardEmbed(guild, config, page = 1, date = new Date()) {
+  return targetLeaderboardView(guild, config, page, date).embed;
 }
 function serverRanking(all, client) {
   return Object.entries(all).map(([guildId, data]) => {
@@ -96,11 +109,75 @@ function serverRanking(all, client) {
   }).filter(row => row.count > 0)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
-function serverLeaderboardEmbed(all, client, page = 1) {
+function serverLeaderboardView(all, client, page = 1) {
   const rows = serverRanking(all, client);
   const formatted = formatLeaderboard(rows, page, 'Belum ada data Lucy dari server mana pun.', 'All-time per server');
-  return new EmbedBuilder().setColor(0x5865F2).setTitle('All-Time Lucy Server Leaderboard')
+  const embed = new EmbedBuilder().setColor(0x5865F2).setTitle('All-Time Lucy Server Leaderboard')
     .setDescription(formatted.description).setFooter({ text: formatted.footer });
+  return { embed, page: formatted.page, totalPages: formatted.totalPages };
+}
+function serverLeaderboardEmbed(all, client, page = 1) {
+  return serverLeaderboardView(all, client, page).embed;
+}
+
+// Tombol navigasi halaman leaderboard. customId memuat tipe & halaman tujuan,
+// mis. "lcnav:daily:3", sehingga tiap klik bisa memuat data terbaru dari SQLite.
+const LUCY_NAV = 'lcnav';
+const NAV_BUTTONS = [
+  { action: 'first', label: '⏮️', style: ButtonStyle.Secondary },
+  { action: 'prev', label: '◀️', style: ButtonStyle.Primary },
+  { action: 'next', label: '▶️', style: ButtonStyle.Primary },
+  { action: 'last', label: '⏭️', style: ButtonStyle.Secondary }
+];
+function navRow(type, page, totalPages) {
+  const atFirst = page <= 1;
+  const atLast = page >= totalPages;
+  const buttons = NAV_BUTTONS.map(b => {
+    const disabled = (b.action === 'first' || b.action === 'prev') ? atFirst
+      : (b.action === 'next' || b.action === 'last') ? atLast : false;
+    return new ButtonBuilder()
+      .setCustomId(`${LUCY_NAV}:${type}:${b.action}`)
+      .setLabel(b.label)
+      .setStyle(b.style)
+      .setDisabled(disabled);
+  });
+  return new ActionRowBuilder().addComponents(...buttons);
+}
+function buildLeaderboard(type, page, client) {
+  if (type === 'target') {
+    const view = targetLeaderboardView(store.getGuildData(client.guildId), client.config, page);
+    return { embed: view.embed, totalPages: view.totalPages, page: view.page };
+  }
+  if (type === 'servers') {
+    const view = serverLeaderboardView(store.getAllData(), client, page);
+    return { embed: view.embed, totalPages: view.totalPages, page: view.page };
+  }
+  const allTime = type === 'alltime';
+  const view = dailyLeaderboardView(store.getGuildData(client.guildId), dayKey(), allTime, page);
+  return { embed: view.embed, totalPages: view.totalPages, page: view.page };
+}
+function isLucyNav(customId) {
+  return typeof customId === 'string' && customId.startsWith(LUCY_NAV + ':');
+}
+// Dipanggil dari handler interaksi. Selalu membaca ulang SQLite agar jumlah Lucy
+// yang tampil sinkron dengan data terbaru. Mengembalikan false bila bukan tombolnya.
+async function handleNavigation(i, deps = {}) {
+  if (!isLucyNav(i.customId)) return false;
+  const [, type, action] = i.customId.split(':');
+  const getSettings = deps.getSettings || getGuildSettings;
+  const config = getSettings(i.guildId).lucyCounter;
+  const client = { guildId: i.guildId, guilds: i.client?.guilds, config };
+  const embed = i.message?.embeds?.[0];
+  const footerText = embed?.footer?.text || embed?.data?.footer?.text || '';
+  const currentPage = Number(footerText.match(/Halaman (\d+)\//)?.[1] || 1);
+  const current = buildLeaderboard(type, currentPage, client);
+  const target = action === 'first' ? 1
+    : action === 'last' ? current.totalPages
+    : action === 'prev' ? Math.max(1, current.page - 1)
+    : Math.min(current.totalPages, current.page + 1);
+  const view = buildLeaderboard(type, target, client);
+  await i.update({ embeds: [view.embed], components: [navRow(type, view.page, view.totalPages)] });
+  return true;
 }
 function parsePage(value) {
   if (value === undefined || value === null || value === '') return 1;
@@ -123,21 +200,22 @@ async function handleCommand(message) {
   const page = parsePage(commandParts[command === 'lucy' ? 2 : 1]);
   if (['lcount', 'lcountd', 'lcountall', 'lucycount'].includes(command) ||
       (command === 'lucy' && subcommand === 'count')) {
-    const data = store.getGuildData(message.guildId);
     const allTime = command === 'lcountall';
-    await message.reply({ embeds: [leaderboardEmbed(data, dayKey(), allTime, page)], allowedMentions: { parse: [] } });
+    const type = allTime ? 'alltime' : 'daily';
+    const view = dailyLeaderboardView(store.getGuildData(message.guildId), dayKey(), allTime, page);
+    await message.reply({ embeds: [view.embed], components: [navRow(type, view.page, view.totalPages)], allowedMentions: { parse: [] } });
     return true;
   }
   if (['ltarget', 'ltargetlb'].includes(command) ||
       (command === 'lucytarget' && (subcommand === '' || subcommand === 'leaderboard' || /^\d+$/.test(subcommand)))) {
-    const data = store.getGuildData(message.guildId);
     const targetPage = command === 'lucytarget' && /^\d+$/.test(subcommand) ? parsePage(subcommand) : parsePage(commandParts[command === 'lucytarget' ? 2 : 1]);
-    await message.reply({ embeds: [targetLeaderboardEmbed(data, config, targetPage)], allowedMentions: { parse: [] } });
+    const view = targetLeaderboardView(store.getGuildData(message.guildId), config, targetPage);
+    await message.reply({ embeds: [view.embed], components: [navRow('target', view.page, view.totalPages)], allowedMentions: { parse: [] } });
     return true;
   }
   if (['lservers', 'lserver', 'lserverlb'].includes(command)) {
-    const all = store.getAllData();
-    await message.reply({ embeds: [serverLeaderboardEmbed(all, message.client, page)], allowedMentions: { parse: [] } });
+    const view = serverLeaderboardView(store.getAllData(), message.client, page);
+    await message.reply({ embeds: [view.embed], components: [navRow('servers', view.page, view.totalPages)], allowedMentions: { parse: [] } });
     return true;
   }
 
@@ -233,4 +311,4 @@ async function handleMessage(message) {
     if (channel?.isTextBased()) await channel.send({ content: report, allowedMentions: { parse: [] } }).catch(() => {});
   }
 }
-module.exports = { handleMessage, handleCommand, countLucy, dayKey, leaderboardEmbed, targetLeaderboardEmbed, serverLeaderboardEmbed, ranking, targetRanking, serverRanking, pageRows, LEADERBOARD_PAGE_SIZE, targetSchedule, challengeCycleKey, isTargetWindow };
+module.exports = { handleMessage, handleCommand, handleNavigation, isLucyNav, navRow, buildLeaderboard, countLucy, dayKey, leaderboardEmbed, dailyLeaderboardView, targetLeaderboardEmbed, targetLeaderboardView, serverLeaderboardEmbed, serverLeaderboardView, ranking, targetRanking, serverRanking, pageRows, LEADERBOARD_PAGE_SIZE, targetSchedule, challengeCycleKey, isTargetWindow };

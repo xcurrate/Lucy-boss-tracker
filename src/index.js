@@ -70,6 +70,7 @@ client.on(Events.MessageUpdate, async (_old, message) => {
 client.on(Events.InteractionCreate, async i => {
   try {
     if (i.isChatInputCommand() && i.commandName === 'boss') { await command.execute(i, tracker); return; }
+    if (i.isButton() && lucyCounter.isLucyNav(i.customId)) { await lucyCounter.handleNavigation(i); return; }
     if (i.isButton() || i.isStringSelectMenu()) { await command.handleComponent(i, tracker); return; }
   } catch (e) {
     console.error(e);

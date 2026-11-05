@@ -44,6 +44,16 @@ Versi prefix (prefix default !):
 - !boss menu, !boss status, !boss help
 - !ping (alias !p) — cek latency bot (roundtrip & WebSocket)
 
+## Lucy Counter & Leaderboard
+Menghitung pesan yang memuat kata "lucy" per anggota (cooldown 10 detik per anggota, maksimal 1 per pesan).
+- !lcount [halaman] — leaderboard Lucy harian.
+- !lcountall [halaman] — leaderboard Lucy all-time.
+- !ltarget [halaman] — leaderboard progres Target Lucy (alias: !ltargetlb, !lucytarget leaderboard).
+- !lservers [halaman] — leaderboard all-time per server (alias: !lserver).
+- !lucytarget on|off, !lucytarget target on|off, !lucytarget set <jumlah>, !lucytarget message <pesan>, !lucytarget status — pengaturan Target Lucy (moderator/admin).
+
+Setiap leaderboard memiliki tombol navigasi ⏮️ ◀️ ▶️ ⏭️ (awal, sebelumnya, berikutnya, akhir). Tombol membaca ulang data dari SQLite setiap kali ditekan, sehingga jumlah Lucy yang tampil selalu sinkron dengan data terbaru. Tombol dinonaktifkan otomatis saat sudah di halaman pertama/terakhir.
+
 ## Untuk moderator/admin
 Membutuhkan izin Discord Manage Server (Administrator juga diizinkan):
 - /boss setup channel:#channel role:@role — atur channel dan role yang akan ditag.

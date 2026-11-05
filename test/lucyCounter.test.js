@@ -1,6 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { countLucy, dayKey, isTargetWindow, challengeCycleKey, leaderboardEmbed, targetLeaderboardEmbed, serverLeaderboardEmbed, targetRanking, pageRows } = require('../src/services/lucyCounter');
+const os = require('node:os');
+const fs = require('node:fs');
+const path = require('node:path');
+const { countLucy, dayKey, isTargetWindow, challengeCycleKey, leaderboardEmbed, targetLeaderboardEmbed, serverLeaderboardEmbed, targetRanking, pageRows, navRow, isLucyNav, handleNavigation } = require('../src/services/lucyCounter');
+const store = require('../src/utils/lucyCounterStorage');
 
 test('counts at most one Lucy per message, case-insensitively', () => {
   assert.equal(countLucy('Lucy lucy LUCY'), 1);
@@ -57,4 +61,67 @@ test('leaderboard page helper clamps page and keeps page size at ten', () => {
   assert.equal(result.rows.length, 10);
   assert.equal(result.page, 2);
   assert.equal(pageRows([1, 2], 9).page, 1);
+});
+
+test('navigation row disables first/prev on the first page and next/last on the last', () => {
+  const first = navRow('daily', 1, 3).components;
+  assert.equal(first.length, 4);
+  assert.deepEqual(first.map(b => b.data.label), ['⏮️', '◀️', '▶️', '⏭️']);
+  assert.deepEqual(first.map(b => b.data.disabled), [true, true, false, false]);
+
+  const last = navRow('daily', 3, 3).components;
+  assert.deepEqual(last.map(b => b.data.disabled), [false, false, true, true]);
+
+  const middle = navRow('daily', 2, 3).components;
+  assert.deepEqual(middle.map(b => b.data.disabled), [false, false, false, false]);
+});
+
+test('navigation custom ids carry type and action', () => {
+  assert.ok(isLucyNav('lcnav:daily:next'));
+  assert.ok(isLucyNav('lcnav:servers:last'));
+  assert.equal(isLucyNav('boss_panel_refresh:123'), false);
+  assert.equal(isLucyNav(undefined), false);
+  const ids = navRow('alltime', 1, 2).components.map(b => b.data.custom_id);
+  assert.deepEqual(ids, ['lcnav:alltime:first', 'lcnav:alltime:prev', 'lcnav:alltime:next', 'lcnav:alltime:last']);
+});
+
+test('navigation reloads live counts from SQLite on each interaction', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'boss-tracker-nav-'));
+  const prevCwd = process.cwd();
+  process.chdir(dir);
+  try {
+    for (const key of Object.keys(require.cache)) {
+      if (key.includes('lucyCounterStorage.js') || key.includes('lucyCounter.js')) delete require.cache[key];
+    }
+    const svc = require('../src/services/lucyCounter');
+    const db = require('../src/utils/lucyCounterStorage');
+    // 23 users => 3 pages of 10.
+    for (let i = 1; i <= 23; i++) {
+      db.recordLucy({ guildId: 'g1', userId: 'u' + i, name: 'User ' + i, day: svc.dayKey(), cycleKey: svc.dayKey(), targetActive: false, goal: 0 });
+    }
+    const updates = [];
+    const makeInteraction = action => ({
+      customId: 'lcnav:daily:' + action,
+      guildId: 'g1',
+      client: { guilds: { cache: new Map() } },
+      message: { embeds: [{ footer: { text: 'Harian • Halaman 1/1 • 23 peserta' } }] },
+      update: async payload => { updates.push(payload); }
+    });
+
+    await svc.handleNavigation(makeInteraction('next'));
+    assert.match(updates[0].embeds[0].data.footer.text, /Halaman 2\/3/);
+    assert.equal(updates[0].components[0].components[0].data.disabled, false);
+
+    await svc.handleNavigation(makeInteraction('last'));
+    assert.match(updates[1].embeds[0].data.footer.text, /Halaman 3\/3/);
+
+    // Data berubah setelah pesan tampil: jumlah di-refresh langsung dari SQLite.
+    db.recordLucy({ guildId: 'g1', userId: 'u99', name: 'Late', day: svc.dayKey(), cycleKey: svc.dayKey(), targetActive: false, goal: 0 });
+    await svc.handleNavigation(makeInteraction('first'));
+    assert.match(updates[2].embeds[0].data.footer.text, /Halaman 1\/3/);
+    assert.match(updates[2].embeds[0].data.footer.text, /24 peserta/);
+  } finally {
+    process.chdir(prevCwd);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
