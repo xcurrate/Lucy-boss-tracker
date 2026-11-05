@@ -161,6 +161,10 @@ async function handleCommand(message) {
     return true;
   }
 
+  // Sisa subperintah di bawah hanya milik `lucytarget`; perintah lain (mis. `boss status`)
+  // harus dilepas agar tidak ditangani ganda oleh handler prefix boss.
+  if (command !== 'lucytarget') return false;
+
   const parts = text.slice(prefix.length).trim().split(/\s+/);
   const sub = (parts[1] || '').toLowerCase();
   const targetSub = (parts[2] || '').toLowerCase();
