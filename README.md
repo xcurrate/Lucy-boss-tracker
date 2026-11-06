@@ -53,7 +53,7 @@ Menghitung pesan yang memuat kata "lucy" per anggota (cooldown 10 detik per angg
 - !lucytarget on|off, !lucytarget target on|off, !lucytarget set <jumlah>, !lucytarget message <pesan>, !lucytarget status — pengaturan Target Lucy (moderator/admin).
 
 ## Animal Dex
-Menangkap kartu **"Informasi animal"** yang dikirim bot Lucy (pesan Components V2) secara otomatis, lalu menyimpannya ke database SQLite (`data/animal-dex.db`). Setiap kali bot Lucy mengirim/memperbarui kartu animal, datanya di-*upsert* (per nama hewan) sehingga dex selalu terbarui.
+Menangkap kartu **"Informasi animal"** yang dikirim bot Lucy (pesan Components V2) secara otomatis, lalu menyimpannya ke database SQLite (`data/animal-dex.db`). Dex bersifat **global** — satu entri per nama hewan, digabung dari semua server (hewan yang sama tidak diduplikasi antar server). Setiap kali bot Lucy mengirim/memperbarui kartu animal, datanya di-*upsert* per nama hewan sehingga dex selalu terbarui. Database skema lama (per-server) dimigrasikan otomatis ke global saat pertama dijalankan.
 - !dex [nama] — tampilkan daftar Animal Dex, atau detail satu hewan bila query cocok dengan tepat satu nama.
 - !d [nama] — alias singkat.
 Query mencocokkan nama, alias, nickname, atau rank (tidak peka huruf besar/kecil). Contoh: `!dex lawliet`, `!dex hybrid`, `!d patreon`.

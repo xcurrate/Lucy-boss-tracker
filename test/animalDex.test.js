@@ -93,18 +93,50 @@ describe('animal dex parser', () => {
 });
 
 describe('animal dex storage', () => {
-  it('upserts by guild and name, and merges partial updates', () => {
+  it('upserts globally by name and merges partial updates', () => {
     const { captureMessage } = require('../src/services/animalDex');
     const store = require('../src/utils/animalDexStorage');
     captureMessage(makeMessage(card()));
-    assert.strictEqual(store.countAnimals('g1'), 1);
+    assert.strictEqual(store.countAnimals(), 1);
 
     // Kartu baru hanya berisi sebagian data (mis. hanya statistik) → data lama tetap ada.
     captureMessage(makeMessage(card({ stats: '## <:hp:1541928276165922906> `9`' })));
-    const animal = store.getAnimal('g1', 'lawliet');
+    const animal = store.getAnimal('lawliet');
     assert.strictEqual(animal.stats.hp, 9);
     assert.strictEqual(animal.nickname, 'DM ME'); // dari kartu pertama
-    assert.strictEqual(store.countAnimals('g1'), 1); // tetap satu baris
+    assert.strictEqual(store.countAnimals(), 1); // tetap satu baris
+  });
+
+  it('merges the same animal across different guilds into one global row', () => {
+    const { captureMessage } = require('../src/services/animalDex');
+    const store = require('../src/utils/animalDexStorage');
+    captureMessage(makeMessage(card(), { guildId: 'guildA' }));
+    captureMessage(makeMessage(card({ stats: '## <:hp:1541928276165922906> `5`' }), { guildId: 'guildB', id: 'm2' }));
+    assert.strictEqual(store.countAnimals(), 1);
+    assert.strictEqual(store.getAnimal('lawliet').stats.hp, 5);
+  });
+
+  it('migrates a legacy per-guild database to the global schema', () => {
+    const { DatabaseSync } = require('node:sqlite');
+    fs.mkdirSync(path.join(tempDir, 'data'), { recursive: true });
+    const legacy = new DatabaseSync(path.join(tempDir, 'data', 'animal-dex.db'));
+    legacy.exec(`CREATE TABLE dex_animals (
+      guild_id TEXT NOT NULL, name_key TEXT NOT NULL, name TEXT NOT NULL, nickname TEXT, rank TEXT,
+      quantity TEXT, alias TEXT, points INTEGER, sell TEXT, sacrifice TEXT, hp INTEGER, attack INTEGER,
+      protection INTEGER, wisdom INTEGER, magic INTEGER, mr INTEGER, role TEXT, weapons TEXT, rarity TEXT,
+      captured_total INTEGER, image_url TEXT, raw TEXT, source_message_id TEXT, first_seen_at INTEGER,
+      updated_at INTEGER, PRIMARY KEY (guild_id, name_key));`);
+    legacy.prepare(`INSERT INTO dex_animals (guild_id, name_key, name, nickname, hp, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)`).run('guildA', 'lawliet', 'lawliet', 'Lama', 1, 100);
+    legacy.prepare(`INSERT INTO dex_animals (guild_id, name_key, name, nickname, hp, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)`).run('guildB', 'lawliet', 'lawliet', 'Baru', 9, 200);
+    legacy.close();
+
+    const store = require('../src/utils/animalDexStorage');
+    assert.strictEqual(store.countAnimals(), 1); // dua guild digabung jadi satu
+    const animal = store.getAnimal('lawliet');
+    assert.strictEqual(animal.stats.hp, 9);       // baris terbaru menang
+    assert.strictEqual(animal.nickname, 'Baru');
   });
 
   it('searches by name, alias, nickname, and rank', () => {
@@ -113,11 +145,11 @@ describe('animal dex storage', () => {
     captureMessage(makeMessage(card({ name: 'lawliet' })));
     captureMessage(makeMessage(card({ name: 'wolfie', info: '- **Informasi animal:**\n  - **Nickname:** Flame\n  - **Rank:** <a:crare:1> crare' }), { id: 'm2' }));
 
-    assert.strictEqual(store.searchAnimals('g1', 'lawliet').length, 1);
-    assert.strictEqual(store.searchAnimals('g1', 'flame').length, 1);
-    assert.strictEqual(store.searchAnimals('g1', 'crare').length, 1);
-    assert.strictEqual(store.searchAnimals('g1', '').length, 2);
-    assert.strictEqual(store.searchAnimals('g1', 'nope').length, 0);
+    assert.strictEqual(store.searchAnimals('lawliet').length, 1);
+    assert.strictEqual(store.searchAnimals('flame').length, 1);
+    assert.strictEqual(store.searchAnimals('crare').length, 1);
+    assert.strictEqual(store.searchAnimals('').length, 2);
+    assert.strictEqual(store.searchAnimals('nope').length, 0);
   });
 });
 
@@ -135,15 +167,15 @@ describe('dex prefix command', () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card()));
 
-    const detail = buildDexResponse('g1', 'lawliet');
+    const detail = buildDexResponse('lawliet');
     assert.strictEqual(detail.embeds.length, 1);
     assert.strictEqual(detail.embeds[0].data.title, '🐾 lawliet');
 
-    const list = buildDexResponse('g1', '');
+    const list = buildDexResponse('');
     assert.match(list.embeds[0].data.title, /Animal Dex/);
     assert.match(list.embeds[0].data.description, /lawliet/);
 
-    const none = buildDexResponse('g1', 'zzz');
+    const none = buildDexResponse('zzz');
     assert.match(none.embeds[0].data.description, /Tidak ada/);
   });
 });

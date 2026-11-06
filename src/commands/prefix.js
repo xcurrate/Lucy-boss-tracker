@@ -94,7 +94,7 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   }
 
   const dex = parseDexInput(message.content, prefix);
-  if (dex) return _send(message, buildDexResponse(message.guildId, dex.args.join(' ')));
+  if (dex) return _send(message, buildDexResponse(dex.args.join(' ')));
 
   const parsed = parsePrefixInput(message.content, prefix);
   if (!parsed) return;

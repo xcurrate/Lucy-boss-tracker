@@ -129,13 +129,13 @@ function isAnimalCard(raw) {
   return collect(raw).texts.some(t => /Informasi animal/i.test(t));
 }
 
-// Simpan/merge kartu animal dari sebuah pesan. Mengembalikan animal atau null.
+// Simpan/merge kartu animal dari sebuah pesan (global, lintas server).
+// Mengembalikan animal atau null.
 function captureMessage(message) {
-  if (!message?.guildId) return null;
   const raw = typeof message.toJSON === 'function' ? message.toJSON() : message;
   const animal = parseAnimalCard(raw);
   if (!animal || !animal.nameKey) return null;
-  store.upsertAnimal(message.guildId, animal, { raw, sourceMessageId: message.id, updatedAt: Date.now() });
+  store.upsertAnimal(animal, { raw, guildId: message?.guildId || null, sourceMessageId: message?.id, updatedAt: Date.now() });
   return animal;
 }
 
@@ -162,7 +162,7 @@ function formatAnimalEmbed(animal) {
   return embed;
 }
 
-function formatListEmbed(guildId, query, animals) {
+function formatListEmbed(query, animals) {
   const shown = animals.slice(0, 20);
   const desc = shown.length
     ? shown.map((a, i) => (i + 1) + '. **' + a.name + '**' + (a.rank ? ' — ' + a.rank : '')).join('\n')
@@ -170,17 +170,17 @@ function formatListEmbed(guildId, query, animals) {
   const embed = new EmbedBuilder().setColor(0x9B59B6)
     .setTitle(query ? '🔎 Hasil Dex: ' + query : '📖 Animal Dex')
     .setDescription(desc)
-    .setFooter({ text: animals.length + ' hasil • total dex: ' + store.countAnimals(guildId) });
+    .setFooter({ text: animals.length + ' hasil • total dex: ' + store.countAnimals() });
   return embed;
 }
 
 // Bangun payload balasan untuk `<prefix>dex [query]` / `<prefix>d [query]`.
 // Satu hasil cocok → kartu detail; selain itu → daftar hasil.
-function buildDexResponse(guildId, query) {
+function buildDexResponse(query) {
   const q = String(query || '').trim();
-  const matches = store.searchAnimals(guildId, q);
+  const matches = store.searchAnimals(q);
   if (q && matches.length === 1) return { embeds: [formatAnimalEmbed(matches[0])] };
-  return { embeds: [formatListEmbed(guildId, q, matches)] };
+  return { embeds: [formatListEmbed(q, matches)] };
 }
 
 module.exports = {
