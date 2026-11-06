@@ -172,6 +172,12 @@ describe('dex prefix command', () => {
     const detail = buildDexResponse('lawliet');
     assert.strictEqual(detail.embeds.length, 1);
     assert.strictEqual(detail.embeds[0].data.title, '🐾 lawliet');
+    // Field yang diminta dihapus tidak muncul di kartu dex.
+    const names = detail.embeds[0].data.fields.map(f => f.name);
+    for (const removed of ['Nickname', 'Points', 'Sell', 'Sacrifice', 'Rekomendasi Weapon', 'Kelangkaan']) {
+      assert.ok(!names.includes(removed), removed + ' tidak ditampilkan');
+    }
+    assert.deepStrictEqual(names, ['Jumlah', 'Rank', 'Alias', 'Role', 'Statistik']);
 
     const list = buildDexResponse('');
     assert.match(list.embeds[0].data.title, /Animal Dex/);

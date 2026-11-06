@@ -181,17 +181,11 @@ function formatAnimalEmbed(animal) {
   const embed = new EmbedBuilder().setColor(0x9B59B6).setTitle(clip('🐾 ' + animal.name, LIMITS.title));
   if (animal.imageUrl) embed.setThumbnail(animal.imageUrl);
   const fields = [];
-  if (animal.nickname) fields.push({ name: 'Nickname', value: clip(animal.nickname, LIMITS.field), inline: true });
   if (animal.quantity) fields.push({ name: 'Jumlah', value: clip(animal.quantity, LIMITS.field), inline: true });
   if (animal.rank) fields.push({ name: 'Rank', value: clip(animal.rank, LIMITS.field), inline: true });
   if (animal.alias) fields.push({ name: 'Alias', value: clip(animal.alias, LIMITS.field), inline: false });
-  if (animal.points != null) fields.push({ name: 'Points', value: String(animal.points), inline: true });
-  if (animal.sell) fields.push({ name: 'Sell', value: clip(animal.sell, LIMITS.field), inline: true });
-  if (animal.sacrifice) fields.push({ name: 'Sacrifice', value: clip(animal.sacrifice, LIMITS.field), inline: true });
   if (animal.role) fields.push({ name: 'Role', value: clip(animal.role, LIMITS.field), inline: false });
-  if (animal.weapons) fields.push({ name: 'Rekomendasi Weapon', value: clip(animal.weapons, LIMITS.field), inline: false });
   if (statLine) fields.push({ name: 'Statistik', value: clip(statLine, LIMITS.field), inline: false });
-  if (animal.rarity) fields.push({ name: 'Kelangkaan', value: clip(animal.rarity + (animal.capturedTotal != null ? ' • ' + animal.capturedTotal + ' total ditangkap' : ''), LIMITS.field), inline: false });
   if (fields.length) embed.addFields(fields);
   return embed;
 }

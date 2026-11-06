@@ -70,7 +70,7 @@ Animal | <hp> <att> <pr> | <wp> <mg> <mr>
 
 Setiap nama pada query menghasilkan satu baris, jadi `!dex lawliet buaya kudanil -c` menampilkan satu baris per hewan. Contoh: `!dex lawliet -c`, `!d -c` (seluruh dex).
 
-Data yang disimpan per hewan: nama, nickname, jumlah, rank, alias, points, sell, sacrifice, statistik (HP/ATT/PR/WP/MG/MR), role, rekomendasi weapon, kelangkaan, total ditangkap, dan URL gambar.
+Data yang **ditampilkan** per hewan: nama, jumlah, rank, alias, role, dan statistik (HP/ATT/PR/WP/MG/MR). Data lain (nickname, points, sell, sacrifice, rekomendasi weapon, kelangkaan) tetap tersimpan di database tetapi tidak ditampilkan pada dex.
 
 Gambar animal diambil dari accessory kartu (Components V2 type 11) — bentuknya **link** (mis. GIF emoji Discord), bukan file terpisah; link ini disimpan dan ditampilkan sebagai thumbnail pada kartu dex. Statistik ditampilkan memakai **emoji asli dari kartu Lucy** (hp → mr), sehingga tampilannya sama persis dengan pesan aslinya.
 
