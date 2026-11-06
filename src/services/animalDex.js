@@ -365,18 +365,37 @@ function formatCompactTable(query, animals, emojiMap) {
 const MAX_DETAIL_EMBEDS = 6;
 
 // Pisahkan flag di akhir perintah. `-c` / `--compact` = tampilan ringkas.
+// Token emoji diubah jadi nama hewanya, kecuali emoji dekoratif yang dibuang.
 function extractFlags(input) {
   const raw = (Array.isArray(input) ? input.join(' ') : String(input || ''))
-    .replace(/<a?:(\w+):\d+>/g, ' $1 ');
+    .replace(/<a?:(\w+):\d+>/g, (token, name) => (isDecorativeEmoji(name) ? ' ' : ' ' + name + ' '));
   const compact = /(^|\s)-{1,2}c(ompact)?(\s|$)/i.test(raw);
   return { compact, rest: raw.replace(/(^|\s)-{1,2}c(ompact)?(\s|$)/gi, ' ') };
+}
+
+// Nama emoji yang murni dekoratif (bukan hewan). Saat user menyalin satu blok
+// kartu dex, emoji seperti ini ikut terbawa dan harus diabaikan sebagai query.
+const DECORATIVE_EMOJI = new Set(['blank']);
+
+function isDecorativeEmoji(name) {
+  return DECORATIVE_EMOJI.has(String(name || '').toLowerCase());
+}
+
+// Token yang tidak mengandung huruf/angka (mis. digit superskrip "⁰⁰⁰⁰" pada
+// penanda jumlah kartu) tidak mungkin menjadi nama hewan, jadi dibuang.
+function isMeaningfulQuery(token) {
+  return /[a-z0-9]/i.test(token);
 }
 
 // Pecah input menjadi daftar query. Nama dipisah spasi dan/atau koma:
 // `lawliet buaya` atau `lawliet, buaya`. Emoji hewan (mis. <a:lawliet:123>)
 // dianggap sebagai nama hewanya, sehingga user boleh menempel emoji dari kartu.
+// Token sisa dari salinan kartu (digit superskrip) diabaikan.
 function toQueries(input) {
-  return String(input || '').split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+  return String(input || '')
+    .split(/[\s,]+/)
+    .map(s => s.trim())
+    .filter(s => s && isMeaningfulQuery(s));
 }
 
 // Gabungkan hasil semua query tanpa duplikat, urut sesuai urutan query.
@@ -397,6 +416,16 @@ function unionMatches(perQuery) {
 // - Selain itu → daftar gabungan hasil pencarian.
 // Flag `-c`/`--compact` menampilkan tabel ringkas (emoji stat + angka) untuk
 // semua hasil dalam satu pesan.
+// Nama yang tidak ada di dex dicatat di akhir agar user tahu mana yang belum
+// tertangkap, karena blok kartu yang disalin biasanya memuat beberapa hewan.
+function withMissing(embed, missing) {
+  if (!missing.length) return embed;
+  const note = '⚠️ Tidak ditemukan: ' + missing.map(name => '`' + name + '`').join(', ');
+  const current = embed.data.description || '';
+  const merged = current ? current + '\n\n' + note : note;
+  return embed.setDescription(clip(merged, LIMITS.description));
+}
+
 async function buildDexResponse(input) {
   const { compact, rest } = extractFlags(input);
   const queries = toQueries(rest);
@@ -404,18 +433,19 @@ async function buildDexResponse(input) {
   const all = store.listAnimals();
   const perQuery = queries.map(q => ({ q, matches: store.searchAnimals(q) }));
   const results = queries.length ? unionMatches(perQuery) : all;
+  const missing = perQuery.filter(r => !r.matches.length).map(r => r.q);
   const emojiMap = await mirrorEmojiTokens(collectEmojiTokens(results));
 
   if (!queries.length) {
     return { embeds: [compact ? formatCompactTable('', all, emojiMap) : formatListEmbed('', all)] };
   }
 
-  if (compact) return { embeds: [formatCompactTable(queries.join(' '), results, emojiMap)] };
+  if (compact) return { embeds: [withMissing(formatCompactTable(queries.join(' '), results, emojiMap), missing)] };
 
   if (perQuery.every(r => r.matches.length === 1) && results.length <= MAX_DETAIL_EMBEDS) {
     return { embeds: results.map(a => formatAnimalEmbed(a, emojiMap)) };
   }
-  return { embeds: [formatListEmbed(queries.join(' '), results)] };
+  return { embeds: [withMissing(formatListEmbed(queries.join(' '), results), missing)] };
 }
 
 module.exports = {

@@ -21,6 +21,12 @@
   perubahan kode. Nama yang dikenali: `hp att pr wp mg mr` (huruf kecil), plus alias di
   `EMOJI_ALIASES` (`mg`/`mag`/`magic`, `att`/`attack`, `pr`/`prot`/`protection`, dll).
 - Emoji guild yang sudah bisa diakses bot dipakai langsung tanpa di-mirror.
+- Perintah `dex` menerima **salinan blok kartu** apa adanya: token emoji dipakai sebagai
+  nama hewan, sedangkan sisa salinan diabaikan — digit superskrip penanda jumlah (mis.
+  `⁰⁰⁰⁰`) dibuang karena tidak mungkin jadi nama, dan emoji dekoratif (`DECORATIVE_EMOJI`,
+  mis. `blank`) dilewati. Kata seperti `blank` tetap bisa dicari bila diketik manual.
+- Nama yang tidak ada di dex dicatat di akhir embed (`⚠️ Tidak ditemukan: ...`) supaya user
+  tahu hewan mana dari salinannya yang belum tertangkap.
 
 ## Dashboard
 - `src/dashboard/server.js` (API + static) dan `src/dashboard/public/` (UI: `index.html`, `app.js`,

@@ -348,6 +348,50 @@ describe('dex prefix command', () => {
     dex.setClient(null);
   });
 
+  it('handles a pasted dex block with quantity markers and decorative emoji', async () => {
+    const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
+    const { parseDexInput } = require('../src/commands/prefix');
+    captureMessage(makeMessage(card({ name: 'inuyasha', emoji: 'inuyasha' })));
+    captureMessage(makeMessage(card({ name: 'illyafate', emoji: 'illyafate' }), { id: 'm2' }));
+    captureMessage(makeMessage(card({ name: 'columbina', emoji: 'columbina' }), { id: 'm3' }));
+    captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' }), { id: 'm4' }));
+
+    // Salinan apa adanya dari kartu dex: emoji + penanda jumlah "⁰⁰⁰⁰" + emoji
+    // dekoratif <:blank:...> + flag -c. Lewat parseDexInput seperti perintah asli.
+    const pasted = '!dex <:inuyasha:1554510314500919368>⁰⁰⁰⁰  <:illyafate:1553013886301503548>⁰⁰⁰⁰  ' +
+      '<:blank:1522595651571941560>    <:columbina:1550725818903306341>⁰⁰⁰⁰  <a:lawliet:1557672128059539466>⁰⁰⁰⁰  -c';
+
+    const res = await buildDexResponse(parseDexInput(pasted, '!').args);
+    assert.strictEqual(res.embeds.length, 1);
+    const lines = res.embeds[0].data.description.split('\n');
+    // Header + 4 hewan, tanpa baris "tidak ditemukan".
+    assert.strictEqual(lines.length, 5);
+    assert.ok(lines[1].startsWith('<a:inuyasha:'), 'inuyasha ada di tabel');
+    assert.ok(lines[4].startsWith('<a:lawliet:'), 'lawliet ada di tabel');
+    assert.doesNotMatch(res.embeds[0].data.description, /⁰⁰⁰⁰/);
+    assert.doesNotMatch(res.embeds[0].data.description, /blank/);
+  });
+
+  it('reports names from a pasted block that are not in the dex yet', async () => {
+    const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
+    const { parseDexInput } = require('../src/commands/prefix');
+    captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));
+
+    const res = await buildDexResponse(parseDexInput('!dex <:inuyasha:1>⁰⁰⁰⁰ <a:lawliet:1557672128059539466>⁰⁰⁰⁰ -c', '!').args);
+    assert.strictEqual(res.embeds.length, 1);
+    const desc = res.embeds[0].data.description;
+    assert.ok(desc.includes('<a:lawliet:'), 'lawliet ditampilkan');
+    assert.match(desc, /Tidak ditemukan: `inuyasha`/);
+    assert.doesNotMatch(desc, /Tidak ditemukan:.*`lawliet`/);
+  });
+
+  it('still lets a user type the word blank as a real query', async () => {
+    const { toQueries, extractFlags } = require('../src/services/animalDex');
+    assert.deepStrictEqual(toQueries('blank'), ['blank']);
+    assert.deepStrictEqual(toQueries(extractFlags(['<:blank:1>', 'lawliet']).rest), ['lawliet']);
+    assert.deepStrictEqual(toQueries(extractFlags(['<a:lawliet:1557672128059539466>', '-c']).rest), ['lawliet']);
+  });
+
   it('accepts a pasted animal emoji as a query', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));
