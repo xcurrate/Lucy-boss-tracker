@@ -64,13 +64,13 @@ Emoji hewan di kartu Lucy memuat nama hewannya, jadi user boleh **menempel emoji
 Tambahkan flag **`-c`** (atau `--compact`) di akhir perintah untuk tampilan ringkas berupa **tabel** (tanpa tabel embed, hanya kolom & baris). Baris pertama berisi emoji statistik hp→mr, baris berikutnya berisi emoji hewan + angka statistiknya:
 
 ```
-Animal | <hp> <att> <pr> | <wp> <mg> <mr>
-<emoji hewan> | 2 0 1 | 3 14 2
+Animal | <hp> <att> <pr> | <wp> <mg> <mr> | Total
+<emoji hewan> | 2 0 1 | 3 14 2 | 22
 ```
 
 Setiap nama pada query menghasilkan satu baris, jadi `!dex lawliet buaya kudanil -c` menampilkan satu baris per hewan. Contoh: `!dex lawliet -c`, `!d -c` (seluruh dex).
 
-Data yang **ditampilkan** per hewan: nama, jumlah, rank, alias, role, dan statistik (HP/ATT/PR/WP/MG/MR). Data lain (nickname, points, sell, sacrifice, rekomendasi weapon, kelangkaan) tetap tersimpan di database tetapi tidak ditampilkan pada dex.
+Data yang **ditampilkan** per hewan: nama, jumlah, rank, alias, role, statistik (HP/ATT/PR/WP/MG/MR), dan **total stat** (jumlah seluruh statistik). Data lain (nickname, points, sell, sacrifice, rekomendasi weapon, kelangkaan) tetap tersimpan di database tetapi tidak ditampilkan pada dex.
 
 Gambar animal diambil dari accessory kartu (Components V2 type 11) — bentuknya **link** (mis. GIF emoji Discord), bukan file terpisah; link ini disimpan dan ditampilkan sebagai thumbnail pada kartu dex. Statistik ditampilkan memakai **emoji asli dari kartu Lucy** (hp → mr), sehingga tampilannya sama persis dengan pesan aslinya.
 

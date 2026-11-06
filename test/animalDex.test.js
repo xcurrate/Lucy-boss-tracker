@@ -177,7 +177,10 @@ describe('dex prefix command', () => {
     for (const removed of ['Nickname', 'Points', 'Sell', 'Sacrifice', 'Rekomendasi Weapon', 'Kelangkaan']) {
       assert.ok(!names.includes(removed), removed + ' tidak ditampilkan');
     }
-    assert.deepStrictEqual(names, ['Jumlah', 'Rank', 'Alias', 'Role', 'Statistik']);
+    assert.deepStrictEqual(names, ['Jumlah', 'Rank', 'Alias', 'Role', 'Statistik', 'Total Stat']);
+    // Total Stat = jumlah hp..mr (2+0+1+3+14+2).
+    const total = detail.embeds[0].data.fields.find(f => f.name === 'Total Stat');
+    assert.strictEqual(total.value, '22');
 
     const list = buildDexResponse('');
     assert.match(list.embeds[0].data.title, /Animal Dex/);
@@ -214,9 +217,9 @@ describe('dex prefix command', () => {
     // Baris judul: emoji statistik hp..mr (dikelompokkan 3 | 3).
     assert.strictEqual(header,
       'Animal | <:hp:1541928276165922906> <:att:1541928417069375498> <:pr:1541928475454079077> | ' +
-      '<:wp:1523723591194120354> <:mg:1523723618016563210> <:mr:1523723644243804281>');
-    // Baris data: emoji hewan + angka statistik.
-    assert.strictEqual(row, '<a:lawliet:1557672128059539466> | 2 0 1 | 3 14 2');
+      '<:wp:1523723591194120354> <:mg:1523723618016563210> <:mr:1523723644243804281> | Total');
+    // Baris data: emoji hewan + angka statistik + total stat.
+    assert.strictEqual(row, '<a:lawliet:1557672128059539466> | 2 0 1 | 3 14 2 | 22');
     assert.strictEqual(long.embeds[0].data.description, compact.embeds[0].data.description);
     // Tanpa flag tetap kartu penuh (pakai field terpisah).
     assert.ok(full.embeds[0].data.fields.length > 3);

@@ -12,6 +12,17 @@ const STAT_ICONS = {
 };
 const EMOJI_TOKEN = /<a?:(\w+):\d+>/g;
 
+// Jumlahkan seluruh statistik (hp..mr) yang tersedia; null bila tak ada.
+function totalStats(animal) {
+  let total = 0;
+  let found = false;
+  for (const key of Object.keys(STAT_LABELS)) {
+    const value = animal.stats?.[key];
+    if (value != null && Number.isFinite(Number(value))) { total += Number(value); found = true; }
+  }
+  return found ? total : null;
+}
+
 // Batas panjang bagian embed yang diterapkan Discord; query user bisa panjang.
 const LIMITS = { title: 256, description: 4096, field: 1024, footer: 2048 };
 
@@ -186,6 +197,8 @@ function formatAnimalEmbed(animal) {
   if (animal.alias) fields.push({ name: 'Alias', value: clip(animal.alias, LIMITS.field), inline: false });
   if (animal.role) fields.push({ name: 'Role', value: clip(animal.role, LIMITS.field), inline: false });
   if (statLine) fields.push({ name: 'Statistik', value: clip(statLine, LIMITS.field), inline: false });
+  const total = totalStats(animal);
+  if (total != null) fields.push({ name: 'Total Stat', value: String(total), inline: true });
   if (fields.length) embed.addFields(fields);
   return embed;
 }
@@ -223,10 +236,12 @@ function formatCompactTable(query, animals) {
   const rows = animals.slice(0, TABLE_MAX_ROWS).map(animal => {
     const label = animalEmoji(animal) || '**' + animal.name + '**';
     const cells = group => group.map(k => (animal.stats?.[k] != null ? String(animal.stats[k]) : '–')).join(' ');
-    return label + ' | ' + cells(STAT_COLUMNS.slice(0, 3)) + ' | ' + cells(STAT_COLUMNS.slice(3));
+    const total = totalStats(animal);
+    return label + ' | ' + cells(STAT_COLUMNS.slice(0, 3)) + ' | ' + cells(STAT_COLUMNS.slice(3)) +
+      ' | ' + (total != null ? total : '–');
   });
   const desc = rows.length
-    ? fitRows('Animal | ' + groups[0] + ' | ' + groups[1], rows, LIMITS.description)
+    ? fitRows('Animal | ' + groups[0] + ' | ' + groups[1] + ' | Total', rows, LIMITS.description)
     : 'Tidak ada animal yang cocok dengan `' + query + '`.';
   return new EmbedBuilder().setColor(0x9B59B6)
     .setTitle(clip(query ? '📖 Dex (ringkas): ' + query : '📖 Animal Dex (ringkas)', LIMITS.title))
