@@ -412,7 +412,6 @@ function unionMatches(perQuery) {
 
 // Bangun payload balasan untuk `<prefix>dex [nama...] [-c]` / `<prefix>d ...`.
 // - Tanpa query → panduan pemakaian, bukan daftar seluruh hewan.
-// - Kata `all`/`semua` → seluruh daftar dex.
 // - Setiap nama cocok tepat satu hewan → tampilkan kartu detail semuanya.
 // - Selain itu → daftar gabungan hasil pencarian.
 // Flag `-c`/`--compact` menampilkan tabel ringkas (emoji stat + angka) untuk
@@ -427,10 +426,6 @@ function withMissing(embed, missing) {
   return embed.setDescription(clip(merged, LIMITS.description));
 }
 
-// Kata kunci untuk meminta seluruh isi dex secara eksplisit, karena `<prefix>dex`
-// tanpa query sekarang hanya menampilkan panduan.
-const LIST_ALL = new Set(['all', 'semua']);
-
 function formatDexUsage(prefix) {
   const p = prefix || '!';
   return new EmbedBuilder().setColor(0x9B59B6)
@@ -440,7 +435,6 @@ function formatDexUsage(prefix) {
       '• `' + p + 'dex lawliet` — kartu detail satu hewan',
       '• `' + p + 'dex lawliet buaya` — beberapa hewan sekaligus (pisah spasi/koma)',
       '• `' + p + 'dex lawliet -c` — tabel stat ringkas',
-      '• `' + p + 'dex all` — daftar seluruh hewan',
       '',
       'Boleh menempel emoji hewan dari kartu Lucy, mis. `' + p + 'dex <a:lawliet:123>`.',
       'Alias perintah: `' + p + 'd`.'
@@ -454,26 +448,17 @@ async function buildDexResponse(input, { prefix } = {}) {
   // Tanpa nama sama sekali → tampilkan panduan agar user tahu cara pakai.
   if (!queries.length) return { embeds: [formatDexUsage(prefix)] };
 
-  const all = store.listAnimals();
-  const names = queries.filter(q => !LIST_ALL.has(q.toLowerCase()));
-
-  // `dex all` (tanpa nama lain) → seluruh isi dex.
-  if (!names.length) {
-    const emojiMap = await mirrorEmojiTokens(collectEmojiTokens(all));
-    return { embeds: [compact ? formatCompactTable('', all, emojiMap) : formatListEmbed('', all)] };
-  }
-
-  const perQuery = names.map(q => ({ q, matches: store.searchAnimals(q) }));
+  const perQuery = queries.map(q => ({ q, matches: store.searchAnimals(q) }));
   const results = unionMatches(perQuery);
   const missing = perQuery.filter(r => !r.matches.length).map(r => r.q);
   const emojiMap = await mirrorEmojiTokens(collectEmojiTokens(results));
 
-  if (compact) return { embeds: [withMissing(formatCompactTable(names.join(' '), results, emojiMap), missing)] };
+  if (compact) return { embeds: [withMissing(formatCompactTable(queries.join(' '), results, emojiMap), missing)] };
 
   if (perQuery.every(r => r.matches.length === 1) && results.length <= MAX_DETAIL_EMBEDS) {
     return { embeds: results.map(a => formatAnimalEmbed(a, emojiMap)) };
   }
-  return { embeds: [withMissing(formatListEmbed(names.join(' '), results), missing)] };
+  return { embeds: [withMissing(formatListEmbed(queries.join(' '), results), missing)] };
 }
 
 module.exports = {
