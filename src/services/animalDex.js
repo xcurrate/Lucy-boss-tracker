@@ -72,6 +72,9 @@ async function mirrorEmojiTokens(tokens) {
 
   const pending = new Map();
   for (const [id, p] of byId) {
+    // Emoji guild yang bot sudah punya akses (mis. emoji buatan sendiri di
+    // server bot) langsung dipakai apa adanya — tidak perlu di-mirror.
+    if (emojiClient.emojis?.cache?.has?.(id)) continue;
     const cached = store.getEmojiToken(id);
     if (cached) out.set(p.token, cached);
     else pending.set(id, p);
