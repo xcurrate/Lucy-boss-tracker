@@ -165,11 +165,11 @@ describe('dex prefix command', () => {
     assert.strictEqual(parseDexInput('!ping', '!'), null);
   });
 
-  it('replies with a detail card for a single match and a list otherwise', () => {
+  it('replies with a detail card for a single match and a list otherwise', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card()));
 
-    const detail = buildDexResponse('lawliet');
+    const detail = await buildDexResponse('lawliet');
     assert.strictEqual(detail.embeds.length, 1);
     assert.strictEqual(detail.embeds[0].data.title, '🐾 lawliet');
     // Field yang diminta dihapus tidak muncul di kartu dex.
@@ -182,15 +182,15 @@ describe('dex prefix command', () => {
     const total = detail.embeds[0].data.fields.find(f => f.name === 'Total Stat');
     assert.strictEqual(total.value, '22');
 
-    const list = buildDexResponse('');
+    const list = await buildDexResponse('');
     assert.match(list.embeds[0].data.title, /Animal Dex/);
     assert.match(list.embeds[0].data.description, /lawliet/);
 
-    const none = buildDexResponse('zzz');
+    const none = await buildDexResponse('zzz');
     assert.match(none.embeds[0].data.description, /Tidak ada/);
   });
 
-  it('shows detail cards for several names at once', () => {
+  it('shows detail cards for several names at once', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card({ name: 'lawliet' })));
     captureMessage(makeMessage(card({ name: 'buaya', emoji: 'buaya' }), { id: 'm2' }));
@@ -198,19 +198,19 @@ describe('dex prefix command', () => {
 
     // Dipisah spasi, koma, maupun array args semuanya didukung.
     for (const input of ['lawliet buaya kudanil', 'lawliet, buaya, kudanil', ['lawliet', 'buaya', 'kudanil']]) {
-      const res = buildDexResponse(input);
+      const res = await buildDexResponse(input);
       assert.strictEqual(res.embeds.length, 3);
       assert.deepStrictEqual(res.embeds.map(e => e.data.title), ['🐾 lawliet', '🐾 buaya', '🐾 kudanil']);
     }
   });
 
-  it('renders a compact stat table with the -c flag', () => {
+  it('renders a compact stat table with the -c flag', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card()));
 
-    const full = buildDexResponse('lawliet');
-    const compact = buildDexResponse('lawliet -c');
-    const long = buildDexResponse('lawliet --compact');
+    const full = await buildDexResponse('lawliet');
+    const compact = await buildDexResponse('lawliet -c');
+    const long = await buildDexResponse('lawliet --compact');
 
     assert.strictEqual(compact.embeds.length, 1);
     const [header, row] = compact.embeds[0].data.description.split('\n');
@@ -226,12 +226,12 @@ describe('dex prefix command', () => {
     assert.strictEqual(compact.embeds[0].data.fields, undefined);
   });
 
-  it('renders one compact row per result and ignores -c as a name', () => {
+  it('renders one compact row per result and ignores -c as a name', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));
     captureMessage(makeMessage(card({ name: 'buaya', emoji: 'buaya' }), { id: 'm2' }));
 
-    const res = buildDexResponse('lawliet buaya -c');
+    const res = await buildDexResponse('lawliet buaya -c');
     const lines = res.embeds[0].data.description.split('\n');
     assert.strictEqual(lines.length, 3); // header + 2 hewan
     assert.match(lines[1], /^<a:lawliet:\d+> \| /);
@@ -239,27 +239,27 @@ describe('dex prefix command', () => {
     assert.doesNotMatch(res.embeds[0].data.title, /-c/);
   });
 
-  it('does not throw when the query is longer than an embed title', () => {
+  it('does not throw when the query is longer than an embed title', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card()));
 
     const longQuery = 'x'.repeat(300);
     for (const input of [longQuery + ' -c', longQuery]) {
-      const res = buildDexResponse(input);
+      const res = await buildDexResponse(input);
       assert.strictEqual(res.embeds.length, 1);
       assert.ok(res.embeds[0].data.title.length <= 256, 'title <= 256');
       assert.ok(res.embeds[0].data.description.length <= 4096, 'description <= 4096');
     }
   });
 
-  it('trims compact rows dynamically so the description stays within limits', () => {
+  it('trims compact rows dynamically so the description stays within limits', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     // Nama emoji panjang → setiap baris tabel panjang, tidak mungkin muat semua.
     const longEmoji = 'e'.repeat(200);
     for (let i = 0; i < 30; i++) {
       captureMessage(makeMessage(card({ name: 'animal' + i, emoji: longEmoji }), { id: 'm' + i }));
     }
-    const res = buildDexResponse('-c');
+    const res = await buildDexResponse('-c');
     const desc = res.embeds[0].data.description;
     assert.ok(desc.length <= 4096, 'description <= 4096');
     assert.match(desc, /…dan \d+ lainnya tidak ditampilkan\./);
@@ -267,19 +267,68 @@ describe('dex prefix command', () => {
     for (const line of desc.split('\n').slice(1, -1)) assert.match(line, / \| /);
   });
 
-  it('accepts a pasted animal emoji as a query', () => {
+  it('mirrors Lucy stat emojis into the bot application and renders them', async () => {
+    const dex = require('../src/services/animalDex');
+    const { captureMessage, buildDexResponse } = dex;
+    const store = require('../src/utils/animalDexStorage');
+    const created = [];
+    const appEmojis = new Map([
+      // Emoji aplikasi bot yang namanya sama dengan milik Lucy.
+      ['9001', { id: '9001', name: 'hp', animated: false }]
+    ]);
+    dex.setClient({
+      application: {
+        emojis: {
+          fetch: async () => appEmojis,
+          create: async ({ name, attachment }) => {
+            created.push({ name, attachment });
+            const emoji = { id: String(7000 + created.length), name, animated: /\.gif$/.test(attachment) };
+            appEmojis.set(emoji.id, emoji);
+            return emoji;
+          }
+        }
+      }
+    });
+    captureMessage(makeMessage(card({ name: 'lawliet' })));
+
+    // Token Lucy tidak boleh dirender apa adanya; harus diganti emoji bot.
+    const res = await buildDexResponse('lawliet');
+    const stat = res.embeds[0].data.fields.find(f => f.name === 'Statistik').value;
+    assert.ok(!stat.includes('1541928276165922906'), 'emoji Lucy tidak dipakai langsung');
+    assert.ok(stat.includes('<:hp:9001>'), 'hp memakai emoji bot yang sudah ada');
+    assert.match(stat, /<:\w+:\d+>/, 'stat lain memakai emoji bot hasil mirror');
+    assert.ok(created.length >= 1, 'emoji baru dibuat di aplikasi bot');
+    assert.ok(created.every(c => /^https:\/\/cdn\.discordapp\.com\/emojis\/\d+\.(gif|png)$/.test(c.attachment)));
+
+    // Pemetaan di-cache: render kedua tidak membuat emoji baru lagi.
+    const before = created.length;
+    const again = await buildDexResponse('lawliet');
+    assert.strictEqual(created.length, before);
+    assert.strictEqual(again.embeds[0].data.fields.find(f => f.name === 'Statistik').value, stat);
+    assert.strictEqual(store.getEmojiToken('1541928276165922906'), '<:hp:9001>');
+
+    // Tabel -c juga memakai emoji hasil mirror (header stat + label hewan).
+    const table = await buildDexResponse('lawliet -c');
+    const header = table.embeds[0].data.description.split('\n')[0];
+    assert.ok(header.includes('<:hp:9001>'));
+    assert.ok(!header.includes('1541928276165922906'));
+
+    dex.setClient(null);
+  });
+
+  it('accepts a pasted animal emoji as a query', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));
-    const res = buildDexResponse('<a:lawliet:1557672128059539466>');
+    const res = await buildDexResponse('<a:lawliet:1557672128059539466>');
     assert.strictEqual(res.embeds.length, 1);
     assert.strictEqual(res.embeds[0].data.title, '🐾 lawliet');
   });
 
-  it('falls back to a combined list when a name matches several animals', () => {
+  it('falls back to a combined list when a name matches several animals', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card({ name: 'lawliet' })));
     captureMessage(makeMessage(card({ name: 'lawliet2' }), { id: 'm2' }));
-    const res = buildDexResponse('lawliet lawliet2');
+    const res = await buildDexResponse('lawliet lawliet2');
     assert.strictEqual(res.embeds.length, 1);
     assert.match(res.embeds[0].data.title, /Hasil Dex/);
     assert.match(res.embeds[0].data.description, /lawliet2/);

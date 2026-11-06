@@ -23,6 +23,101 @@ function totalStats(animal) {
   return found ? total : null;
 }
 
+// Emoji statistik milik aplikasi Lucy tidak bisa dirender oleh bot ini: Discord
+// hanya mengizinkan aplikasi pemilik memakai emoji aplikasinya. Karena itu token
+// sumber di-mirror menjadi emoji milik aplikasi bot (nama sama), lalu source_id
+// dipetakan ke token hasil mirror agar tidak dibuat ulang tiap render.
+let emojiClient = null;
+function setClient(client) { emojiClient = client || null; }
+
+function tokenParts(token) {
+  const m = /^<(a?):(\w+):(\d+)>$/.exec(String(token || ''));
+  return m ? { animated: Boolean(m[1]), name: m[2], id: m[3] } : null;
+}
+
+function tokenFromEmoji(emoji) {
+  return '<' + (emoji.animated ? 'a' : '') + ':' + emoji.name + ':' + emoji.id + '>';
+}
+
+// Discord hanya menerima nama emoji 2–32 karakter [A-Za-z0-9_].
+function emojiName(name) {
+  const cleaned = String(name || '').replace(/[^A-Za-z0-9_]/g, '_').slice(0, 32);
+  return cleaned.length >= 2 ? cleaned : 'e_' + cleaned;
+}
+
+// Kumpulkan seluruh token emoji dari data dex agar bisa di-mirror sekaligus.
+function collectEmojiTokens(animals) {
+  const tokens = [];
+  const push = token => { if (token && tokenParts(token)) tokens.push(token); };
+  for (const animal of animals || []) {
+    for (const token of Object.values(animal.statTokens || {})) push(token);
+    const animalToken = animalEmoji(animal);
+    if (animalToken) push(animalToken);
+  }
+  for (const token of Object.values(STAT_ICONS)) push(token);
+  return [...new Set(tokens)];
+}
+
+// Pastikan setiap token punya padanan emoji di aplikasi bot. Gagal mirror
+// (mis. tanpa izin/koneksi) tidak fatal: token asli tetap dikembalikan apa adanya.
+async function mirrorEmojiTokens(tokens) {
+  const out = new Map();
+  const byId = new Map();
+  for (const token of tokens || []) {
+    out.set(token, token);
+    const p = tokenParts(token);
+    if (p) byId.set(p.id, { ...p, token });
+  }
+  if (!emojiClient || !byId.size) return out;
+
+  const pending = new Map();
+  for (const [id, p] of byId) {
+    const cached = store.getEmojiToken(id);
+    if (cached) out.set(p.token, cached);
+    else pending.set(id, p);
+  }
+  if (!pending.size) return out;
+
+  // Pakai emoji aplikasi bot yang namanya sudah sama (hasil mirror sebelumnya).
+  try {
+    const existing = await emojiClient.application.emojis.fetch();
+    for (const emoji of existing.values()) {
+      for (const [id, p] of pending) {
+        if (emojiName(p.name) !== emoji.name) continue;
+        const appToken = tokenFromEmoji(emoji);
+        store.setEmojiToken(id, appToken);
+        out.set(p.token, appToken);
+        pending.delete(id);
+      }
+    }
+  } catch (e) { /* lanjut: token asli dipertahankan */ }
+
+  // Buat emoji baru untuk yang belum ada di aplikasi bot.
+  for (const [id, p] of pending) {
+    try {
+      const emoji = await emojiClient.application.emojis.create({
+        attachment: 'https://cdn.discordapp.com/emojis/' + p.id + '.' + (p.animated ? 'gif' : 'png'),
+        name: emojiName(p.name)
+      });
+      const appToken = tokenFromEmoji(emoji);
+      store.setEmojiToken(id, appToken);
+      out.set(p.token, appToken);
+    } catch (e) { /* token asli dipertahankan */ }
+  }
+  return out;
+}
+
+// Seluruh token emoji yang dipakai dex saat ini (untuk mirror saat startup).
+function allEmojiTokens() {
+  return collectEmojiTokens(store.listAnimals());
+}
+
+// Ganti semua token emoji pada teks memakai peta hasil mirror.
+function applyEmojiMap(text, map) {
+  if (!map || !map.size) return text;
+  return String(text).replace(/<a?:\w+:\d+>/g, token => map.get(token) || token);
+}
+
 // Batas panjang bagian embed yang diterapkan Discord; query user bisa panjang.
 const LIMITS = { title: 256, description: 4096, field: 1024, footer: 2048 };
 
@@ -184,10 +279,10 @@ function captureMessage(message) {
   return animal;
 }
 
-function formatAnimalEmbed(animal) {
+function formatAnimalEmbed(animal, emojiMap) {
   const statLine = Object.keys(STAT_LABELS)
     .filter(key => animal.stats?.[key] != null)
-    .map(key => (animal.statTokens?.[key] || STAT_ICONS[key]) + ' `' + animal.stats[key] + '`')
+    .map(key => applyEmojiMap(animal.statTokens?.[key] || STAT_ICONS[key], emojiMap) + ' `' + animal.stats[key] + '`')
     .join(' ');
   const embed = new EmbedBuilder().setColor(0x9B59B6).setTitle(clip('🐾 ' + animal.name, LIMITS.title));
   if (animal.imageUrl) embed.setThumbnail(animal.imageUrl);
@@ -228,13 +323,14 @@ function animalEmoji(animal) {
 
 // Tampilan ringkas: satu blok mirip tabel (tanpa tabel embed) — baris judul
 // berisi emoji statistik, baris data berisi emoji hewan + angka statistiknya.
-function formatCompactTable(query, animals) {
+function formatCompactTable(query, animals, emojiMap) {
+  const icon = key => applyEmojiMap(STAT_ICONS[key], emojiMap);
   const groups = [
-    STAT_COLUMNS.slice(0, 3).map(k => STAT_ICONS[k]).join(' '),
-    STAT_COLUMNS.slice(3).map(k => STAT_ICONS[k]).join(' ')
+    STAT_COLUMNS.slice(0, 3).map(icon).join(' '),
+    STAT_COLUMNS.slice(3).map(icon).join(' ')
   ];
   const rows = animals.slice(0, TABLE_MAX_ROWS).map(animal => {
-    const label = animalEmoji(animal) || '**' + animal.name + '**';
+    const label = applyEmojiMap(animalEmoji(animal), emojiMap) || '**' + animal.name + '**';
     const cells = group => group.map(k => (animal.stats?.[k] != null ? String(animal.stats[k]) : '–')).join(' ');
     const total = totalStats(animal);
     return label + ' | ' + cells(STAT_COLUMNS.slice(0, 3)) + ' | ' + cells(STAT_COLUMNS.slice(3)) +
@@ -286,27 +382,30 @@ function unionMatches(perQuery) {
 // - Selain itu → daftar gabungan hasil pencarian.
 // Flag `-c`/`--compact` menampilkan tabel ringkas (emoji stat + angka) untuk
 // semua hasil dalam satu pesan.
-function buildDexResponse(input) {
+async function buildDexResponse(input) {
   const { compact, rest } = extractFlags(input);
   const queries = toQueries(rest);
 
-  if (!queries.length) {
-    const all = store.listAnimals();
-    return { embeds: [compact ? formatCompactTable('', all) : formatListEmbed('', all)] };
-  }
-
+  const all = store.listAnimals();
   const perQuery = queries.map(q => ({ q, matches: store.searchAnimals(q) }));
-  if (compact) return { embeds: [formatCompactTable(queries.join(' '), unionMatches(perQuery))] };
+  const results = queries.length ? unionMatches(perQuery) : all;
+  const emojiMap = await mirrorEmojiTokens(collectEmojiTokens(results));
 
-  if (perQuery.every(r => r.matches.length === 1)) {
-    const animals = unionMatches(perQuery);
-    if (animals.length <= MAX_DETAIL_EMBEDS) return { embeds: animals.map(formatAnimalEmbed) };
+  if (!queries.length) {
+    return { embeds: [compact ? formatCompactTable('', all, emojiMap) : formatListEmbed('', all)] };
   }
-  return { embeds: [formatListEmbed(queries.join(' '), unionMatches(perQuery))] };
+
+  if (compact) return { embeds: [formatCompactTable(queries.join(' '), results, emojiMap)] };
+
+  if (perQuery.every(r => r.matches.length === 1) && results.length <= MAX_DETAIL_EMBEDS) {
+    return { embeds: results.map(a => formatAnimalEmbed(a, emojiMap)) };
+  }
+  return { embeds: [formatListEmbed(queries.join(' '), results)] };
 }
 
 module.exports = {
   parseAnimalCard, isAnimalCard, captureMessage, buildDexResponse,
   formatAnimalEmbed, formatCompactTable, formatListEmbed, extractFlags, toQueries,
-  normalizeName, parseStats, STAT_LABELS
+  normalizeName, parseStats, STAT_LABELS, setClient, mirrorEmojiTokens, collectEmojiTokens,
+  applyEmojiMap, allEmojiTokens
 };

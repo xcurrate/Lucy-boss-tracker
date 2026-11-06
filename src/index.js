@@ -17,6 +17,14 @@ if (!process.env.DISCORD_TOKEN || !process.env.LUCY_BOT_ID) {
 }
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 const tracker = new BossTracker(client);
+animalDex.setClient(client);
+
+// Emoji statistik milik Lucy perlu di-mirror ke aplikasi bot agar bisa dirender;
+// jalankan sekali saat start supaya dex langsung tampil lengkap.
+async function syncAnimalDexEmojis() {
+  try { await animalDex.mirrorEmojiTokens(animalDex.allEmojiTokens()); }
+  catch (e) { console.error('[AnimalDex] mirror emoji:', e.message); }
+}
 
 async function handleAutoThreadRep(message) {
   if (message.author?.bot || !message.guildId) return;
@@ -57,6 +65,7 @@ async function handlePrefixMessage(message) {
 client.once(Events.ClientReady, async c => {
   console.log('Logged in as ' + c.user.tag);
   await tracker.restoreSchedules();
+  syncAnimalDexEmojis();
 });
 client.on(Events.MessageCreate, async message => {
   lucyCounter.handleMessage(message).catch(e => console.error('[LucyCounter]', e));

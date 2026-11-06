@@ -41,6 +41,11 @@ const SCHEMA = `
     first_seen_at INTEGER,
     updated_at INTEGER
   );
+  CREATE TABLE IF NOT EXISTS emoji_map (
+    source_id TEXT NOT NULL PRIMARY KEY,
+    app_token TEXT NOT NULL,
+    updated_at INTEGER
+  );
 `;
 
 function getDb() {
@@ -197,4 +202,21 @@ function countAnimals() {
   return getDb().prepare('SELECT COUNT(*) AS n FROM dex_animals').get().n;
 }
 
-module.exports = { getDb, upsertAnimal, getAnimal, listAnimals, searchAnimals, countAnimals };
+// Cache pemetaan emoji sumber Lucy (source_id) → token emoji milik aplikasi bot
+// (app_token). Emoji milik aplikasi lain tidak bisa dirender bot ini, jadi token
+// perlu di-mirror; pemetaan disimpan agar tidak dibuat ulang tiap render.
+function getEmojiToken(sourceId) {
+  const row = getDb().prepare('SELECT app_token FROM emoji_map WHERE source_id = ?').get(String(sourceId));
+  return row ? row.app_token : null;
+}
+
+function setEmojiToken(sourceId, appToken) {
+  getDb().prepare(`INSERT INTO emoji_map (source_id, app_token, updated_at) VALUES (?, ?, ?)
+    ON CONFLICT(source_id) DO UPDATE SET app_token = excluded.app_token, updated_at = excluded.updated_at`)
+    .run(String(sourceId), appToken, Date.now());
+}
+
+module.exports = {
+  getDb, upsertAnimal, getAnimal, listAnimals, searchAnimals, countAnimals,
+  getEmojiToken, setEmojiToken
+};
