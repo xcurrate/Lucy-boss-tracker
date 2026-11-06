@@ -54,9 +54,10 @@ Menghitung pesan yang memuat kata "lucy" per anggota (cooldown 10 detik per angg
 
 ## Animal Dex
 Menangkap kartu **"Informasi animal"** yang dikirim bot Lucy (pesan Components V2) secara otomatis, lalu menyimpannya ke database SQLite (`data/animal-dex.db`). Dex bersifat **global** — satu entri per nama hewan, digabung dari semua server (hewan yang sama tidak diduplikasi antar server). Setiap kali bot Lucy mengirim/memperbarui kartu animal, datanya di-*upsert* per nama hewan sehingga dex selalu terbarui. Database skema lama (per-server) dimigrasikan otomatis ke global saat pertama dijalankan.
-- !dex [nama] — tampilkan daftar Animal Dex, atau detail satu hewan bila query cocok dengan tepat satu nama.
-- !d [nama] — alias singkat.
-Query mencocokkan nama, alias, nickname, atau rank (tidak peka huruf besar/kecil). Contoh: `!dex lawliet`, `!dex hybrid`, `!d patreon`.
+- !dex [nama...] — tampilkan detail satu atau beberapa hewan sekaligus; tanpa nama akan menampilkan seluruh daftar.
+- !d [nama...] — alias singkat.
+Nama bisa lebih dari satu, dipisah spasi atau koma. Contoh: `!dex lawliet`, `!dex lawliet buaya kudanil`, `!d patreon, hybrid`.
+Query mencocokkan nama, alias, nickname, atau rank (tidak peka huruf besar/kecil). Bila sebuah nama cocok ke beberapa hewan, hasilnya ditampilkan sebagai daftar gabungan.
 
 Data yang disimpan per hewan: nama, nickname, jumlah, rank, alias, points, sell, sacrifice, statistik (HP/ATT/PR/WP/MG/MR), role, rekomendasi weapon, kelangkaan, total ditangkap, dan URL gambar.
 

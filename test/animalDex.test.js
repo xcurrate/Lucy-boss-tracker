@@ -36,7 +36,7 @@ const card = (overrides = {}) => ({
         spoiler: false
       }
     }, { type: 14, spacing: 1, divider: true },
-    { type: 10, content: overrides.info || "- **Informasi animal:**\n  - **Nickname:** 'DM ME'\n  - **Jumlah:** 0/1\n  - **Rank:** <a:cpatreon:1541932219772313661> cpatreon\n  - **Alias:** lawliet, lawliet\n  - **Points:** 25000\n  - **Sell:** ???\n  - **Sacrifice:** 25000 Essence | 1 killed" },
+    { type: 10, content: overrides.info || "- **Informasi animal:**\n  - **Nickname:** 'DM ME'\n  - **Jumlah:** 0/1\n  - **Rank:** <a:cpatreon:1541932219772313661> cpatreon\n  - **Alias:** " + (overrides.name || 'lawliet') + ", " + (overrides.name || 'lawliet') + "\n  - **Points:** 25000\n  - **Sell:** ???\n  - **Sacrifice:** 25000 Essence | 1 killed" },
     { type: 14, spacing: 1, divider: true },
     { type: 10, content: overrides.stats || '## <:hp:1541928276165922906> `2` <:att:1541928417069375498> `0` <:pr:1541928475454079077> `1`\n## <:wp:1523723591194120354> `3` <:mg:1523723618016563210> `14` <:mr:1523723644243804281> `2`' },
     { type: 14, spacing: 1, divider: true },
@@ -177,5 +177,29 @@ describe('dex prefix command', () => {
 
     const none = buildDexResponse('zzz');
     assert.match(none.embeds[0].data.description, /Tidak ada/);
+  });
+
+  it('shows detail cards for several names at once', () => {
+    const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
+    captureMessage(makeMessage(card({ name: 'lawliet' })));
+    captureMessage(makeMessage(card({ name: 'buaya' }), { id: 'm2' }));
+    captureMessage(makeMessage(card({ name: 'kudanil' }), { id: 'm3' }));
+
+    // Dipisah spasi, koma, maupun array args semuanya didukung.
+    for (const input of ['lawliet buaya kudanil', 'lawliet, buaya, kudanil', ['lawliet', 'buaya', 'kudanil']]) {
+      const res = buildDexResponse(input);
+      assert.strictEqual(res.embeds.length, 3);
+      assert.deepStrictEqual(res.embeds.map(e => e.data.title), ['🐾 lawliet', '🐾 buaya', '🐾 kudanil']);
+    }
+  });
+
+  it('falls back to a combined list when a name matches several animals', () => {
+    const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
+    captureMessage(makeMessage(card({ name: 'lawliet' })));
+    captureMessage(makeMessage(card({ name: 'lawliet2' }), { id: 'm2' }));
+    const res = buildDexResponse('lawliet lawliet2');
+    assert.strictEqual(res.embeds.length, 1);
+    assert.match(res.embeds[0].data.title, /Hasil Dex/);
+    assert.match(res.embeds[0].data.description, /lawliet2/);
   });
 });

@@ -174,13 +174,42 @@ function formatListEmbed(query, animals) {
   return embed;
 }
 
-// Bangun payload balasan untuk `<prefix>dex [query]` / `<prefix>d [query]`.
-// Satu hasil cocok → kartu detail; selain itu → daftar hasil.
-function buildDexResponse(query) {
-  const q = String(query || '').trim();
-  const matches = store.searchAnimals(q);
-  if (q && matches.length === 1) return { embeds: [formatAnimalEmbed(matches[0])] };
-  return { embeds: [formatListEmbed(q, matches)] };
+const MAX_DETAIL_EMBEDS = 10;
+
+// Pecah input menjadi daftar query; terima string maupun array (args prefix).
+// Nama dipisah spasi dan/atau koma: `lawliet buaya` atau `lawliet, buaya`.
+function toQueries(input) {
+  const raw = Array.isArray(input) ? input.join(' ') : String(input || '');
+  return raw.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+}
+
+// Bangun payload balasan untuk `<prefix>dex [nama...]` / `<prefix>d [nama...]`.
+// - Tanpa query → seluruh daftar dex.
+// - Setiap nama cocok tepat satu hewan → tampilkan kartu detail semuanya.
+// - Selain itu → daftar gabungan hasil pencarian.
+function buildDexResponse(input) {
+  const queries = toQueries(input);
+  if (!queries.length) return { embeds: [formatListEmbed('', store.listAnimals())] };
+
+  const perQuery = queries.map(q => ({ q, matches: store.searchAnimals(q) }));
+  const allSingle = perQuery.every(r => r.matches.length === 1);
+  if (allSingle) {
+    const animals = [];
+    const seen = new Set();
+    for (const { matches } of perQuery) {
+      if (!seen.has(matches[0].nameKey)) { seen.add(matches[0].nameKey); animals.push(matches[0]); }
+    }
+    if (animals.length <= MAX_DETAIL_EMBEDS) return { embeds: animals.map(formatAnimalEmbed) };
+  }
+
+  const union = [];
+  const seen = new Set();
+  for (const { matches } of perQuery) {
+    for (const animal of matches) {
+      if (!seen.has(animal.nameKey)) { seen.add(animal.nameKey); union.push(animal); }
+    }
+  }
+  return { embeds: [formatListEmbed(queries.join(' '), union)] };
 }
 
 module.exports = {
