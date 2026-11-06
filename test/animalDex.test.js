@@ -230,6 +230,19 @@ describe('dex prefix command', () => {
     assert.doesNotMatch(res.embeds[0].data.title, /-c/);
   });
 
+  it('does not throw when the query is longer than an embed title', () => {
+    const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
+    captureMessage(makeMessage(card()));
+
+    const longQuery = 'x'.repeat(300);
+    for (const input of [longQuery + ' -c', longQuery]) {
+      const res = buildDexResponse(input);
+      assert.strictEqual(res.embeds.length, 1);
+      assert.ok(res.embeds[0].data.title.length <= 256, 'title <= 256');
+      assert.ok(res.embeds[0].data.description.length <= 4096, 'description <= 4096');
+    }
+  });
+
   it('accepts a pasted animal emoji as a query', () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));

@@ -12,6 +12,14 @@ const STAT_ICONS = {
 };
 const EMOJI_TOKEN = /<a?:(\w+):\d+>/g;
 
+// Batas panjang bagian embed yang diterapkan Discord; query user bisa panjang.
+const LIMITS = { title: 256, description: 4096, field: 1024, footer: 2048 };
+
+function clip(text, max) {
+  const s = String(text == null ? '' : text);
+  return s.length <= max ? s : s.slice(0, max - 1) + '…';
+}
+
 function stripEmoji(text) {
   return String(text || '').replace(EMOJI_TOKEN, '').replace(/\s+/g, ' ').trim();
 }
@@ -148,20 +156,20 @@ function formatAnimalEmbed(animal) {
     .filter(key => animal.stats?.[key] != null)
     .map(key => (animal.statTokens?.[key] || STAT_ICONS[key]) + ' `' + animal.stats[key] + '`')
     .join(' ');
-  const embed = new EmbedBuilder().setColor(0x9B59B6).setTitle('🐾 ' + animal.name);
+  const embed = new EmbedBuilder().setColor(0x9B59B6).setTitle(clip('🐾 ' + animal.name, LIMITS.title));
   if (animal.imageUrl) embed.setThumbnail(animal.imageUrl);
   const fields = [];
-  if (animal.nickname) fields.push({ name: 'Nickname', value: animal.nickname, inline: true });
-  if (animal.quantity) fields.push({ name: 'Jumlah', value: animal.quantity, inline: true });
-  if (animal.rank) fields.push({ name: 'Rank', value: animal.rank, inline: true });
-  if (animal.alias) fields.push({ name: 'Alias', value: animal.alias, inline: false });
+  if (animal.nickname) fields.push({ name: 'Nickname', value: clip(animal.nickname, LIMITS.field), inline: true });
+  if (animal.quantity) fields.push({ name: 'Jumlah', value: clip(animal.quantity, LIMITS.field), inline: true });
+  if (animal.rank) fields.push({ name: 'Rank', value: clip(animal.rank, LIMITS.field), inline: true });
+  if (animal.alias) fields.push({ name: 'Alias', value: clip(animal.alias, LIMITS.field), inline: false });
   if (animal.points != null) fields.push({ name: 'Points', value: String(animal.points), inline: true });
-  if (animal.sell) fields.push({ name: 'Sell', value: animal.sell, inline: true });
-  if (animal.sacrifice) fields.push({ name: 'Sacrifice', value: animal.sacrifice, inline: true });
-  if (animal.role) fields.push({ name: 'Role', value: animal.role, inline: false });
-  if (animal.weapons) fields.push({ name: 'Rekomendasi Weapon', value: animal.weapons, inline: false });
-  if (statLine) fields.push({ name: 'Statistik', value: statLine, inline: false });
-  if (animal.rarity) fields.push({ name: 'Kelangkaan', value: animal.rarity + (animal.capturedTotal != null ? ' • ' + animal.capturedTotal + ' total ditangkap' : ''), inline: false });
+  if (animal.sell) fields.push({ name: 'Sell', value: clip(animal.sell, LIMITS.field), inline: true });
+  if (animal.sacrifice) fields.push({ name: 'Sacrifice', value: clip(animal.sacrifice, LIMITS.field), inline: true });
+  if (animal.role) fields.push({ name: 'Role', value: clip(animal.role, LIMITS.field), inline: false });
+  if (animal.weapons) fields.push({ name: 'Rekomendasi Weapon', value: clip(animal.weapons, LIMITS.field), inline: false });
+  if (statLine) fields.push({ name: 'Statistik', value: clip(statLine, LIMITS.field), inline: false });
+  if (animal.rarity) fields.push({ name: 'Kelangkaan', value: clip(animal.rarity + (animal.capturedTotal != null ? ' • ' + animal.capturedTotal + ' total ditangkap' : ''), LIMITS.field), inline: false });
   if (fields.length) embed.addFields(fields);
   return embed;
 }
@@ -172,9 +180,9 @@ function formatListEmbed(query, animals) {
     ? shown.map((a, i) => (i + 1) + '. **' + a.name + '**' + (a.rank ? ' — ' + a.rank : '')).join('\n')
     : 'Tidak ada animal yang cocok dengan `' + query + '`.';
   const embed = new EmbedBuilder().setColor(0x9B59B6)
-    .setTitle(query ? '🔎 Hasil Dex: ' + query : '📖 Animal Dex')
-    .setDescription(desc)
-    .setFooter({ text: animals.length + ' hasil • total dex: ' + store.countAnimals() });
+    .setTitle(clip(query ? '🔎 Hasil Dex: ' + query : '📖 Animal Dex', LIMITS.title))
+    .setDescription(clip(desc, LIMITS.description))
+    .setFooter({ text: clip(animals.length + ' hasil • total dex: ' + store.countAnimals(), LIMITS.footer) });
   return embed;
 }
 
@@ -205,12 +213,14 @@ function formatCompactTable(query, animals) {
     ? ['Animal | ' + groups[0] + ' | ' + groups[1], ...rows].join('\n')
     : 'Tidak ada animal yang cocok dengan `' + query + '`.';
   return new EmbedBuilder().setColor(0x9B59B6)
-    .setTitle(query ? '📖 Dex (ringkas): ' + query : '📖 Animal Dex (ringkas)')
-    .setDescription(desc)
-    .setFooter({ text: animals.length + ' hewan • total dex: ' + store.countAnimals() });
+    .setTitle(clip(query ? '📖 Dex (ringkas): ' + query : '📖 Animal Dex (ringkas)', LIMITS.title))
+    .setDescription(clip(desc, LIMITS.description))
+    .setFooter({ text: clip(animals.length + ' hewan • total dex: ' + store.countAnimals(), LIMITS.footer) });
 }
 
-const MAX_DETAIL_EMBEDS = 10;
+// Batas jumlah kartu detail agar total karakter embed tetap di bawah 6000
+// (batas total Discord), mencegah error saat banyak nama sekaligus.
+const MAX_DETAIL_EMBEDS = 6;
 
 // Pisahkan flag di akhir perintah. `-c` / `--compact` = tampilan ringkas.
 function extractFlags(input) {
