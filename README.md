@@ -61,7 +61,14 @@ Query mencocokkan nama, alias, nickname, rank, atau nama emoji hewan (tidak peka
 
 Emoji hewan di kartu Lucy memuat nama hewannya, jadi user boleh **menempel emoji tersebut** langsung sebagai query (mis. `!dex <a:lawliet:1557672128059539466>`); bot akan memakai nama di balik emoji itu untuk mencari.
 
-Tambahkan flag **`-c`** (atau `--compact`) di akhir perintah untuk tampilan ringkas — satu blok padat tanpa kolom terpisah, cocok untuk melihat banyak hewan sekaligus. Contoh: `!dex lawliet -c`, `!dex lawliet buaya kudanil -c`, `!d -c`.
+Tambahkan flag **`-c`** (atau `--compact`) di akhir perintah untuk tampilan ringkas berupa **tabel** (tanpa tabel embed, hanya kolom & baris). Baris pertama berisi emoji statistik hp→mr, baris berikutnya berisi emoji hewan + angka statistiknya:
+
+```
+Animal | <hp> <att> <pr> | <wp> <mg> <mr>
+<emoji hewan> | 2 0 1 | 3 14 2
+```
+
+Setiap nama pada query menghasilkan satu baris, jadi `!dex lawliet buaya kudanil -c` menampilkan satu baris per hewan. Contoh: `!dex lawliet -c`, `!d -c` (seluruh dex).
 
 Data yang disimpan per hewan: nama, nickname, jumlah, rank, alias, points, sell, sacrifice, statistik (HP/ATT/PR/WP/MG/MR), role, rekomendasi weapon, kelangkaan, total ditangkap, dan URL gambar.
 

@@ -166,12 +166,10 @@ function formatAnimalEmbed(animal) {
   return embed;
 }
 
-function formatListEmbed(query, animals, compact = false) {
-  const shown = animals.slice(0, compact ? 30 : 20);
+function formatListEmbed(query, animals) {
+  const shown = animals.slice(0, 20);
   const desc = shown.length
-    ? shown.map((a, i) => compact
-        ? compactLine(i + 1, a)
-        : (i + 1) + '. **' + a.name + '**' + (a.rank ? ' — ' + a.rank : '')).join('\n')
+    ? shown.map((a, i) => (i + 1) + '. **' + a.name + '**' + (a.rank ? ' — ' + a.rank : '')).join('\n')
     : 'Tidak ada animal yang cocok dengan `' + query + '`.';
   const embed = new EmbedBuilder().setColor(0x9B59B6)
     .setTitle(query ? '🔎 Hasil Dex: ' + query : '📖 Animal Dex')
@@ -180,42 +178,36 @@ function formatListEmbed(query, animals, compact = false) {
   return embed;
 }
 
-function shortStat(key, animal) {
-  if (animal.stats?.[key] == null) return null;
-  return STAT_LABELS[key] + ':' + animal.stats[key];
+const STAT_COLUMNS = ['hp', 'attack', 'protection', 'wisdom', 'magic', 'mr'];
+const TABLE_MAX_ROWS = 30;
+
+// Bangun ulang token emoji hewan dari URL gambar (mis. .../emojis/<id>.gif),
+// supaya baris tabel bisa memakai emoji hewan sebagai label.
+function animalEmoji(animal) {
+  const m = /\/emojis\/(\d+)\.(gif|png|webp)/.exec(animal.imageUrl || '');
+  if (!m || !animal.emojiName) return null;
+  return '<' + (m[2] === 'gif' ? 'a' : '') + ':' + animal.emojiName + ':' + m[1] + '>';
 }
 
-// Satu baris ringkas untuk mode compact: `1. lawliet (DM ME) — cpatreon | HP:2 AT:0 ...`
-function compactLine(index, animal) {
-  const nick = animal.nickname ? ' (' + animal.nickname + ')' : '';
-  const rank = animal.rank ? ' — ' + animal.rank : '';
-  const stats = Object.keys(STAT_LABELS).map(k => shortStat(k, animal)).filter(Boolean).join(' ');
-  const bits = [animal.points != null ? 'Pts:' + animal.points : null, stats].filter(Boolean).join(' | ');
-  return index + '. **' + animal.name + '**' + nick + rank + (bits ? '\n' + bits : '');
-}
-
-// Ringkasan satu baris untuk mode compact pada kartu detail.
-function formatCompactEmbed(animal) {
-  const statLine = Object.keys(STAT_LABELS)
-    .filter(key => animal.stats?.[key] != null)
-    .map(key => (animal.statTokens?.[key] || STAT_ICONS[key]) + ' ' + animal.stats[key])
-    .join('  ');
-  const embed = new EmbedBuilder().setColor(0x9B59B6).setTitle('🐾 ' + animal.name);
-  if (animal.imageUrl) embed.setThumbnail(animal.imageUrl);
-  const head = [];
-  if (animal.nickname) head.push('**' + animal.nickname + '**');
-  if (animal.rank) head.push(animal.rank);
-  if (animal.points != null) head.push(animal.points + ' pts');
-  if (animal.rarity) head.push(animal.rarity);
-  const lines = [];
-  if (head.length) lines.push(head.join(' • '));
-  if (animal.quantity) lines.push('Jumlah: ' + animal.quantity);
-  if (statLine) lines.push(statLine);
-  if (animal.role) lines.push('Role: ' + animal.role);
-  if (animal.weapons) lines.push('Weapon: ' + animal.weapons);
-  if (animal.sacrifice) lines.push('Sacrifice: ' + animal.sacrifice);
-  embed.setDescription(lines.join('\n') || '—');
-  return embed;
+// Tampilan ringkas: satu blok mirip tabel (tanpa tabel embed) — baris judul
+// berisi emoji statistik, baris data berisi emoji hewan + angka statistiknya.
+function formatCompactTable(query, animals) {
+  const groups = [
+    STAT_COLUMNS.slice(0, 3).map(k => STAT_ICONS[k]).join(' '),
+    STAT_COLUMNS.slice(3).map(k => STAT_ICONS[k]).join(' ')
+  ];
+  const rows = animals.slice(0, TABLE_MAX_ROWS).map(animal => {
+    const label = animalEmoji(animal) || '**' + animal.name + '**';
+    const cells = group => group.map(k => (animal.stats?.[k] != null ? String(animal.stats[k]) : '–')).join(' ');
+    return label + ' | ' + cells(STAT_COLUMNS.slice(0, 3)) + ' | ' + cells(STAT_COLUMNS.slice(3));
+  });
+  const desc = rows.length
+    ? ['Animal | ' + groups[0] + ' | ' + groups[1], ...rows].join('\n')
+    : 'Tidak ada animal yang cocok dengan `' + query + '`.';
+  return new EmbedBuilder().setColor(0x9B59B6)
+    .setTitle(query ? '📖 Dex (ringkas): ' + query : '📖 Animal Dex (ringkas)')
+    .setDescription(desc)
+    .setFooter({ text: animals.length + ' hewan • total dex: ' + store.countAnimals() });
 }
 
 const MAX_DETAIL_EMBEDS = 10;
@@ -235,41 +227,45 @@ function toQueries(input) {
   return String(input || '').split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
 }
 
+// Gabungkan hasil semua query tanpa duplikat, urut sesuai urutan query.
+function unionMatches(perQuery) {
+  const out = [];
+  const seen = new Set();
+  for (const { matches } of perQuery) {
+    for (const animal of matches) {
+      if (!seen.has(animal.nameKey)) { seen.add(animal.nameKey); out.push(animal); }
+    }
+  }
+  return out;
+}
+
 // Bangun payload balasan untuk `<prefix>dex [nama...] [-c]` / `<prefix>d ...`.
 // - Tanpa query → seluruh daftar dex.
 // - Setiap nama cocok tepat satu hewan → tampilkan kartu detail semuanya.
 // - Selain itu → daftar gabungan hasil pencarian.
-// Flag `-c`/`--compact` memakai tampilan ringkas.
+// Flag `-c`/`--compact` menampilkan tabel ringkas (emoji stat + angka) untuk
+// semua hasil dalam satu pesan.
 function buildDexResponse(input) {
   const { compact, rest } = extractFlags(input);
   const queries = toQueries(rest);
-  if (!queries.length) return { embeds: [formatListEmbed('', store.listAnimals(), compact)] };
+
+  if (!queries.length) {
+    const all = store.listAnimals();
+    return { embeds: [compact ? formatCompactTable('', all) : formatListEmbed('', all)] };
+  }
 
   const perQuery = queries.map(q => ({ q, matches: store.searchAnimals(q) }));
-  const allSingle = perQuery.every(r => r.matches.length === 1);
-  if (allSingle) {
-    const animals = [];
-    const seen = new Set();
-    for (const { matches } of perQuery) {
-      if (!seen.has(matches[0].nameKey)) { seen.add(matches[0].nameKey); animals.push(matches[0]); }
-    }
-    if (animals.length <= MAX_DETAIL_EMBEDS) {
-      return { embeds: animals.map(a => (compact ? formatCompactEmbed(a) : formatAnimalEmbed(a))) };
-    }
-  }
+  if (compact) return { embeds: [formatCompactTable(queries.join(' '), unionMatches(perQuery))] };
 
-  const union = [];
-  const seen = new Set();
-  for (const { matches } of perQuery) {
-    for (const animal of matches) {
-      if (!seen.has(animal.nameKey)) { seen.add(animal.nameKey); union.push(animal); }
-    }
+  if (perQuery.every(r => r.matches.length === 1)) {
+    const animals = unionMatches(perQuery);
+    if (animals.length <= MAX_DETAIL_EMBEDS) return { embeds: animals.map(formatAnimalEmbed) };
   }
-  return { embeds: [formatListEmbed(queries.join(' '), union, compact)] };
+  return { embeds: [formatListEmbed(queries.join(' '), unionMatches(perQuery))] };
 }
 
 module.exports = {
   parseAnimalCard, isAnimalCard, captureMessage, buildDexResponse,
-  formatAnimalEmbed, formatCompactEmbed, formatListEmbed, extractFlags, toQueries,
+  formatAnimalEmbed, formatCompactTable, formatListEmbed, extractFlags, toQueries,
   normalizeName, parseStats, STAT_LABELS
 };

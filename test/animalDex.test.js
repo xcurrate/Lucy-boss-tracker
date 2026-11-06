@@ -195,7 +195,7 @@ describe('dex prefix command', () => {
     }
   });
 
-  it('uses a compact detail card when the -c flag is given', () => {
+  it('renders a compact stat table with the -c flag', () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card()));
 
@@ -204,23 +204,29 @@ describe('dex prefix command', () => {
     const long = buildDexResponse('lawliet --compact');
 
     assert.strictEqual(compact.embeds.length, 1);
-    assert.strictEqual(compact.embeds[0].data.title, '🐾 lawliet');
-    // Ringkas: tanpa code tick, memakai garis pemisah '•'.
-    assert.match(compact.embeds[0].data.description, /\*\*DM ME\*\* • cpatreon/);
-    assert.doesNotMatch(compact.embeds[0].data.description, /`/);
+    const [header, row] = compact.embeds[0].data.description.split('\n');
+    // Baris judul: emoji statistik hp..mr (dikelompokkan 3 | 3).
+    assert.strictEqual(header,
+      'Animal | <:hp:1541928276165922906> <:att:1541928417069375498> <:pr:1541928475454079077> | ' +
+      '<:wp:1523723591194120354> <:mg:1523723618016563210> <:mr:1523723644243804281>');
+    // Baris data: emoji hewan + angka statistik.
+    assert.strictEqual(row, '<a:lawliet:1557672128059539466> | 2 0 1 | 3 14 2');
     assert.strictEqual(long.embeds[0].data.description, compact.embeds[0].data.description);
     // Tanpa flag tetap kartu penuh (pakai field terpisah).
     assert.ok(full.embeds[0].data.fields.length > 3);
     assert.strictEqual(compact.embeds[0].data.fields, undefined);
   });
 
-  it('uses compact rows for the list when -c is given', () => {
+  it('renders one compact row per result and ignores -c as a name', () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
-    captureMessage(makeMessage(card()));
-    const res = buildDexResponse('-c');
-    assert.match(res.embeds[0].data.description, /lawliet/);
-    assert.match(res.embeds[0].data.description, /HP:2/);
-    // '-c' tidak dianggap sebagai nama hewan.
+    captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));
+    captureMessage(makeMessage(card({ name: 'buaya', emoji: 'buaya' }), { id: 'm2' }));
+
+    const res = buildDexResponse('lawliet buaya -c');
+    const lines = res.embeds[0].data.description.split('\n');
+    assert.strictEqual(lines.length, 3); // header + 2 hewan
+    assert.match(lines[1], /^<a:lawliet:\d+> \| /);
+    assert.match(lines[2], /^<a:buaya:\d+> \| /);
     assert.doesNotMatch(res.embeds[0].data.title, /-c/);
   });
 
