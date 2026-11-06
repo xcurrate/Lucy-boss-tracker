@@ -243,6 +243,21 @@ describe('dex prefix command', () => {
     }
   });
 
+  it('trims compact rows dynamically so the description stays within limits', () => {
+    const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
+    // Nama emoji panjang → setiap baris tabel panjang, tidak mungkin muat semua.
+    const longEmoji = 'e'.repeat(200);
+    for (let i = 0; i < 30; i++) {
+      captureMessage(makeMessage(card({ name: 'animal' + i, emoji: longEmoji }), { id: 'm' + i }));
+    }
+    const res = buildDexResponse('-c');
+    const desc = res.embeds[0].data.description;
+    assert.ok(desc.length <= 4096, 'description <= 4096');
+    assert.match(desc, /…dan \d+ lainnya tidak ditampilkan\./);
+    // Baris tidak terpotong di tengah: setiap baris data berisi pola ` | `.
+    for (const line of desc.split('\n').slice(1, -1)) assert.match(line, / \| /);
+  });
+
   it('accepts a pasted animal emoji as a query', () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));

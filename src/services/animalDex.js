@@ -20,6 +20,28 @@ function clip(text, max) {
   return s.length <= max ? s : s.slice(0, max - 1) + '…';
 }
 
+// Susun baris sebanyak yang muat dalam batas karakter, sisanya diringkas jadi
+// satu baris "…dan N lainnya". Dipakai agar tabel/daftar tidak terpotong di
+// tengah baris sekaligus tidak melewati batas panjang embed Discord.
+function fitRows(header, rows, max) {
+  const note = n => '…dan ' + n + ' lainnya tidak ditampilkan.';
+  const out = header ? [header] : [];
+  let len = header ? header.length : 0;
+  let shown = 0;
+  for (const row of rows) {
+    const hiddenAfter = rows.length - shown - 1;
+    const reserve = hiddenAfter > 0 ? 1 + note(hiddenAfter).length : 0;
+    const add = 1 + row.length;
+    if (len + add + reserve > max) break;
+    out.push(row);
+    len += add;
+    shown++;
+  }
+  const hidden = rows.length - shown;
+  if (hidden > 0) out.push(note(hidden));
+  return out.join('\n');
+}
+
 function stripEmoji(text) {
   return String(text || '').replace(EMOJI_TOKEN, '').replace(/\s+/g, ' ').trim();
 }
@@ -175,9 +197,9 @@ function formatAnimalEmbed(animal) {
 }
 
 function formatListEmbed(query, animals) {
-  const shown = animals.slice(0, 20);
-  const desc = shown.length
-    ? shown.map((a, i) => (i + 1) + '. **' + a.name + '**' + (a.rank ? ' — ' + a.rank : '')).join('\n')
+  const rows = animals.slice(0, 20).map((a, i) => (i + 1) + '. **' + a.name + '**' + (a.rank ? ' — ' + a.rank : ''));
+  const desc = rows.length
+    ? fitRows('', rows, LIMITS.description)
     : 'Tidak ada animal yang cocok dengan `' + query + '`.';
   const embed = new EmbedBuilder().setColor(0x9B59B6)
     .setTitle(clip(query ? '🔎 Hasil Dex: ' + query : '📖 Animal Dex', LIMITS.title))
@@ -210,7 +232,7 @@ function formatCompactTable(query, animals) {
     return label + ' | ' + cells(STAT_COLUMNS.slice(0, 3)) + ' | ' + cells(STAT_COLUMNS.slice(3));
   });
   const desc = rows.length
-    ? ['Animal | ' + groups[0] + ' | ' + groups[1], ...rows].join('\n')
+    ? fitRows('Animal | ' + groups[0] + ' | ' + groups[1], rows, LIMITS.description)
     : 'Tidak ada animal yang cocok dengan `' + query + '`.';
   return new EmbedBuilder().setColor(0x9B59B6)
     .setTitle(clip(query ? '📖 Dex (ringkas): ' + query : '📖 Animal Dex (ringkas)', LIMITS.title))
