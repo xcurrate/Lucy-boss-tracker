@@ -34,6 +34,7 @@ const SCHEMA = `
     captured_total INTEGER,
     image_url TEXT,
     stat_tokens TEXT,
+    emoji_name TEXT,
     source_guild_id TEXT,
     raw TEXT,
     source_message_id TEXT,
@@ -70,6 +71,7 @@ function migrateLegacyGuildSchema() {
   const cols = columnsOf('dex_animals');
   if (!cols.includes('guild_id')) return;
   addColumn('stat_tokens', 'stat_tokens TEXT');
+  addColumn('emoji_name', 'emoji_name TEXT');
   addColumn('source_guild_id', 'source_guild_id TEXT');
   db.exec('BEGIN');
   db.exec(SCHEMA.replace('IF NOT EXISTS dex_animals', 'IF NOT EXISTS dex_animals_global'));
@@ -77,11 +79,11 @@ function migrateLegacyGuildSchema() {
     INSERT INTO dex_animals_global
       (name_key, name, nickname, rank, quantity, alias, points, sell, sacrifice,
        hp, attack, protection, wisdom, magic, mr, role, weapons, rarity, captured_total,
-       image_url, stat_tokens, source_guild_id, raw, source_message_id, first_seen_at, updated_at)
+       image_url, stat_tokens, emoji_name, source_guild_id, raw, source_message_id, first_seen_at, updated_at)
     SELECT
        d.name_key, d.name, d.nickname, d.rank, d.quantity, d.alias, d.points, d.sell, d.sacrifice,
        d.hp, d.attack, d.protection, d.wisdom, d.magic, d.mr, d.role, d.weapons, d.rarity, d.captured_total,
-       d.image_url, d.stat_tokens, COALESCE(d.source_guild_id, d.guild_id), d.raw, d.source_message_id,
+       d.image_url, d.stat_tokens, d.emoji_name, COALESCE(d.source_guild_id, d.guild_id), d.raw, d.source_message_id,
        d.first_seen_at, d.updated_at
     FROM dex_animals d
     WHERE d.updated_at = (SELECT MAX(x.updated_at) FROM dex_animals x WHERE x.name_key = d.name_key)
@@ -95,6 +97,7 @@ function migrateLegacyGuildSchema() {
 function migrate() {
   migrateLegacyGuildSchema();
   addColumn('stat_tokens', 'stat_tokens TEXT');
+  addColumn('emoji_name', 'emoji_name TEXT');
   addColumn('source_guild_id', 'source_guild_id TEXT');
 }
 
@@ -118,6 +121,7 @@ function upsertAnimal(animal, meta = {}) {
     role: animal.role, weapons: animal.weapons, rarity: animal.rarity,
     captured_total: toNumber(animal.capturedTotal), image_url: animal.imageUrl || null,
     stat_tokens: animal.statTokens ? JSON.stringify(animal.statTokens) : null,
+    emoji_name: animal.emojiName || null,
     source_guild_id: meta.guildId || null,
     raw: meta.raw ? JSON.stringify(meta.raw) : null, source_message_id: meta.sourceMessageId || null
   };
@@ -127,12 +131,12 @@ function upsertAnimal(animal, meta = {}) {
       INSERT INTO dex_animals
         (name_key, name, nickname, rank, quantity, alias, points, sell, sacrifice,
          hp, attack, protection, wisdom, magic, mr, role, weapons, rarity, captured_total,
-         image_url, stat_tokens, source_guild_id, raw, source_message_id, first_seen_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+         image_url, stat_tokens, emoji_name, source_guild_id, raw, source_message_id, first_seen_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(animal.nameKey, columns.name, columns.nickname, columns.rank, columns.quantity,
         columns.alias, columns.points, columns.sell, columns.sacrifice, columns.hp, columns.attack,
         columns.protection, columns.wisdom, columns.magic, columns.mr, columns.role, columns.weapons,
-        columns.rarity, columns.captured_total, columns.image_url, columns.stat_tokens,
+        columns.rarity, columns.captured_total, columns.image_url, columns.stat_tokens, columns.emoji_name,
         columns.source_guild_id, columns.raw, columns.source_message_id, now, now);
     return { created: true };
   }
@@ -142,13 +146,13 @@ function upsertAnimal(animal, meta = {}) {
     UPDATE dex_animals SET
       name = ?, nickname = ?, rank = ?, quantity = ?, alias = ?, points = ?, sell = ?, sacrifice = ?,
       hp = ?, attack = ?, protection = ?, wisdom = ?, magic = ?, mr = ?, role = ?, weapons = ?, rarity = ?,
-      captured_total = ?, image_url = ?, stat_tokens = ?, source_guild_id = ?, raw = ?, source_message_id = ?, updated_at = ?
+      captured_total = ?, image_url = ?, stat_tokens = ?, emoji_name = ?, source_guild_id = ?, raw = ?, source_message_id = ?, updated_at = ?
     WHERE name_key = ?`)
     .run(merged.name, merged.nickname, merged.rank, merged.quantity, merged.alias, merged.points,
       merged.sell, merged.sacrifice, merged.hp, merged.attack, merged.protection, merged.wisdom,
       merged.magic, merged.mr, merged.role, merged.weapons, merged.rarity, merged.captured_total,
-      merged.image_url, merged.stat_tokens, merged.source_guild_id, merged.raw, merged.source_message_id,
-      now, animal.nameKey);
+      merged.image_url, merged.stat_tokens, merged.emoji_name, merged.source_guild_id, merged.raw,
+      merged.source_message_id, now, animal.nameKey);
   return { created: false };
 }
 
@@ -165,7 +169,8 @@ function rowToAnimal(row) {
     nameKey: row.name_key, name: row.name, nickname: row.nickname, rank: row.rank, quantity: row.quantity,
     alias: row.alias, points: row.points, sell: row.sell, sacrifice: row.sacrifice, stats, statTokens,
     role: row.role, weapons: row.weapons, rarity: row.rarity, capturedTotal: row.captured_total,
-    imageUrl: row.image_url, sourceGuildId: row.source_guild_id, sourceMessageId: row.source_message_id,
+    imageUrl: row.image_url, emojiName: row.emoji_name,
+    sourceGuildId: row.source_guild_id, sourceMessageId: row.source_message_id,
     firstSeenAt: row.first_seen_at, updatedAt: row.updated_at, raw
   };
 }
@@ -184,7 +189,7 @@ function searchAnimals(query) {
   const q = String(query || '').trim().toLowerCase();
   const all = listAnimals();
   if (!q) return all;
-  return all.filter(a => [a.name, a.alias, a.nickname, a.rank]
+  return all.filter(a => [a.name, a.alias, a.nickname, a.rank, a.emojiName]
     .some(field => typeof field === 'string' && field.toLowerCase().includes(q)));
 }
 

@@ -57,7 +57,9 @@ Menangkap kartu **"Informasi animal"** yang dikirim bot Lucy (pesan Components V
 - !dex [nama...] — tampilkan detail satu atau beberapa hewan sekaligus; tanpa nama akan menampilkan seluruh daftar.
 - !d [nama...] — alias singkat.
 Nama bisa lebih dari satu, dipisah spasi atau koma. Contoh: `!dex lawliet`, `!dex lawliet buaya kudanil`, `!d patreon, hybrid`.
-Query mencocokkan nama, alias, nickname, atau rank (tidak peka huruf besar/kecil). Bila sebuah nama cocok ke beberapa hewan, hasilnya ditampilkan sebagai daftar gabungan.
+Query mencocokkan nama, alias, nickname, rank, atau nama emoji hewan (tidak peka huruf besar/kecil). Bila sebuah nama cocok ke beberapa hewan, hasilnya ditampilkan sebagai daftar gabungan.
+
+Emoji hewan di kartu Lucy memuat nama hewannya, jadi user boleh **menempel emoji tersebut** langsung sebagai query (mis. `!dex <a:lawliet:1557672128059539466>`); bot akan memakai nama di balik emoji itu untuk mencari.
 
 Data yang disimpan per hewan: nama, nickname, jumlah, rank, alias, points, sell, sacrifice, statistik (HP/ATT/PR/WP/MG/MR), role, rekomendasi weapon, kelangkaan, total ditangkap, dan URL gambar.
 

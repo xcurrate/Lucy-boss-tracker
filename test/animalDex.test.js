@@ -28,7 +28,7 @@ const card = (overrides = {}) => ({
     type: 17,
     components: [{
       type: 9,
-      components: [{ type: 10, content: '## <a:lawliet:1557672128059539466> ' + (overrides.name || 'lawliet') + '\n*Requested by <@1515658233174294569>*' }],
+      components: [{ type: 10, content: '## <a:' + (overrides.emoji || 'lawliet') + ':1557672128059539466> ' + (overrides.name || 'lawliet') + '\n*Requested by <@1515658233174294569>*' }],
       accessory: {
         type: 11,
         media: { url: 'https://cdn.discordapp.com/emojis/1557672128059539466.gif' },
@@ -75,6 +75,8 @@ describe('animal dex parser', () => {
     // Token emoji stat asli disimpan untuk dirender ulang.
     assert.strictEqual(a.statTokens.hp, '<:hp:1541928276165922906>');
     assert.strictEqual(a.statTokens.mr, '<:mr:1523723644243804281>');
+    // Nama emoji hewan disimpan (untuk pencarian via emoji yang disalin user).
+    assert.strictEqual(a.emojiName, 'lawliet');
   });
 
   it('returns null for messages that are not animal cards', () => {
@@ -143,7 +145,7 @@ describe('animal dex storage', () => {
     const { captureMessage } = require('../src/services/animalDex');
     const store = require('../src/utils/animalDexStorage');
     captureMessage(makeMessage(card({ name: 'lawliet' })));
-    captureMessage(makeMessage(card({ name: 'wolfie', info: '- **Informasi animal:**\n  - **Nickname:** Flame\n  - **Rank:** <a:crare:1> crare' }), { id: 'm2' }));
+    captureMessage(makeMessage(card({ name: 'wolfie', emoji: 'wolfie', info: '- **Informasi animal:**\n  - **Nickname:** Flame\n  - **Rank:** <a:crare:1> crare' }), { id: 'm2' }));
 
     assert.strictEqual(store.searchAnimals('lawliet').length, 1);
     assert.strictEqual(store.searchAnimals('flame').length, 1);
@@ -182,8 +184,8 @@ describe('dex prefix command', () => {
   it('shows detail cards for several names at once', () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card({ name: 'lawliet' })));
-    captureMessage(makeMessage(card({ name: 'buaya' }), { id: 'm2' }));
-    captureMessage(makeMessage(card({ name: 'kudanil' }), { id: 'm3' }));
+    captureMessage(makeMessage(card({ name: 'buaya', emoji: 'buaya' }), { id: 'm2' }));
+    captureMessage(makeMessage(card({ name: 'kudanil', emoji: 'kudanil' }), { id: 'm3' }));
 
     // Dipisah spasi, koma, maupun array args semuanya didukung.
     for (const input of ['lawliet buaya kudanil', 'lawliet, buaya, kudanil', ['lawliet', 'buaya', 'kudanil']]) {
@@ -191,6 +193,14 @@ describe('dex prefix command', () => {
       assert.strictEqual(res.embeds.length, 3);
       assert.deepStrictEqual(res.embeds.map(e => e.data.title), ['🐾 lawliet', '🐾 buaya', '🐾 kudanil']);
     }
+  });
+
+  it('accepts a pasted animal emoji as a query', () => {
+    const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
+    captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));
+    const res = buildDexResponse('<a:lawliet:1557672128059539466>');
+    assert.strictEqual(res.embeds.length, 1);
+    assert.strictEqual(res.embeds[0].data.title, '🐾 lawliet');
   });
 
   it('falls back to a combined list when a name matches several animals', () => {

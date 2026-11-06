@@ -86,6 +86,9 @@ function parseAnimalCard(raw) {
   const headingLine = String(heading || '').split('\n')[0];
   const name = stripEmoji(headingLine.replace(/^\s*##\s*/, '').replace(/\*Requested by.*$/i, ''));
   if (!name) return null;
+  // Emoji hewan biasanya memuat nama hewan, jadi simpan namanya untuk pencarian
+  // ketika user menyalin emoji tersebut sebagai query.
+  const emojiName = emojiNames(headingLine)[0] || null;
 
   const statsText = texts.find(t => /<a?:\w+:\d+>\s*`/.test(t)) || '';
   const roleText = texts.find(t => /^\s*[-*]\s*\*\*Role\b/i.test(t)) || '';
@@ -121,7 +124,8 @@ function parseAnimalCard(raw) {
     weapons: weaponNames.length ? weaponNames.join(', ') + (moreWeapons ? ', + more' : '') : null,
     rarity: stripEmoji(rarityPart || '') || null,
     capturedTotal: captured ? Number(captured[1]) : null,
-    imageUrl: imageUrl || null
+    imageUrl: imageUrl || null,
+    emojiName
   };
 }
 
@@ -178,8 +182,11 @@ const MAX_DETAIL_EMBEDS = 10;
 
 // Pecah input menjadi daftar query; terima string maupun array (args prefix).
 // Nama dipisah spasi dan/atau koma: `lawliet buaya` atau `lawliet, buaya`.
+// Emoji hewan (mis. <a:lawliet:123>) dianggap sebagai nama hewanya, sehingga
+// user boleh menempel emoji dari kartu sebagai query.
 function toQueries(input) {
-  const raw = Array.isArray(input) ? input.join(' ') : String(input || '');
+  const raw = (Array.isArray(input) ? input.join(' ') : String(input || ''))
+    .replace(/<a?:(\w+):\d+>/g, ' $1 ');
   return raw.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
 }
 
