@@ -195,6 +195,35 @@ describe('dex prefix command', () => {
     }
   });
 
+  it('uses a compact detail card when the -c flag is given', () => {
+    const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
+    captureMessage(makeMessage(card()));
+
+    const full = buildDexResponse('lawliet');
+    const compact = buildDexResponse('lawliet -c');
+    const long = buildDexResponse('lawliet --compact');
+
+    assert.strictEqual(compact.embeds.length, 1);
+    assert.strictEqual(compact.embeds[0].data.title, '🐾 lawliet');
+    // Ringkas: tanpa code tick, memakai garis pemisah '•'.
+    assert.match(compact.embeds[0].data.description, /\*\*DM ME\*\* • cpatreon/);
+    assert.doesNotMatch(compact.embeds[0].data.description, /`/);
+    assert.strictEqual(long.embeds[0].data.description, compact.embeds[0].data.description);
+    // Tanpa flag tetap kartu penuh (pakai field terpisah).
+    assert.ok(full.embeds[0].data.fields.length > 3);
+    assert.strictEqual(compact.embeds[0].data.fields, undefined);
+  });
+
+  it('uses compact rows for the list when -c is given', () => {
+    const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
+    captureMessage(makeMessage(card()));
+    const res = buildDexResponse('-c');
+    assert.match(res.embeds[0].data.description, /lawliet/);
+    assert.match(res.embeds[0].data.description, /HP:2/);
+    // '-c' tidak dianggap sebagai nama hewan.
+    assert.doesNotMatch(res.embeds[0].data.title, /-c/);
+  });
+
   it('accepts a pasted animal emoji as a query', () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));

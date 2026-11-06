@@ -166,10 +166,12 @@ function formatAnimalEmbed(animal) {
   return embed;
 }
 
-function formatListEmbed(query, animals) {
-  const shown = animals.slice(0, 20);
+function formatListEmbed(query, animals, compact = false) {
+  const shown = animals.slice(0, compact ? 30 : 20);
   const desc = shown.length
-    ? shown.map((a, i) => (i + 1) + '. **' + a.name + '**' + (a.rank ? ' — ' + a.rank : '')).join('\n')
+    ? shown.map((a, i) => compact
+        ? compactLine(i + 1, a)
+        : (i + 1) + '. **' + a.name + '**' + (a.rank ? ' — ' + a.rank : '')).join('\n')
     : 'Tidak ada animal yang cocok dengan `' + query + '`.';
   const embed = new EmbedBuilder().setColor(0x9B59B6)
     .setTitle(query ? '🔎 Hasil Dex: ' + query : '📖 Animal Dex')
@@ -178,25 +180,70 @@ function formatListEmbed(query, animals) {
   return embed;
 }
 
-const MAX_DETAIL_EMBEDS = 10;
-
-// Pecah input menjadi daftar query; terima string maupun array (args prefix).
-// Nama dipisah spasi dan/atau koma: `lawliet buaya` atau `lawliet, buaya`.
-// Emoji hewan (mis. <a:lawliet:123>) dianggap sebagai nama hewanya, sehingga
-// user boleh menempel emoji dari kartu sebagai query.
-function toQueries(input) {
-  const raw = (Array.isArray(input) ? input.join(' ') : String(input || ''))
-    .replace(/<a?:(\w+):\d+>/g, ' $1 ');
-  return raw.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+function shortStat(key, animal) {
+  if (animal.stats?.[key] == null) return null;
+  return STAT_LABELS[key] + ':' + animal.stats[key];
 }
 
-// Bangun payload balasan untuk `<prefix>dex [nama...]` / `<prefix>d [nama...]`.
+// Satu baris ringkas untuk mode compact: `1. lawliet (DM ME) — cpatreon | HP:2 AT:0 ...`
+function compactLine(index, animal) {
+  const nick = animal.nickname ? ' (' + animal.nickname + ')' : '';
+  const rank = animal.rank ? ' — ' + animal.rank : '';
+  const stats = Object.keys(STAT_LABELS).map(k => shortStat(k, animal)).filter(Boolean).join(' ');
+  const bits = [animal.points != null ? 'Pts:' + animal.points : null, stats].filter(Boolean).join(' | ');
+  return index + '. **' + animal.name + '**' + nick + rank + (bits ? '\n' + bits : '');
+}
+
+// Ringkasan satu baris untuk mode compact pada kartu detail.
+function formatCompactEmbed(animal) {
+  const statLine = Object.keys(STAT_LABELS)
+    .filter(key => animal.stats?.[key] != null)
+    .map(key => (animal.statTokens?.[key] || STAT_ICONS[key]) + ' ' + animal.stats[key])
+    .join('  ');
+  const embed = new EmbedBuilder().setColor(0x9B59B6).setTitle('🐾 ' + animal.name);
+  if (animal.imageUrl) embed.setThumbnail(animal.imageUrl);
+  const head = [];
+  if (animal.nickname) head.push('**' + animal.nickname + '**');
+  if (animal.rank) head.push(animal.rank);
+  if (animal.points != null) head.push(animal.points + ' pts');
+  if (animal.rarity) head.push(animal.rarity);
+  const lines = [];
+  if (head.length) lines.push(head.join(' • '));
+  if (animal.quantity) lines.push('Jumlah: ' + animal.quantity);
+  if (statLine) lines.push(statLine);
+  if (animal.role) lines.push('Role: ' + animal.role);
+  if (animal.weapons) lines.push('Weapon: ' + animal.weapons);
+  if (animal.sacrifice) lines.push('Sacrifice: ' + animal.sacrifice);
+  embed.setDescription(lines.join('\n') || '—');
+  return embed;
+}
+
+const MAX_DETAIL_EMBEDS = 10;
+
+// Pisahkan flag di akhir perintah. `-c` / `--compact` = tampilan ringkas.
+function extractFlags(input) {
+  const raw = (Array.isArray(input) ? input.join(' ') : String(input || ''))
+    .replace(/<a?:(\w+):\d+>/g, ' $1 ');
+  const compact = /(^|\s)-{1,2}c(ompact)?(\s|$)/i.test(raw);
+  return { compact, rest: raw.replace(/(^|\s)-{1,2}c(ompact)?(\s|$)/gi, ' ') };
+}
+
+// Pecah input menjadi daftar query. Nama dipisah spasi dan/atau koma:
+// `lawliet buaya` atau `lawliet, buaya`. Emoji hewan (mis. <a:lawliet:123>)
+// dianggap sebagai nama hewanya, sehingga user boleh menempel emoji dari kartu.
+function toQueries(input) {
+  return String(input || '').split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+}
+
+// Bangun payload balasan untuk `<prefix>dex [nama...] [-c]` / `<prefix>d ...`.
 // - Tanpa query → seluruh daftar dex.
 // - Setiap nama cocok tepat satu hewan → tampilkan kartu detail semuanya.
 // - Selain itu → daftar gabungan hasil pencarian.
+// Flag `-c`/`--compact` memakai tampilan ringkas.
 function buildDexResponse(input) {
-  const queries = toQueries(input);
-  if (!queries.length) return { embeds: [formatListEmbed('', store.listAnimals())] };
+  const { compact, rest } = extractFlags(input);
+  const queries = toQueries(rest);
+  if (!queries.length) return { embeds: [formatListEmbed('', store.listAnimals(), compact)] };
 
   const perQuery = queries.map(q => ({ q, matches: store.searchAnimals(q) }));
   const allSingle = perQuery.every(r => r.matches.length === 1);
@@ -206,7 +253,9 @@ function buildDexResponse(input) {
     for (const { matches } of perQuery) {
       if (!seen.has(matches[0].nameKey)) { seen.add(matches[0].nameKey); animals.push(matches[0]); }
     }
-    if (animals.length <= MAX_DETAIL_EMBEDS) return { embeds: animals.map(formatAnimalEmbed) };
+    if (animals.length <= MAX_DETAIL_EMBEDS) {
+      return { embeds: animals.map(a => (compact ? formatCompactEmbed(a) : formatAnimalEmbed(a))) };
+    }
   }
 
   const union = [];
@@ -216,10 +265,11 @@ function buildDexResponse(input) {
       if (!seen.has(animal.nameKey)) { seen.add(animal.nameKey); union.push(animal); }
     }
   }
-  return { embeds: [formatListEmbed(queries.join(' '), union)] };
+  return { embeds: [formatListEmbed(queries.join(' '), union, compact)] };
 }
 
 module.exports = {
   parseAnimalCard, isAnimalCard, captureMessage, buildDexResponse,
-  formatAnimalEmbed, formatListEmbed, normalizeName, parseStats, STAT_LABELS
+  formatAnimalEmbed, formatCompactEmbed, formatListEmbed, extractFlags, toQueries,
+  normalizeName, parseStats, STAT_LABELS
 };
