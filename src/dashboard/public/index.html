@@ -17,6 +17,7 @@
       <a class="nav" href="#rep">🧵 <span>Auto Thread Rep</span></a>
       <a class="nav" href="#lucy-counter">🔢 <span>Lucy Counter</span></a>
       <a class="nav" href="#boss-rewards">🎁 <span>Boss Reward Reminder</span></a>
+      <a class="nav" href="#notes">📝 <span>Notes</span></a>
       <a class="nav" href="#logs">▤ <span>System Logs</span></a>
       <div class="sidebar-bottom"><span class="live-dot"></span> Local runtime monitor <span class="muted">●</span></div>
     </aside>
@@ -91,6 +92,20 @@
             <div class="field"><label for="thread-prefix">AWALAN NAMA THREAD</label><input id="thread-prefix" maxlength="40" placeholder="Rep"><small>Nama thread menjadi awalan + nama pengirim.</small></div>
             <div class="field"><label for="archive-duration">AUTO-ARCHIVE</label><select id="archive-duration"><option value="60">1 jam</option><option value="1440">24 jam</option><option value="4320">3 hari</option><option value="10080">7 hari</option></select><small>Durasi arsip otomatis thread.</small></div>
           </div>
+        </section>
+        <section class="panel" id="notes">
+          <div class="panel-heading"><div><div class="eyebrow">CATEGORY 05 / CATATAN</div><h2>📝 Notes</h2><p>Catatan bebas per server, tersimpan lokal di dashboard.</p></div></div>
+          <div class="form-grid">
+            <div class="field"><label for="note-title">JUDUL NOTE</label><input id="note-title" maxlength="120" placeholder="Judul singkat"><small>Opsional bila isi note diisi.</small></div>
+            <div class="field"><label for="note-body">ISI NOTE</label><textarea id="note-body" maxlength="4000" rows="5" placeholder="Tulis catatan di sini…"></textarea><small>Maksimal 4000 karakter.</small></div>
+          </div>
+          <div class="note-actions">
+            <button id="note-save" class="primary">Tambah note <span>→</span></button>
+            <button id="note-cancel" class="ghost hidden">Batal edit</button>
+            <span id="note-status" role="status" aria-live="polite"></span>
+          </div>
+          <div class="note-toolbar"><span>DAFTAR NOTE (<span id="note-count">0</span>)</span></div>
+          <div id="note-list" class="note-list"><div class="empty-log">Belum ada note untuk server ini.</div></div>
         </section>
         <section class="panel logs-panel" id="logs">
           <div class="panel-heading"><div><div class="eyebrow">CATEGORY 03 / DIAGNOSTICS</div><h2>▤ System logs</h2><p>Log runtime terbaru, diperbarui otomatis.</p></div><button id="clear-logs" class="ghost">Bersihkan tampilan</button></div>

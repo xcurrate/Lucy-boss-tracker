@@ -21,3 +21,11 @@
   perubahan kode. Nama yang dikenali: `hp att pr wp mg mr` (huruf kecil), plus alias di
   `EMOJI_ALIASES` (`mg`/`mag`/`magic`, `att`/`attack`, `pr`/`prot`/`protection`, dll).
 - Emoji guild yang sudah bisa diakses bot dipakai langsung tanpa di-mirror.
+
+## Dashboard
+- `src/dashboard/server.js` (API + static) dan `src/dashboard/public/` (UI: `index.html`, `app.js`,
+  `styles.css`). Semua endpoint `/api/*` butuh header `Authorization: Bearer <DASHBOARD_TOKEN>`.
+- Fitur **Notes**: catatan bebas per server di `data/notes.json` via `src/utils/noteStorage.js`
+  (CRUD: `listNotes`/`addNote`/`updateNote`/`deleteNote`, judul ≤120, isi ≤4000). Endpoint:
+  `GET/POST/PUT/DELETE /api/notes`. UI-nya panel `#notes` di dashboard (tambah/edit/hapus).
+- Test: `test/notes.test.js` (storage) dan `test/dashboardNotes.test.js` (API HTTP sungguhan).

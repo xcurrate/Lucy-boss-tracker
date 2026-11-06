@@ -5,6 +5,7 @@ const crypto = require('node:crypto');
 const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
 const logBuffer = require('../utils/logBuffer');
 const bossRewardStore = require('../utils/bossRewardStorage');
+const noteStorage = require('../utils/noteStorage');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
@@ -182,6 +183,27 @@ function startDashboard(client, tracker) {
         const saved = bossRewardStore.setServer(guild.id, { enabled: value.enabled, channelId, roleId, targets });
         console.log('[Dashboard] Server Reward Reminder diperbarui untuk guild', guild.id);
         return json(res, 200, { ok: true, settings: saved });
+      }
+      if (req.method === 'GET' && url.pathname === '/api/notes') {
+        const guild = getGuild(client, url.searchParams.get('guildId'));
+        return json(res, 200, { notes: noteStorage.listNotes(guild.id) });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/notes') {
+        const input = await readBody(req);
+        const guild = getGuild(client, input.guildId);
+        return json(res, 200, { ok: true, note: noteStorage.addNote(guild.id, input) });
+      }
+      if (req.method === 'PUT' && url.pathname === '/api/notes') {
+        const input = await readBody(req);
+        const guild = getGuild(client, input.guildId);
+        if (!input.id) throw new Error('ID note wajib diisi.');
+        return json(res, 200, { ok: true, note: noteStorage.updateNote(guild.id, String(input.id), input) });
+      }
+      if (req.method === 'DELETE' && url.pathname === '/api/notes') {
+        const input = await readBody(req);
+        const guild = getGuild(client, input.guildId);
+        if (!input.id) throw new Error('ID note wajib diisi.');
+        return json(res, 200, noteStorage.deleteNote(guild.id, String(input.id)));
       }
       if (req.method === 'PUT' && url.pathname === '/api/settings') {
         const input = await readBody(req);

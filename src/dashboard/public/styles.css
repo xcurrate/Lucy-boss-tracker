@@ -837,6 +837,117 @@ footer span {
   text-align:left
 }
 
+.note-actions {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-top:16px;
+  flex-wrap:wrap
+}
+
+.note-actions #note-status {
+  color:var(--muted);
+  font:11px 'DM Mono',monospace
+}
+
+.note-actions #note-status.bad {
+  color:var(--red)
+}
+
+.note-toolbar {
+  display:flex;
+  justify-content:space-between;
+  color:var(--muted);
+  font:10px 'DM Mono',monospace;
+  letter-spacing:1px;
+  margin:22px 0 9px
+}
+
+.note-list {
+  display:grid;
+  gap:10px
+}
+
+.note-item {
+  background:var(--surface2);
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:14px
+}
+
+.note-item.editing {
+  border-color:var(--accent)
+}
+
+.note-head {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px
+}
+
+.note-title {
+  color:var(--text);
+  font-weight:700;
+  overflow-wrap:anywhere
+}
+
+.note-body {
+  color:#c0cad9;
+  margin-top:8px;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere
+}
+
+.note-meta {
+  color:#68758a;
+  font:10px 'DM Mono',monospace;
+  margin-top:10px
+}
+
+.note-item-actions {
+  display:flex;
+  gap:8px;
+  flex-shrink:0
+}
+
+.note-item-actions button {
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:7px;
+  padding:6px 10px;
+  color:var(--muted);
+  cursor:pointer;
+  font:11px Manrope,sans-serif
+}
+
+.note-item-actions button:hover {
+  border-color:var(--accent);
+  color:var(--accent)
+}
+
+.note-item-actions button.danger:hover {
+  border-color:var(--red);
+  color:var(--red)
+}
+
+textarea {
+  width:100%;
+  border:1px solid #354052;
+  background:#111722;
+  color:var(--text);
+  border-radius:8px;
+  padding:12px 13px;
+  font:inherit;
+  outline:none;
+  resize:vertical;
+  min-height:96px
+}
+
+textarea:focus {
+  border-color:var(--accent)
+}
+
 .token-form .primary {
   width:100%;
   justify-content:center

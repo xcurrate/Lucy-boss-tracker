@@ -16,11 +16,13 @@ Bot Discord Node.js untuk memantau pesan Components V2 dari bot Lucy, membaca ti
 
 ## Web Control Dashboard
 
-Dashboard memiliki kategori Overview, Boss Tracker, Auto Thread Rep, dan System Logs.
+Dashboard memiliki kategori Overview, Boss Tracker, Auto Thread Rep, Lucy Counter, Boss Reward Reminder, Notes, dan System Logs.
 
 Pengaturan Boss Tracker: ON/OFF, channel notifikasi, role mention, prefix server, dan status waktu boss berikutnya.
 
 Pengaturan Auto Thread Rep: ON/OFF, **channel pemicu khusus**, target Discord user ID, nominal rep, awalan nama thread, dan durasi auto-archive. Fitur hanya memproses pesan *rep yang dikirim di channel Auto Thread Rep yang dipilih. Channel ini terpisah dari channel notifikasi Boss Tracker.
+
+Notes: catatan bebas per server (judul + isi), bisa ditambah, diedit, dan dihapus langsung dari dashboard. Catatan disimpan di `data/notes.json` dan hanya berlaku untuk server yang sedang dipilih.
 
 Kotak log menampilkan log runtime terbaru secara otomatis. Buffer menyimpan maksimal 300 entri terakhir di memori proses.
 
