@@ -356,28 +356,38 @@ function animalEmoji(animal) {
   return '<' + (m[2] === 'gif' ? 'a' : '') + ':' + animal.emojiName + ':' + m[1] + '>';
 }
 
+// Penanda kolom pertama tabel (identitas hewan). Tiap baris memakai emoji
+// hewanya sendiri, jadi header cukup satu emoji, bukan kata "Animal".
+const TABLE_LABEL_ICON = '🧬';
+// Kolom total memakai lambang jumlah agar header bebas teks.
+const TABLE_TOTAL_ICON = '∑';
+// Jarak antar sel: spasi biasa + spasi em (U+2001 EM QUAD). Spasi em jauh lebih
+// lebar dari spasi biasa sehingga angka code span tidak berdempetan. Spasi biasa
+// tetap disertakan sebagai jaring pengaman: seandainya klien memangkas karakter
+// Unicode itu, jaraknya tidak jadi nol.
+const COLUMN_GAP = ' \u2001';
+
 // Tampilan ringkas: satu blok mirip tabel (tanpa tabel embed) — baris judul
 // berisi emoji statistik, baris data berisi emoji hewan + angka statistiknya.
-// Angka dibungkus code span agar lebar tiap digit sama, sehingga kolom sejajar.
-function formatCompactTable(query, animals, emojiMap) {
+// Angka dibungkus code span agar lebar tiap digit sama, dan antar sel diberi
+// spasi em supaya tetap ada jarak.
+function formatCompactTable(animals, emojiMap) {
   const icon = key => applyEmojiMap(STAT_ICONS[key], emojiMap);
   const groups = [
-    STAT_COLUMNS.slice(0, 3).map(icon).join(' '),
-    STAT_COLUMNS.slice(3).map(icon).join(' ')
+    STAT_COLUMNS.slice(0, 3).map(icon).join(COLUMN_GAP),
+    STAT_COLUMNS.slice(3).map(icon).join(COLUMN_GAP)
   ];
   const cell = value => (value != null ? '`' + value + '`' : '–');
   const rows = animals.slice(0, TABLE_MAX_ROWS).map(animal => {
     const label = applyEmojiMap(animalEmoji(animal), emojiMap) || '**' + animal.name + '**';
-    const cells = group => group.map(k => cell(animal.stats?.[k])).join(' ');
-    const total = totalStats(animal);
+    const cells = group => group.map(k => cell(animal.stats?.[k])).join(COLUMN_GAP);
     return label + ' | ' + cells(STAT_COLUMNS.slice(0, 3)) + ' | ' + cells(STAT_COLUMNS.slice(3)) +
-      ' | ' + cell(total);
+      ' | ' + cell(totalStats(animal));
   });
-  const desc = rows.length
-    ? fitRows('Animal | ' + groups[0] + ' | ' + groups[1] + ' | Total', rows, LIMITS.description)
-    : '';
+  const header = TABLE_LABEL_ICON + ' | ' + groups[0] + ' | ' + groups[1] + ' | ' + TABLE_TOTAL_ICON;
+  const desc = rows.length ? fitRows(header, rows, LIMITS.description) : '';
   return new EmbedBuilder().setColor(0x9B59B6)
-    .setTitle(clip(query ? '📖 Dex (ringkas): ' + query : '📖 Animal Dex (ringkas)', LIMITS.title))
+    .setTitle('📖 Animal Dex (ringkas)')
     .setDescription(clip(desc, LIMITS.description))
     .setFooter({ text: clip(animals.length + ' hewan • total dex: ' + store.countAnimals(), LIMITS.footer) });
 }
@@ -480,7 +490,7 @@ async function buildDexResponse(input, { prefix } = {}) {
   const found = perQuery.filter(r => r.matches.length).map(r => r.q).join(' ');
   const emojiMap = await mirrorEmojiTokens(collectEmojiTokens(results));
 
-  if (compact) return { embeds: [formatCompactTable(found, results, emojiMap)] };
+  if (compact) return { embeds: [formatCompactTable(results, emojiMap)] };
 
   if (perQuery.every(r => r.matches.length === 1) && results.length <= MAX_DETAIL_EMBEDS) {
     return { embeds: results.map(a => formatAnimalEmbed(a, emojiMap)) };

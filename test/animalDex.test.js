@@ -221,12 +221,18 @@ describe('dex prefix command', () => {
 
     assert.strictEqual(compact.embeds.length, 1);
     const [header, row] = compact.embeds[0].data.description.split('\n');
-    // Baris judul: emoji statistik hp..mr (dikelompokkan 3 | 3).
+    const gap = ' \u2001';
+    // Baris judul: emoji penanda + emoji statistik hp..mr (dikelompokkan 3 | 3) + total.
     assert.strictEqual(header,
-      'Animal | <:hp:1541928276165922906> <:att:1541928417069375498> <:pr:1541928475454079077> | ' +
-      '<:wp:1523723591194120354> <:mg:1523723618016563210> <:mr:1523723644243804281> | Total');
-    // Baris data: emoji hewan + angka statistik + total stat.
-    assert.strictEqual(row, '<a:lawliet:1557672128059539466> | `2` `0` `1` | `3` `14` `2` | `22`');
+      '🧬 | <:hp:1541928276165922906>' + gap + '<:att:1541928417069375498>' + gap +
+      '<:pr:1541928475454079077> | <:wp:1523723591194120354>' + gap +
+      '<:mg:1523723618016563210>' + gap + '<:mr:1523723644243804281> | ∑');
+    // Baris data: emoji hewan + angka statistik + total stat, dipisah spasi em.
+    assert.strictEqual(row,
+      '<a:lawliet:1557672128059539466> | `2`' + gap + '`0`' + gap + '`1` | `3`' + gap + '`14`' + gap +
+      '`2` | `22`');
+    // Judul tidak memuat nama hewan maupun daftar query.
+    assert.strictEqual(compact.embeds[0].data.title, '📖 Animal Dex (ringkas)');
     assert.strictEqual(long.embeds[0].data.description, compact.embeds[0].data.description);
     // Tanpa flag tetap kartu penuh (pakai field terpisah).
     assert.ok(full.embeds[0].data.fields.length > 3);
@@ -481,8 +487,8 @@ describe('dex prefix command', () => {
     assert.match(description, /<a:sakurafate:/);
     assert.match(description, /<a:fiona:/);
     assert.match(description, /<a:snorlaxdoingafk:/);
-    // Tidak ada token mentah yang tersisa: judul hanya memuat nama-nama bersih.
-    assert.strictEqual(title, '📖 Dex (ringkas): cpatreon sakurafate fiona snorlaxdoingafk');
+    // Judul ringkas tidak memuat nama hewan maupun query mentah.
+    assert.strictEqual(title, '📖 Animal Dex (ringkas)');
     assert.doesNotMatch(description, /⁰⁰⁰⁰/);
   });
 

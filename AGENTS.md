@@ -38,9 +38,12 @@
 - `<prefix>dex` **tanpa nama** tidak lagi menampilkan daftar hewan; balasannya adalah panduan
   cara pakai (`formatDexUsage`). Tidak ada kata kunci "tampilkan semua" — daftar penuh hanya
   pernah keluar lewat pencarian yang cocok banyak hewan.
-- Tabel ringkas (`-c`) membungkus tiap angka dalam code span (`` `2` ``) supaya lebar digit
-  sama dan kolom sejajar; sel kosong tetap `–`. Tidak ada tabel markdown asli karena Discord
-  tidak merendernya di dalam embed.
+- Tabel ringkas (`-c`): judul embed tetap `📖 Animal Dex (ringkas)` tanpa nama hewan.
+  Header memakai emoji, bukan kata — `🧬` untuk kolom hewan dan `∑` untuk total.
+  Tiap angka dibungkus code span supaya lebar digit sama; antar sel dipisah
+  `COLUMN_GAP` = spasi biasa + spasi em U+2001 (spasi em jauh lebih lebar, spasi
+  biasa jadi jaring pengaman bila klien memangkas Unicode). Sel kosong tetap `–`.
+  Tidak ada tabel markdown asli karena Discord tidak merendernya di dalam embed.
 - Emoji animasi Lucy bisa >256 KiB, batas unggah emoji Discord, sehingga `create` gagal 400 dan
   emoji tampil sebagai teks. `emojiSourceUrls` mencoba GIF dari ukuran kecil dulu
   (`?size=96,64,48,32`) — parameter CDN ini mengecilkan berkas tanpa membuang frame animasi —
