@@ -387,8 +387,10 @@ const MAX_DETAIL_EMBEDS = 6;
 
 // Pisahkan flag di akhir perintah. `-c` / `--compact` = tampilan ringkas.
 // Token emoji diubah jadi nama hewanya, kecuali emoji dekoratif yang dibuang.
+// Sebelumnya mention dibuang agar `<@id>` tidak ikut jadi query.
 function extractFlags(input) {
   const raw = (Array.isArray(input) ? input.join(' ') : String(input || ''))
+    .replace(/<@[!&]?\d+>/g, ' ')
     .replace(/<a?:(\w+):\d+>/g, (token, name) => (isDecorativeEmoji(name) ? ' ' : ' ' + name + ' '));
   const compact = /(^|\s)-{1,2}c(ompact)?(\s|$)/i.test(raw);
   return { compact, rest: raw.replace(/(^|\s)-{1,2}c(ompact)?(\s|$)/gi, ' ') };
@@ -402,21 +404,42 @@ function isDecorativeEmoji(name) {
   return DECORATIVE_EMOJI.has(String(name || '').toLowerCase());
 }
 
-// Token yang tidak mengandung huruf/angka (mis. digit superskrip "⁰⁰⁰⁰" pada
-// penanda jumlah kartu) tidak mungkin menjadi nama hewan, jadi dibuang.
-function isMeaningfulQuery(token) {
-  return /[a-z0-9]/i.test(token);
+// Nama emoji Discord maksimal 32 karakter [A-Za-z0-9_]. Token yang melewati
+// batas ini pasti bukan nama hewan.
+const MAX_EMOJI_NAME = 32;
+
+// Discord kerap memotong token emoji yang disalin dari kartu: `<a:snorlaxdoingafk:`
+// tanpa id, atau `:cpatreon:` tanpa nama. Sisa potongan itu mengandung `<`, `>`,
+// `:` atau digit superskrip — karakter yang tidak mungkin ada di nama hewan.
+function looksLikeEmojiNameToken(token) {
+  if (/[<>:]/.test(token)) return true;
+  if (/[\u2070-\u209F\u00B2\u00B3\u00B9]/.test(token)) return true;
+  return token.length > MAX_EMOJI_NAME;
+}
+
+// Rapikan satu token menjadi nama yang bisa dicari. Token yang jelas berasal
+// dari potongan emoji diambil bagian huruf/angkanya saja — kalau sama sekali
+// tidak ada (mis. `<a:snorlaxdoingafk:` -> `snorlaxdoingafk` tetap ada, tapi
+// `<a:` -> kosong) token dibuang. Nama biasa hanya dibersihkan dari tanda baca.
+function normalizeQueryToken(token) {
+  const value = String(token || '');
+  if (looksLikeEmojiNameToken(value)) {
+    const runs = value.match(/[a-z0-9_-]{2,}/gi) || [];
+    return runs.length ? runs.sort((a, b) => b.length - a.length)[0] : '';
+  }
+  return value.replace(/[^a-z0-9_-]+/gi, '');
 }
 
 // Pecah input menjadi daftar query. Nama dipisah spasi dan/atau koma:
 // `lawliet buaya` atau `lawliet, buaya`. Emoji hewan (mis. <a:lawliet:123>)
 // dianggap sebagai nama hewanya, sehingga user boleh menempel emoji dari kartu.
-// Token sisa dari salinan kartu (digit superskrip) diabaikan.
+// Potongan emoji yang rusak dan digit superskrip penanda jumlah dibuang, tapi
+// nama yang masih terbaca (mis. `snorlaxdoingafk`) tetap dipakai.
 function toQueries(input) {
   return String(input || '')
     .split(/[\s,]+/)
-    .map(s => s.trim())
-    .filter(s => s && isMeaningfulQuery(s));
+    .map(normalizeQueryToken)
+    .filter(token => token.length >= 2);
 }
 
 // Gabungkan hasil semua query tanpa duplikat, urut sesuai urutan query.

@@ -27,6 +27,12 @@
   mis. `blank`) dilewati. Kata seperti `blank` tetap bisa dicari bila diketik manual.
 - Nama yang tidak ada di dex dicatat di akhir embed (`⚠️ Tidak ditemukan: ...`) supaya user
   tahu hewan mana dari salinannya yang belum tertangkap.
+- Salinan dari Discord sering memuat token emoji yang **terpotong**: `<a:snorlaxdoingafk:`
+  (tanpa id) atau `:cpatreon:` (tanpa nama). `normalizeQueryToken` mengenali token yang
+  mengandung `<`, `>`, `:`, digit superskrip, atau lebih dari 32 karakter (batas nama emoji
+  Discord) sebagai potongan emoji, lalu mengambil bagian huruf/angkanya saja — jadi
+  `snorlaxdoingafk` tetap bisa dicari, sedangkan `:cpatreon:` menjadi `cpatreon`.
+  Mention `<@id>` dibuang di `extractFlags`.
 - `<prefix>dex` **tanpa nama** tidak lagi menampilkan daftar hewan; balasannya adalah panduan
   cara pakai (`formatDexUsage`). Tidak ada kata kunci "tampilkan semua" — daftar penuh hanya
   pernah keluar lewat pencarian yang cocok banyak hewan.

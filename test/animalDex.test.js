@@ -455,6 +455,34 @@ describe('dex prefix command', () => {
     assert.doesNotMatch(res.embeds[0].data.description, /blank/);
   });
 
+  it('recovers names from a block whose emoji tokens are cut off', async () => {
+    const { captureMessage, buildDexResponse, extractFlags, toQueries } = require('../src/services/animalDex');
+    const { parseDexInput } = require('../src/commands/prefix');
+    captureMessage(makeMessage(card({ name: 'sakurafate', emoji: 'sakurafate' })));
+    captureMessage(makeMessage(card({ name: 'fiona', emoji: 'fiona' }), { id: 'm2' }));
+    captureMessage(makeMessage(card({ name: 'snorlaxdoingafk', emoji: 'snorlaxdoingafk' }), { id: 'm3' }));
+
+    // Salinan rusak apa adanya dari Discord: token terpotong (`<a:snorlaxdoingafk:`),
+    // tanpa tag emoji sama sekali (`:cpatreon:`), plus penanda jumlah "⁰⁰⁰⁰".
+    const pasted = '!d :cpatreon:    :sakurafate:⁰⁰⁰⁰  :fiona:⁰⁰⁰⁰  <a:snorlaxdoingafk: -c';
+    const args = parseDexInput(pasted, '!').args;
+    const flags = extractFlags(args);
+
+    // Nama yang masih terbaca diambil; penanda jumlah dibuang.
+    assert.strictEqual(flags.compact, true);
+    assert.deepStrictEqual(toQueries(flags.rest), ['cpatreon', 'sakurafate', 'fiona', 'snorlaxdoingafk']);
+
+    const res = await buildDexResponse(args);
+    const { title, description } = res.embeds[0].data;
+    // Ketiga hewan tampil (tabel ringkas memakai label emoji hewan).
+    assert.match(description, /<a:sakurafate:/);
+    assert.match(description, /<a:fiona:/);
+    assert.match(description, /<a:snorlaxdoingafk:/);
+    // Tidak ada token mentah yang tersisa: judul hanya memuat nama-nama bersih.
+    assert.strictEqual(title, '📖 Dex (ringkas): cpatreon sakurafate fiona snorlaxdoingafk');
+    assert.doesNotMatch(description, /⁰⁰⁰⁰/);
+  });
+
   it('reports names from a pasted block that are not in the dex yet', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     const { parseDexInput } = require('../src/commands/prefix');
