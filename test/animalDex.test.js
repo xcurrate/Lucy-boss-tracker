@@ -72,6 +72,9 @@ describe('animal dex parser', () => {
     assert.strictEqual(a.rarity, 'cpatreon');
     assert.strictEqual(a.capturedTotal, 8);
     assert.strictEqual(a.imageUrl, 'https://cdn.discordapp.com/emojis/1557672128059539466.gif');
+    // Token emoji stat asli disimpan untuk dirender ulang.
+    assert.strictEqual(a.statTokens.hp, '<:hp:1541928276165922906>');
+    assert.strictEqual(a.statTokens.mr, '<:mr:1523723644243804281>');
   });
 
   it('returns null for messages that are not animal cards', () => {

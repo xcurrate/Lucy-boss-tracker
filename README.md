@@ -60,6 +60,8 @@ Query mencocokkan nama, alias, nickname, atau rank (tidak peka huruf besar/kecil
 
 Data yang disimpan per hewan: nama, nickname, jumlah, rank, alias, points, sell, sacrifice, statistik (HP/ATT/PR/WP/MG/MR), role, rekomendasi weapon, kelangkaan, total ditangkap, dan URL gambar.
 
+Gambar animal diambil dari accessory kartu (Components V2 type 11) — bentuknya **link** (mis. GIF emoji Discord), bukan file terpisah; link ini disimpan dan ditampilkan sebagai thumbnail pada kartu dex. Statistik ditampilkan memakai **emoji asli dari kartu Lucy** (hp → mr), sehingga tampilannya sama persis dengan pesan aslinya.
+
 Setiap leaderboard memiliki tombol navigasi ⏮️ ◀️ ▶️ ⏭️ (awal, sebelumnya, berikutnya, akhir). Tombol membaca ulang data dari SQLite setiap kali ditekan, sehingga jumlah Lucy yang tampil selalu sinkron dengan data terbaru. Tombol tetap aktif di halaman pertama/terakhir (halaman otomatis di-clamp ke rentang yang valid).
 
 ## Untuk moderator/admin

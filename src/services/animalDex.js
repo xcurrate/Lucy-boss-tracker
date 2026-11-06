@@ -31,36 +31,48 @@ function fieldValue(text, label) {
 }
 
 // Kumpulkan seluruh teks + URL gambar/emoji dari struktur Components V2.
+// Gambar kartu Lucy ada di accessory Section (type 11) atau item MediaGallery
+// (type 12), dan berupa URL (mis. GIF emoji) — bukan file terpisah.
 function collect(raw) {
   const out = { texts: [], imageUrl: null };
   const seen = new Set();
+  function captureMedia(media) {
+    const url = media?.url || media?.proxy_url;
+    if (!out.imageUrl && typeof url === 'string') out.imageUrl = url;
+  }
   function walk(node) {
     if (!node || typeof node !== 'object' || seen.has(node)) return;
     seen.add(node);
     if (Array.isArray(node)) { for (const child of node) walk(child); return; }
     if (Number(node.type) === 10 && typeof node.content === 'string') out.texts.push(node.content);
-    if (!out.imageUrl && node.accessory?.media?.url) out.imageUrl = node.accessory.media.url;
-    if (!out.imageUrl && Number(node.type) === 12) {
-      const url = node.items?.[0]?.media?.url || node.media?.url;
-      if (typeof url === 'string') out.imageUrl = url;
+    captureMedia(node.accessory?.media);
+    captureMedia(node.media);
+    if (Number(node.type) === 12) {
+      for (const item of node.items || []) captureMedia(item?.media);
     }
-    for (const key of ['components', 'accessory']) walk(node[key]);
+    for (const key of ['components', 'accessory', 'items']) walk(node[key]);
   }
   walk(raw?.components || []);
   return out;
 }
 
+// Kembalikan statistik sekaligus token emoji aslinya, supaya tampilan dex
+// memakai emoji yang sama persis dengan kartu Lucy (hp, att, pr, wp, mg, mr).
 function parseStats(text) {
   const stats = {};
-  const pairs = String(text || '').matchAll(/<a?:(\w+):\d+>\s*`([^`]+)`/g);
-  for (const [, emojiName, value] of pairs) {
-    const field = STAT_EMOJI[emojiName];
+  const statTokens = {};
+  const pairs = String(text || '').matchAll(/(<a?:\w+:\d+>)\s*`([^`]+)`/g);
+  for (const [, token, value] of pairs) {
+    const field = STAT_EMOJI[emojiNames(token)[0]];
     if (field) {
       const n = Number(String(value).replace(/[^\d-]/g, ''));
-      if (Number.isFinite(n)) stats[field] = n;
+      if (Number.isFinite(n)) {
+        stats[field] = n;
+        statTokens[field] = token;
+      }
     }
   }
-  return stats;
+  return { stats, statTokens };
 }
 
 // Ubah satu pesan Lucy (raw JSON Components V2) menjadi objek animal.
@@ -91,6 +103,7 @@ function parseAnimalCard(raw) {
 
   const aliasRaw = fieldValue(infoText, 'Alias');
   const aliases = aliasRaw ? [...new Set(aliasRaw.split(',').map(s => s.trim()).filter(Boolean))] : [];
+  const { stats, statTokens } = parseStats(statsText);
 
   return {
     name,
@@ -102,7 +115,8 @@ function parseAnimalCard(raw) {
     points: fieldValue(infoText, 'Points') || null,
     sell: fieldValue(infoText, 'Sell') || null,
     sacrifice: fieldValue(infoText, 'Sacrifice') || null,
-    stats: parseStats(statsText),
+    stats,
+    statTokens,
     role: stripEmoji(roleLine) || null,
     weapons: weaponNames.length ? weaponNames.join(', ') + (moreWeapons ? ', + more' : '') : null,
     rarity: stripEmoji(rarityPart || '') || null,
@@ -128,7 +142,7 @@ function captureMessage(message) {
 function formatAnimalEmbed(animal) {
   const statLine = Object.keys(STAT_LABELS)
     .filter(key => animal.stats?.[key] != null)
-    .map(key => STAT_ICONS[key] + ' `' + animal.stats[key] + '`')
+    .map(key => (animal.statTokens?.[key] || STAT_ICONS[key]) + ' `' + animal.stats[key] + '`')
     .join(' ');
   const embed = new EmbedBuilder().setColor(0x9B59B6).setTitle('🐾 ' + animal.name);
   if (animal.imageUrl) embed.setThumbnail(animal.imageUrl);

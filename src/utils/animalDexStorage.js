@@ -42,6 +42,7 @@ function getDb() {
       rarity TEXT,
       captured_total INTEGER,
       image_url TEXT,
+      stat_tokens TEXT,
       raw TEXT,
       source_message_id TEXT,
       first_seen_at INTEGER,
@@ -49,7 +50,14 @@ function getDb() {
       PRIMARY KEY (guild_id, name_key)
     );
   `);
+  migrate();
   return db;
+}
+
+// Tabel lama mungkin belum punya kolom baru; tambahkan tanpa menghapus data.
+function migrate() {
+  const columns = db.prepare('PRAGMA table_info(dex_animals)').all().map(c => c.name);
+  if (!columns.includes('stat_tokens')) db.exec('ALTER TABLE dex_animals ADD COLUMN stat_tokens TEXT;');
 }
 
 function toNumber(value) {
@@ -71,6 +79,7 @@ function upsertAnimal(guildId, animal, meta = {}) {
     wisdom: toNumber(stats.wisdom), magic: toNumber(stats.magic), mr: toNumber(stats.mr),
     role: animal.role, weapons: animal.weapons, rarity: animal.rarity,
     captured_total: toNumber(animal.capturedTotal), image_url: animal.imageUrl || null,
+    stat_tokens: animal.statTokens ? JSON.stringify(animal.statTokens) : null,
     raw: meta.raw ? JSON.stringify(meta.raw) : null, source_message_id: meta.sourceMessageId || null
   };
   const existing = database.prepare('SELECT * FROM dex_animals WHERE guild_id = ? AND name_key = ?').get(guildId, animal.nameKey);
@@ -79,12 +88,13 @@ function upsertAnimal(guildId, animal, meta = {}) {
       INSERT INTO dex_animals
         (guild_id, name_key, name, nickname, rank, quantity, alias, points, sell, sacrifice,
          hp, attack, protection, wisdom, magic, mr, role, weapons, rarity, captured_total,
-         image_url, raw, source_message_id, first_seen_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+         image_url, stat_tokens, raw, source_message_id, first_seen_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(guildId, animal.nameKey, columns.name, columns.nickname, columns.rank, columns.quantity,
         columns.alias, columns.points, columns.sell, columns.sacrifice, columns.hp, columns.attack,
         columns.protection, columns.wisdom, columns.magic, columns.mr, columns.role, columns.weapons,
-        columns.rarity, columns.captured_total, columns.image_url, columns.raw, columns.source_message_id, now, now);
+        columns.rarity, columns.captured_total, columns.image_url, columns.stat_tokens, columns.raw,
+        columns.source_message_id, now, now);
     return { created: true };
   }
   const merged = {};
@@ -93,12 +103,12 @@ function upsertAnimal(guildId, animal, meta = {}) {
     UPDATE dex_animals SET
       name = ?, nickname = ?, rank = ?, quantity = ?, alias = ?, points = ?, sell = ?, sacrifice = ?,
       hp = ?, attack = ?, protection = ?, wisdom = ?, magic = ?, mr = ?, role = ?, weapons = ?, rarity = ?,
-      captured_total = ?, image_url = ?, raw = ?, source_message_id = ?, updated_at = ?
+      captured_total = ?, image_url = ?, stat_tokens = ?, raw = ?, source_message_id = ?, updated_at = ?
     WHERE guild_id = ? AND name_key = ?`)
     .run(merged.name, merged.nickname, merged.rank, merged.quantity, merged.alias, merged.points,
       merged.sell, merged.sacrifice, merged.hp, merged.attack, merged.protection, merged.wisdom,
       merged.magic, merged.mr, merged.role, merged.weapons, merged.rarity, merged.captured_total,
-      merged.image_url, merged.raw, merged.source_message_id, now, guildId, animal.nameKey);
+      merged.image_url, merged.stat_tokens, merged.raw, merged.source_message_id, now, guildId, animal.nameKey);
   return { created: false };
 }
 
@@ -109,9 +119,11 @@ function rowToAnimal(row) {
   }
   let raw = null;
   if (row.raw) { try { raw = JSON.parse(row.raw); } catch {} }
+  let statTokens = null;
+  if (row.stat_tokens) { try { statTokens = JSON.parse(row.stat_tokens); } catch {} }
   return {
     nameKey: row.name_key, name: row.name, nickname: row.nickname, rank: row.rank, quantity: row.quantity,
-    alias: row.alias, points: row.points, sell: row.sell, sacrifice: row.sacrifice, stats,
+    alias: row.alias, points: row.points, sell: row.sell, sacrifice: row.sacrifice, stats, statTokens,
     role: row.role, weapons: row.weapons, rarity: row.rarity, capturedTotal: row.captured_total,
     imageUrl: row.image_url, sourceMessageId: row.source_message_id,
     firstSeenAt: row.first_seen_at, updatedAt: row.updated_at, raw
