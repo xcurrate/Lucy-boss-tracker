@@ -2,6 +2,7 @@ const { getGuildSettings, updateGuildSettings, setUserMode, setUserWarnSeconds }
 const { modeLabel, warnLabel, personalPanel, statusEmbed, helpEmbed } = require('../ui/panel');
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const { handlePersonalCommand } = require('./bossRewardNotify');
+const { buildDexResponse } = require('../services/animalDex');
 
 const ALIASES = {
   help: ['bantuan', 'help', '?'],
@@ -62,6 +63,15 @@ function pingContent(tracker, message) {
     '💓 WebSocket: **' + wsText + '**';
 }
 
+// Perintah dex hewan: `<prefix>dex [query]` (alias `d`), berdiri sendiri di luar root `boss`.
+function parseDexInput(content, prefix) {
+  if (typeof content !== 'string' || typeof prefix !== 'string' || !content.startsWith(prefix)) return null;
+  const rest = content.slice(prefix.length).trim();
+  const parts = rest.split(/\s+/);
+  if (!['dex', 'd'].includes((parts[0] || '').toLowerCase())) return null;
+  return { args: parts.slice(1) };
+}
+
 function isAdmin(message) {
   return Boolean(message.member?.permissions?.has(PermissionFlagsBits.ManageGuild));
 }
@@ -82,6 +92,9 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   if (parsePingInput(message.content, prefix)) {
     return _sendText(message, pingContent(tracker, message));
   }
+
+  const dex = parseDexInput(message.content, prefix);
+  if (dex) return _send(message, buildDexResponse(message.guildId, dex.args.join(' ')));
 
   const parsed = parsePrefixInput(message.content, prefix);
   if (!parsed) return;
@@ -182,4 +195,4 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   return _sendText(message, 'Perintah tidak dikenal. Gunakan `' + prefix + 'boss help`.');
 }
 
-module.exports = { handlePrefixCommand, parsePrefixInput, parsePingInput, pingContent, ALIASES, ALIAS_MAP, isAdmin };
+module.exports = { handlePrefixCommand, parsePrefixInput, parsePingInput, pingContent, parseDexInput, ALIASES, ALIAS_MAP, isAdmin };

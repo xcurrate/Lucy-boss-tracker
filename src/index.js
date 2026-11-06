@@ -8,6 +8,7 @@ const logBuffer = require('./utils/logBuffer');
 const { startDashboard } = require('./dashboard/server');
 const lucyCounter = require('./services/lucyCounter');
 const bossRewards = require('./services/bossRewardNotifications');
+const animalDex = require('./services/animalDex');
 
 logBuffer.install();
 if (!process.env.DISCORD_TOKEN || !process.env.LUCY_BOT_ID) {
@@ -41,6 +42,13 @@ async function handleAutoThreadRep(message) {
   }
 }
 
+// Tangkap kartu "Informasi animal" dari bot Lucy (raw JSON Components V2) ke dex.
+function captureAnimalDex(message) {
+  if (message.author?.id !== process.env.LUCY_BOT_ID) return;
+  try { animalDex.captureMessage(message); }
+  catch (e) { console.error('[AnimalDex]', e); }
+}
+
 async function handlePrefixMessage(message) {
   return handlePrefixCommand(message, tracker, {
     send: (m, payload) => m.reply({ ...payload, allowedMentions: { repliedUser: false, parse: [] } })
@@ -54,6 +62,7 @@ client.on(Events.MessageCreate, async message => {
   lucyCounter.handleMessage(message).catch(e => console.error('[LucyCounter]', e));
   tracker.handleMessage(message).catch(console.error);
   bossRewards.enqueue(message);
+  captureAnimalDex(message);
   handlePrefixMessage(message).catch(e => {
     console.error('[PrefixCommand]', e);
     message.reply({ content: 'Terjadi kesalahan saat menjalankan perintah.' }).catch(() => {});
@@ -65,6 +74,7 @@ client.on(Events.MessageUpdate, async (_old, message) => {
     if (message.partial) message = await message.fetch();
     await tracker.handleMessage(message);
     bossRewards.enqueue(message);
+    captureAnimalDex(message);
   } catch (e) { console.error('[MessageUpdate]', e.message); }
 });
 client.on(Events.InteractionCreate, async i => {

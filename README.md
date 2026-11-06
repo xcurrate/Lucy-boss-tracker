@@ -52,6 +52,14 @@ Menghitung pesan yang memuat kata "lucy" per anggota (cooldown 10 detik per angg
 - !lservers [halaman] — leaderboard all-time per server (alias: !lserver).
 - !lucytarget on|off, !lucytarget target on|off, !lucytarget set <jumlah>, !lucytarget message <pesan>, !lucytarget status — pengaturan Target Lucy (moderator/admin).
 
+## Animal Dex
+Menangkap kartu **"Informasi animal"** yang dikirim bot Lucy (pesan Components V2) secara otomatis, lalu menyimpannya ke database SQLite (`data/animal-dex.db`). Setiap kali bot Lucy mengirim/memperbarui kartu animal, datanya di-*upsert* (per nama hewan) sehingga dex selalu terbarui.
+- !dex [nama] — tampilkan daftar Animal Dex, atau detail satu hewan bila query cocok dengan tepat satu nama.
+- !d [nama] — alias singkat.
+Query mencocokkan nama, alias, nickname, atau rank (tidak peka huruf besar/kecil). Contoh: `!dex lawliet`, `!dex hybrid`, `!d patreon`.
+
+Data yang disimpan per hewan: nama, nickname, jumlah, rank, alias, points, sell, sacrifice, statistik (HP/ATT/PR/WP/MG/MR), role, rekomendasi weapon, kelangkaan, total ditangkap, dan URL gambar.
+
 Setiap leaderboard memiliki tombol navigasi ⏮️ ◀️ ▶️ ⏭️ (awal, sebelumnya, berikutnya, akhir). Tombol membaca ulang data dari SQLite setiap kali ditekan, sehingga jumlah Lucy yang tampil selalu sinkron dengan data terbaru. Tombol tetap aktif di halaman pertama/terakhir (halaman otomatis di-clamp ke rentang yang valid).
 
 ## Untuk moderator/admin
