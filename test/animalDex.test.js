@@ -326,7 +326,7 @@ describe('dex prefix command', () => {
     assert.ok(stat.includes('<:hp:9001>'), 'hp memakai emoji bot yang sudah ada');
     assert.match(stat, /<:\w+:\d+>/, 'stat lain memakai emoji bot hasil mirror');
     assert.ok(created.length >= 1, 'emoji baru dibuat di aplikasi bot');
-    assert.ok(created.every(c => /^https:\/\/cdn\.discordapp\.com\/emojis\/\d+\.(gif|png)$/.test(c.attachment)));
+    assert.ok(created.every(c => /^https:\/\/cdn\.discordapp\.com\/emojis\/\d+\.(gif|png)(\?size=\d+)?$/.test(c.attachment)));
 
     // Pemetaan di-cache: render kedua tidak membuat emoji baru lagi.
     const before = created.length;
@@ -372,6 +372,61 @@ describe('dex prefix command', () => {
     const stat = res.embeds[0].data.fields.find(f => f.name === 'Statistik').value;
     assert.ok(stat.includes('<:mag:9002>'), 'mg memakai emoji "mag" yang sudah di-upload');
     assert.ok(!created.includes('mg'), 'tidak membuat emoji mg baru');
+
+    dex.setClient(null);
+  });
+
+  it('shrinks oversized animated emojis instead of failing to mirror them', async () => {
+    const dex = require('../src/services/animalDex');
+    const { captureMessage, buildDexResponse } = dex;
+    const store = require('../src/utils/animalDexStorage');
+    const attempts = [];
+    // Simulasi Discord: berkas tanpa parameter size ditolak (400), dan baru
+    // diterima setelah diperkecil ke ?size=64. Emoji blob Lucy memang >256 KiB.
+    dex.setClient({
+      application: {
+        emojis: {
+          fetch: async () => new Map(),
+          create: async ({ name, attachment }) => {
+            attempts.push(attachment);
+            if (!/\?size=64$/.test(attachment)) throw new Error('Request entity too large (400)');
+            return { id: '9100', name, animated: true };
+          }
+        }
+      }
+    });
+    captureMessage(makeMessage(card({
+      name: 'blob', emoji: 'blob',
+      stats: '## <:hp:1541928276165922906> `5`'
+    })));
+
+    const res = await buildDexResponse('blob -c');
+    const desc = res.embeds[0].data.description;
+    assert.ok(desc.includes('<a:blob:9100>'), 'emoji blob hasil mirror dipakai di tabel');
+    assert.ok(!desc.includes('1542593549709615195'), 'token Lucy yang tidak bisa dirender tidak dipakai');
+    // Animasi dicoba dari ukuran kecil lebih dulu, dan berhasil setelah diperkecil.
+    const gifAttempts = attempts.filter(a => a.includes('1557672128059539466'));
+    assert.ok(gifAttempts.length >= 2, 'mencoba ulang gif dengan ukuran lebih kecil');
+    assert.strictEqual(gifAttempts[0], 'https://cdn.discordapp.com/emojis/1557672128059539466.gif?size=96');
+    assert.strictEqual(gifAttempts[1], 'https://cdn.discordapp.com/emojis/1557672128059539466.gif?size=64');
+    assert.strictEqual(store.getEmojiToken('1557672128059539466'), '<a:blob:9100>');
+
+    dex.setClient(null);
+  });
+
+  it('keeps the original token when an emoji cannot be mirrored at all', async () => {
+    const dex = require('../src/services/animalDex');
+    const { captureMessage, buildDexResponse } = dex;
+    dex.setClient({
+      application: {
+        emojis: { fetch: async () => new Map(), create: async () => { throw new Error('boom'); } }
+      }
+    });
+    captureMessage(makeMessage(card({ name: 'blob', emoji: 'blob' })));
+
+    // Tidak boleh melempar; token asli dipakai apa adanya.
+    const res = await buildDexResponse('blob -c');
+    assert.match(res.embeds[0].data.description, /<a:blob:1557672128059539466>/);
 
     dex.setClient(null);
   });

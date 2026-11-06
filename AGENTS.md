@@ -30,6 +30,10 @@
 - `<prefix>dex` **tanpa nama** tidak lagi menampilkan daftar hewan; balasannya adalah panduan
   cara pakai (`formatDexUsage`). Tidak ada kata kunci "tampilkan semua" — daftar penuh hanya
   pernah keluar lewat pencarian yang cocok banyak hewan.
+- Emoji animasi Lucy bisa >256 KiB, batas unggah emoji Discord, sehingga `create` gagal 400 dan
+  emoji tampil sebagai teks. `emojiSourceUrls` mencoba GIF dari ukuran kecil dulu
+  (`?size=96,64,48,32`) — parameter CDN ini mengecilkan berkas tanpa membuang frame animasi —
+  baru versi penuh. Kegagalan mirror dicatat ke console (terlihat di dashboard log).
 
 ## Dashboard
 - `src/dashboard/server.js` (API + static) dan `src/dashboard/public/` (UI: `index.html`, `app.js`,

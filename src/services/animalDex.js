@@ -57,6 +57,28 @@ function emojiNameCandidates(name) {
   return new Set([base, ...(EMOJI_ALIASES[base] || []).map(emojiName)]);
 }
 
+// Emoji animasi Lucy bisa melebihi batas unggah Discord (256 KiB), sehingga
+// create gagal 400. Parameter `size` pada CDN mengecilkan berkas tanpa
+// menghilangkan frame animasi, jadi ukuran kecil dicoba lebih dulu.
+const GIF_SIZES = [96, 64, 48, 32];
+function emojiSourceUrls(p) {
+  const base = 'https://cdn.discordapp.com/emojis/' + p.id;
+  return p.animated
+    ? [...GIF_SIZES.map(size => base + '.gif?size=' + size), base + '.gif']
+    : [base + '.png', base + '.webp?size=128', base + '.gif'];
+}
+
+// Unggah satu emoji ke aplikasi bot, mencoba tiap sumber sampai diterima Discord.
+async function createApplicationEmoji(p) {
+  let lastError = null;
+  for (const attachment of emojiSourceUrls(p)) {
+    try {
+      return await emojiClient.application.emojis.create({ attachment, name: emojiName(p.name) });
+    } catch (e) { lastError = e; }
+  }
+  throw lastError || new Error('emoji tidak dapat diunggah');
+}
+
 // Kumpulkan seluruh token emoji dari data dex agar bisa di-mirror sekaligus.
 function collectEmojiTokens(animals) {
   const tokens = [];
@@ -105,19 +127,18 @@ async function mirrorEmojiTokens(tokens) {
         pending.delete(id);
       }
     }
-  } catch (e) { /* lanjut: token asli dipertahankan */ }
+  } catch (e) { console.error('[AnimalDex] ambil emoji aplikasi:', e.message); }
 
   // Buat emoji baru untuk yang belum ada di aplikasi bot.
   for (const [id, p] of pending) {
     try {
-      const emoji = await emojiClient.application.emojis.create({
-        attachment: 'https://cdn.discordapp.com/emojis/' + p.id + '.' + (p.animated ? 'gif' : 'png'),
-        name: emojiName(p.name)
-      });
+      const emoji = await createApplicationEmoji(p);
       const appToken = tokenFromEmoji(emoji);
       store.setEmojiToken(id, appToken);
       out.set(p.token, appToken);
-    } catch (e) { /* token asli dipertahankan */ }
+    } catch (e) {
+      console.error('[AnimalDex] mirror emoji ' + p.name + ' (' + id + '):', e.message);
+    }
   }
   return out;
 }
