@@ -18,5 +18,6 @@
   render dex. Gagal mirror tidak fatal — token asli dipertahankan sebagai fallback.
 - Pencocokan emoji aplikasi bot dilakukan **berdasarkan nama**, jadi meng-upload emoji manual di
   portal (Developer Portal → aplikasi → Emoji) dengan nama yang sama juga langsung terpakai tanpa
-  perubahan kode. Nama harus persis: `hp att pr wp mg mr` (huruf kecil).
+  perubahan kode. Nama yang dikenali: `hp att pr wp mg mr` (huruf kecil), plus alias di
+  `EMOJI_ALIASES` (`mg`/`mag`/`magic`, `att`/`attack`, `pr`/`prot`/`protection`, dll).
 - Emoji guild yang sudah bisa diakses bot dipakai langsung tanpa di-mirror.

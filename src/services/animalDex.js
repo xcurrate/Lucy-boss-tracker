@@ -45,6 +45,18 @@ function emojiName(name) {
   return cleaned.length >= 2 ? cleaned : 'e_' + cleaned;
 }
 
+// Nama alternatif yang tetap dikenali saat mencocokkan emoji aplikasi bot,
+// supaya emoji yang di-upload manual dengan nama berbeda tidak dibuat ulang.
+const EMOJI_ALIASES = {
+  hp: ['health'], att: ['attack'], pr: ['prot', 'protection'],
+  wp: ['wisdom'], mg: ['mag', 'magic'], mr: ['mres']
+};
+
+function emojiNameCandidates(name) {
+  const base = emojiName(name);
+  return new Set([base, ...(EMOJI_ALIASES[base] || []).map(emojiName)]);
+}
+
 // Kumpulkan seluruh token emoji dari data dex agar bisa di-mirror sekaligus.
 function collectEmojiTokens(animals) {
   const tokens = [];
@@ -86,7 +98,7 @@ async function mirrorEmojiTokens(tokens) {
     const existing = await emojiClient.application.emojis.fetch();
     for (const emoji of existing.values()) {
       for (const [id, p] of pending) {
-        if (emojiName(p.name) !== emoji.name) continue;
+        if (!emojiNameCandidates(p.name).has(emoji.name)) continue;
         const appToken = tokenFromEmoji(emoji);
         store.setEmojiToken(id, appToken);
         out.set(p.token, appToken);

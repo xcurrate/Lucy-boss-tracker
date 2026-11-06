@@ -316,6 +316,38 @@ describe('dex prefix command', () => {
     dex.setClient(null);
   });
 
+  it('recognizes a manually uploaded app emoji by alias name', async () => {
+    const dex = require('../src/services/animalDex');
+    const { captureMessage, buildDexResponse } = dex;
+    const created = [];
+    const appEmojis = new Map([
+      // Di-upload manual di portal dengan nama "mag" (kartu Lucy memakai "mg").
+      ['9002', { id: '9002', name: 'mag', animated: false }]
+    ]);
+    dex.setClient({
+      application: {
+        emojis: {
+          fetch: async () => appEmojis,
+          create: async ({ name }) => {
+            created.push(name);
+            const emoji = { id: String(7100 + created.length), name, animated: false };
+            appEmojis.set(emoji.id, emoji);
+            return emoji;
+          }
+        }
+      }
+    });
+    // ID sumber baru agar cache emoji_map tidak menutupi jalur alias.
+    captureMessage(makeMessage(card({ name: 'magtest', stats: '## <:mg:999999999999999999> `7`' })));
+
+    const res = await buildDexResponse('magtest');
+    const stat = res.embeds[0].data.fields.find(f => f.name === 'Statistik').value;
+    assert.ok(stat.includes('<:mag:9002>'), 'mg memakai emoji "mag" yang sudah di-upload');
+    assert.ok(!created.includes('mg'), 'tidak membuat emoji mg baru');
+
+    dex.setClient(null);
+  });
+
   it('accepts a pasted animal emoji as a query', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));
