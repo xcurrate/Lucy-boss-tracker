@@ -182,9 +182,15 @@ describe('dex prefix command', () => {
     const total = detail.embeds[0].data.fields.find(f => f.name === 'Total Stat');
     assert.strictEqual(total.value, '22');
 
-    const list = await buildDexResponse('');
+    const list = await buildDexResponse('all');
     assert.match(list.embeds[0].data.title, /Animal Dex/);
     assert.match(list.embeds[0].data.description, /lawliet/);
+
+    // Tanpa query sama sekali → panduan pemakaian, bukan daftar hewan.
+    const usage = await buildDexResponse('', { prefix: '!' });
+    assert.match(usage.embeds[0].data.title, /cara pakai/);
+    assert.match(usage.embeds[0].data.description, /!dex lawliet/);
+    assert.doesNotMatch(usage.embeds[0].data.description, /total dex/);
 
     const none = await buildDexResponse('zzz');
     assert.match(none.embeds[0].data.description, /Tidak ada/);
@@ -259,12 +265,42 @@ describe('dex prefix command', () => {
     for (let i = 0; i < 30; i++) {
       captureMessage(makeMessage(card({ name: 'animal' + i, emoji: longEmoji }), { id: 'm' + i }));
     }
-    const res = await buildDexResponse('-c');
+    const res = await buildDexResponse('all -c');
     const desc = res.embeds[0].data.description;
     assert.ok(desc.length <= 4096, 'description <= 4096');
     assert.match(desc, /…dan \d+ lainnya tidak ditampilkan\./);
     // Baris tidak terpotong di tengah: setiap baris data berisi pola ` | `.
     for (const line of desc.split('\n').slice(1, -1)) assert.match(line, / \| /);
+  });
+
+  it('shows usage instructions when no name is given, and all/semua for the full list', async () => {
+    const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
+    const { parseDexInput } = require('../src/commands/prefix');
+    captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));
+    captureMessage(makeMessage(card({ name: 'buaya', emoji: 'buaya' }), { id: 'm2' }));
+
+    for (const input of ['', '-c', '   ']) {
+      const res = await buildDexResponse(parseDexInput('!dex' + (input ? ' ' + input : ''), '!').args, { prefix: '!' });
+      assert.strictEqual(res.embeds.length, 1);
+      assert.match(res.embeds[0].data.title, /cara pakai/);
+      // Panduan menyebut contoh perintah yang tepat, bukan isi dex.
+      assert.match(res.embeds[0].data.description, /`!dex lawliet`/);
+      assert.match(res.embeds[0].data.description, /`!dex all`/);
+      assert.doesNotMatch(res.embeds[0].data.description, /lawliet.*buaya.*\d/);
+      assert.strictEqual(res.embeds[0].data.fields, undefined);
+    }
+
+    // `all` / `semua` (boleh digabung -c) tetap menampilkan seluruh daftar.
+    for (const input of ['all', 'semua', 'all -c']) {
+      const res = await buildDexResponse(input);
+      assert.match(res.embeds[0].data.title, /Animal Dex/);
+      assert.match(res.embeds[0].data.description, /lawliet/);
+      assert.match(res.embeds[0].data.description, /buaya/);
+    }
+    // `all` bukan nama hewan, jadi tidak pernah muncul di daftar "tidak ditemukan".
+    const mixed = await buildDexResponse('all zzz');
+    assert.doesNotMatch(mixed.embeds[0].data.description, /Tidak ditemukan:.*`all`/);
+    assert.match(mixed.embeds[0].data.description, /Tidak ditemukan: `zzz`/);
   });
 
   it('mirrors Lucy stat emojis into the bot application and renders them', async () => {

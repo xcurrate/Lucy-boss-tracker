@@ -27,6 +27,9 @@
   mis. `blank`) dilewati. Kata seperti `blank` tetap bisa dicari bila diketik manual.
 - Nama yang tidak ada di dex dicatat di akhir embed (`⚠️ Tidak ditemukan: ...`) supaya user
   tahu hewan mana dari salinannya yang belum tertangkap.
+- `<prefix>dex` **tanpa nama** tidak lagi menampilkan daftar hewan; balasannya adalah panduan
+  cara pakai (`formatDexUsage`). Untuk seluruh daftar, user memakai `<prefix>dex all`
+  (alias `semua`), boleh digabung `-c`. Kata `all`/`semua` tidak pernah dianggap nama hewan.
 
 ## Dashboard
 - `src/dashboard/server.js` (API + static) dan `src/dashboard/public/` (UI: `index.html`, `app.js`,

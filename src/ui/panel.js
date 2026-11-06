@@ -166,7 +166,7 @@ function helpEmbed(prefix, { isAdmin = false } = {}) {
       '`' + prefix + 'boss status` — cek status tracker',
       '`' + prefix + 'boss help` — panduan ini',
       '`' + prefix + 'ping` — cek latency bot (alias: `' + prefix + 'p`)',
-      '`' + prefix + 'dex [nama...] [-c]` — lihat Animal Dex, bisa banyak nama; `-c` = tabel stat ringkas (alias: `' + prefix + 'd`)'
+      '`' + prefix + 'dex <nama...> [-c]` — lihat Animal Dex; `-c` = tabel stat ringkas, `' + prefix + 'dex all` = seluruh daftar (alias: `' + prefix + 'd`)'
     ].join('\n'), inline: false },
 
     // ⚙️ Admin — daftar perintah slash admin, hanya tampil jika isAdmin.
