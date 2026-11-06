@@ -192,7 +192,9 @@ describe('dex prefix command', () => {
     assert.doesNotMatch(usage.embeds[0].data.description, /total dex/);
 
     const none = await buildDexResponse('zzz');
-    assert.match(none.embeds[0].data.description, /Tidak ada/);
+    // Tidak ada hasil → panduan, bukan pesan "tidak ditemukan".
+    assert.match(none.embeds[0].data.title, /cara pakai/);
+    assert.doesNotMatch(none.embeds[0].data.description, /Tidak ditemukan/);
   });
 
   it('shows detail cards for several names at once', async () => {
@@ -224,7 +226,7 @@ describe('dex prefix command', () => {
       'Animal | <:hp:1541928276165922906> <:att:1541928417069375498> <:pr:1541928475454079077> | ' +
       '<:wp:1523723591194120354> <:mg:1523723618016563210> <:mr:1523723644243804281> | Total');
     // Baris data: emoji hewan + angka statistik + total stat.
-    assert.strictEqual(row, '<a:lawliet:1557672128059539466> | 2 0 1 | 3 14 2 | 22');
+    assert.strictEqual(row, '<a:lawliet:1557672128059539466> | `2` `0` `1` | `3` `14` `2` | `22`');
     assert.strictEqual(long.embeds[0].data.description, compact.embeds[0].data.description);
     // Tanpa flag tetap kartu penuh (pakai field terpisah).
     assert.ok(full.embeds[0].data.fields.length > 3);
@@ -289,10 +291,11 @@ describe('dex prefix command', () => {
       assert.strictEqual(res.embeds[0].data.fields, undefined);
     }
 
-    // 'all' bukan kata kunci: ia diperlakukan sebagai nama biasa (tidak ada).
+    // 'all' bukan kata kunci: ia diperlakukan sebagai nama biasa (tidak ada),
+    // dan karena tidak ada hasil, balasannya panduan — tanpa pesan "tidak ditemukan".
     const asName = await buildDexResponse('all');
-    assert.match(asName.embeds[0].data.description, /Tidak ada/);
-    assert.match(asName.embeds[0].data.description, /Tidak ditemukan: `all`/);
+    assert.match(asName.embeds[0].data.title, /cara pakai/);
+    assert.doesNotMatch(asName.embeds[0].data.description, /Tidak ditemukan/);
   });
 
   it('mirrors Lucy stat emojis into the bot application and renders them', async () => {
@@ -483,7 +486,7 @@ describe('dex prefix command', () => {
     assert.doesNotMatch(description, /⁰⁰⁰⁰/);
   });
 
-  it('reports names from a pasted block that are not in the dex yet', async () => {
+  it('shows the surviving animals and hides not-found info for a pasted block', async () => {
     const { captureMessage, buildDexResponse } = require('../src/services/animalDex');
     const { parseDexInput } = require('../src/commands/prefix');
     captureMessage(makeMessage(card({ name: 'lawliet', emoji: 'lawliet' })));
@@ -492,8 +495,10 @@ describe('dex prefix command', () => {
     assert.strictEqual(res.embeds.length, 1);
     const desc = res.embeds[0].data.description;
     assert.ok(desc.includes('<a:lawliet:'), 'lawliet ditampilkan');
-    assert.match(desc, /Tidak ditemukan: `inuyasha`/);
-    assert.doesNotMatch(desc, /Tidak ditemukan:.*`lawliet`/);
+    // inuyasha tidak ada di dex, tapi tidak dilaporkan sebagai "tidak ditemukan".
+    assert.doesNotMatch(desc, /Tidak ditemukan/);
+    assert.doesNotMatch(desc, /inuyasha/);
+    assert.doesNotMatch(res.embeds[0].data.title, /inuyasha/);
   });
 
   it('still lets a user type the word blank as a real query', async () => {

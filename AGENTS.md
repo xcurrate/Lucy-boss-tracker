@@ -25,8 +25,10 @@
   nama hewan, sedangkan sisa salinan diabaikan — digit superskrip penanda jumlah (mis.
   `⁰⁰⁰⁰`) dibuang karena tidak mungkin jadi nama, dan emoji dekoratif (`DECORATIVE_EMOJI`,
   mis. `blank`) dilewati. Kata seperti `blank` tetap bisa dicari bila diketik manual.
-- Nama yang tidak ada di dex dicatat di akhir embed (`⚠️ Tidak ditemukan: ...`) supaya user
-  tahu hewan mana dari salinannya yang belum tertangkap.
+- Query yang **tidak menemukan hewan tidak dilaporkan** (tidak ada baris "Tidak ditemukan").
+  Judul embed hanya menyebut query yang ada di dex. Kalau semua query kosong, balasannya
+  panduan pemakaian. Jadi menyalin blok kartu besar tetap enak dibaca: hanya hewan yang
+  sudah tertangkap yang muncul.
 - Salinan dari Discord sering memuat token emoji yang **terpotong**: `<a:snorlaxdoingafk:`
   (tanpa id) atau `:cpatreon:` (tanpa nama). `normalizeQueryToken` mengenali token yang
   mengandung `<`, `>`, `:`, digit superskrip, atau lebih dari 32 karakter (batas nama emoji
@@ -36,6 +38,9 @@
 - `<prefix>dex` **tanpa nama** tidak lagi menampilkan daftar hewan; balasannya adalah panduan
   cara pakai (`formatDexUsage`). Tidak ada kata kunci "tampilkan semua" — daftar penuh hanya
   pernah keluar lewat pencarian yang cocok banyak hewan.
+- Tabel ringkas (`-c`) membungkus tiap angka dalam code span (`` `2` ``) supaya lebar digit
+  sama dan kolom sejajar; sel kosong tetap `–`. Tidak ada tabel markdown asli karena Discord
+  tidak merendernya di dalam embed.
 - Emoji animasi Lucy bisa >256 KiB, batas unggah emoji Discord, sehingga `create` gagal 400 dan
   emoji tampil sebagai teks. `emojiSourceUrls` mencoba GIF dari ukuran kecil dulu
   (`?size=96,64,48,32`) — parameter CDN ini mengecilkan berkas tanpa membuang frame animasi —

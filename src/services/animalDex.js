@@ -334,16 +334,15 @@ function formatAnimalEmbed(animal, emojiMap) {
   return embed;
 }
 
+// Hasil daftar untuk query yang cocok banyak hewan. Query tanpa hasil tidak
+// dilaporkan di sini — user hanya perlu melihat hewan yang memang ada di dex.
 function formatListEmbed(query, animals) {
   const rows = animals.slice(0, 20).map((a, i) => (i + 1) + '. **' + a.name + '**' + (a.rank ? ' — ' + a.rank : ''));
-  const desc = rows.length
-    ? fitRows('', rows, LIMITS.description)
-    : 'Tidak ada animal yang cocok dengan `' + query + '`.';
-  const embed = new EmbedBuilder().setColor(0x9B59B6)
+  const desc = rows.length ? fitRows('', rows, LIMITS.description) : '';
+  return new EmbedBuilder().setColor(0x9B59B6)
     .setTitle(clip(query ? '🔎 Hasil Dex: ' + query : '📖 Animal Dex', LIMITS.title))
     .setDescription(clip(desc, LIMITS.description))
     .setFooter({ text: clip(animals.length + ' hasil • total dex: ' + store.countAnimals(), LIMITS.footer) });
-  return embed;
 }
 
 const STAT_COLUMNS = ['hp', 'attack', 'protection', 'wisdom', 'magic', 'mr'];
@@ -359,22 +358,24 @@ function animalEmoji(animal) {
 
 // Tampilan ringkas: satu blok mirip tabel (tanpa tabel embed) — baris judul
 // berisi emoji statistik, baris data berisi emoji hewan + angka statistiknya.
+// Angka dibungkus code span agar lebar tiap digit sama, sehingga kolom sejajar.
 function formatCompactTable(query, animals, emojiMap) {
   const icon = key => applyEmojiMap(STAT_ICONS[key], emojiMap);
   const groups = [
     STAT_COLUMNS.slice(0, 3).map(icon).join(' '),
     STAT_COLUMNS.slice(3).map(icon).join(' ')
   ];
+  const cell = value => (value != null ? '`' + value + '`' : '–');
   const rows = animals.slice(0, TABLE_MAX_ROWS).map(animal => {
     const label = applyEmojiMap(animalEmoji(animal), emojiMap) || '**' + animal.name + '**';
-    const cells = group => group.map(k => (animal.stats?.[k] != null ? String(animal.stats[k]) : '–')).join(' ');
+    const cells = group => group.map(k => cell(animal.stats?.[k])).join(' ');
     const total = totalStats(animal);
     return label + ' | ' + cells(STAT_COLUMNS.slice(0, 3)) + ' | ' + cells(STAT_COLUMNS.slice(3)) +
-      ' | ' + (total != null ? total : '–');
+      ' | ' + cell(total);
   });
   const desc = rows.length
     ? fitRows('Animal | ' + groups[0] + ' | ' + groups[1] + ' | Total', rows, LIMITS.description)
-    : 'Tidak ada animal yang cocok dengan `' + query + '`.';
+    : '';
   return new EmbedBuilder().setColor(0x9B59B6)
     .setTitle(clip(query ? '📖 Dex (ringkas): ' + query : '📖 Animal Dex (ringkas)', LIMITS.title))
     .setDescription(clip(desc, LIMITS.description))
@@ -460,14 +461,31 @@ function unionMatches(perQuery) {
 // - Selain itu → daftar gabungan hasil pencarian.
 // Flag `-c`/`--compact` menampilkan tabel ringkas (emoji stat + angka) untuk
 // semua hasil dalam satu pesan.
-// Nama yang tidak ada di dex dicatat di akhir agar user tahu mana yang belum
-// tertangkap, karena blok kartu yang disalin biasanya memuat beberapa hewan.
-function withMissing(embed, missing) {
-  if (!missing.length) return embed;
-  const note = '⚠️ Tidak ditemukan: ' + missing.map(name => '`' + name + '`').join(', ');
-  const current = embed.data.description || '';
-  const merged = current ? current + '\n\n' + note : note;
-  return embed.setDescription(clip(merged, LIMITS.description));
+// Query yang tidak menemukan hewan tidak dilaporkan; kalau hasilnya kosong,
+// embed dibiarkan tanpa deskripsi dan `handlePrefixCommand` memakai pesan
+// bantuan sebagai gantinya.
+async function buildDexResponse(input, { prefix } = {}) {
+  const { compact, rest } = extractFlags(input);
+  const queries = toQueries(rest);
+
+  // Tanpa nama sama sekali → tampilkan panduan agar user tahu cara pakai.
+  if (!queries.length) return { embeds: [formatDexUsage(prefix)] };
+
+  const perQuery = queries.map(q => ({ q, matches: store.searchAnimals(q) }));
+  const results = unionMatches(perQuery);
+  // Tidak ada hewan yang cocok → tampilkan panduan, bukan embed kosong.
+  if (!results.length) return { embeds: [formatDexUsage(prefix)] };
+  // Judul hanya menyebut query yang memang ada di dex, agar nama yang tidak
+  // ditemukan tidak muncul sebagai informasi.
+  const found = perQuery.filter(r => r.matches.length).map(r => r.q).join(' ');
+  const emojiMap = await mirrorEmojiTokens(collectEmojiTokens(results));
+
+  if (compact) return { embeds: [formatCompactTable(found, results, emojiMap)] };
+
+  if (perQuery.every(r => r.matches.length === 1) && results.length <= MAX_DETAIL_EMBEDS) {
+    return { embeds: results.map(a => formatAnimalEmbed(a, emojiMap)) };
+  }
+  return { embeds: [formatListEmbed(found, results)] };
 }
 
 function formatDexUsage(prefix) {
@@ -483,26 +501,6 @@ function formatDexUsage(prefix) {
       'Boleh menempel emoji hewan dari kartu Lucy, mis. `' + p + 'dex <a:lawliet:123>`.',
       'Alias perintah: `' + p + 'd`.'
     ].join('\n'));
-}
-
-async function buildDexResponse(input, { prefix } = {}) {
-  const { compact, rest } = extractFlags(input);
-  const queries = toQueries(rest);
-
-  // Tanpa nama sama sekali → tampilkan panduan agar user tahu cara pakai.
-  if (!queries.length) return { embeds: [formatDexUsage(prefix)] };
-
-  const perQuery = queries.map(q => ({ q, matches: store.searchAnimals(q) }));
-  const results = unionMatches(perQuery);
-  const missing = perQuery.filter(r => !r.matches.length).map(r => r.q);
-  const emojiMap = await mirrorEmojiTokens(collectEmojiTokens(results));
-
-  if (compact) return { embeds: [withMissing(formatCompactTable(queries.join(' '), results, emojiMap), missing)] };
-
-  if (perQuery.every(r => r.matches.length === 1) && results.length <= MAX_DETAIL_EMBEDS) {
-    return { embeds: results.map(a => formatAnimalEmbed(a, emojiMap)) };
-  }
-  return { embeds: [withMissing(formatListEmbed(queries.join(' '), results), missing)] };
 }
 
 module.exports = {
