@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const { parsePrefixInput, ALIASES } = require('../src/commands/prefix');
+const { parsePrefixInput, parsePingInput, ALIASES } = require('../src/commands/prefix');
 
 describe('prefix aliases', () => {
   it('maps aliases to canonical subcommands', () => {
@@ -61,5 +61,24 @@ describe('prefix aliases', () => {
   it('respects custom prefix', () => {
     const out = parsePrefixInput('?boss cek', '?');
     assert.strictEqual(out.sub, 'status');
+  });
+});
+
+describe('ping command parser', () => {
+  it('parses ping and its short alias', () => {
+    assert.deepStrictEqual(parsePingInput('!ping', '!'), { args: [] });
+    assert.deepStrictEqual(parsePingInput('!p', '!'), { args: [] });
+  });
+
+  it('respects custom prefix', () => {
+    assert.ok(parsePingInput('?ping', '?'));
+    assert.strictEqual(parsePingInput('!ping', '?'), null);
+  });
+
+  it('ignores other commands and empty input', () => {
+    assert.strictEqual(parsePingInput('!boss help', '!'), null);
+    assert.strictEqual(parsePingInput('!pong', '!'), null);
+    assert.strictEqual(parsePingInput('ping', '!'), null);
+    assert.strictEqual(parsePingInput(null, '!'), null);
   });
 });

@@ -48,6 +48,163 @@ function renderSettings(settings) {
   $('rep-state').textContent = rep.enabled ? 'Aktif' : 'Nonaktif';
   $('rep-detail').textContent = rep.channelId ? 'Channel: ' + ($('rep-channel-id').selectedOptions[0]?.textContent || rep.channelId) : 'Channel belum dipilih';
 }
+function renderBossRewards(settings) {
+  $('reward-enabled').checked = Boolean(settings.enabled);
+  $('reward-channel').value = settings.channelId || '';
+  $('reward-role').value = settings.roleId || '';
+  const targets = settings.targets || {};
+  $('reward-ws').value = targets.weapon_shards?.target ?? '';
+  $('reward-wc').value = targets.weapon_crate?.target ?? '';
+  $('reward-flb').value = targets.fabled_lootbox?.target ?? '';
+  $('reward-xp').value = targets.experience?.target ?? '';
+}
+function collectBossRewards() {
+  return {
+    enabled: $('reward-enabled').checked,
+    channelId: $('reward-channel').value,
+    roleId: $('reward-role').value,
+    targets: {
+      weapon_shards: $('reward-ws').value,
+      weapon_crate: $('reward-wc').value,
+      fabled_lootbox: $('reward-flb').value,
+      experience: $('reward-xp').value
+    }
+  };
+}
+async function saveBossRewards() {
+  if (!guildId) return;
+  $('reward-save').disabled = true;
+  try {
+    const data = await api('/api/boss-rewards', { method: 'PUT', body: JSON.stringify({ guildId, settings: collectBossRewards() }) });
+    renderBossRewards(data.settings);
+    setStatus('Pengaturan Boss Reward Reminder tersimpan.');
+  } catch (error) {
+    setStatus(error.message, true);
+  } finally {
+    $('reward-save').disabled = false;
+  }
+}
+let noteRows = [];
+let editingNoteId = null;
+
+function setNoteStatus(message, bad = false) {
+  const box = $('note-status');
+  box.textContent = message || '';
+  box.classList.toggle('bad', Boolean(bad));
+}
+
+function noteTime(value) {
+  return new Date(value).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function renderNotes() {
+  const list = $('note-list');
+  list.replaceChildren();
+  $('note-count').textContent = String(noteRows.length);
+  if (!noteRows.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-log';
+    empty.textContent = 'Belum ada note untuk server ini.';
+    list.append(empty);
+    return;
+  }
+  for (const note of noteRows) {
+    const item = document.createElement('div');
+    item.className = 'note-item' + (note.id === editingNoteId ? ' editing' : '');
+    const head = document.createElement('div'); head.className = 'note-head';
+    const title = document.createElement('div'); title.className = 'note-title';
+    title.textContent = note.title || '(tanpa judul)';
+    const actions = document.createElement('div'); actions.className = 'note-item-actions';
+    const edit = document.createElement('button'); edit.type = 'button'; edit.textContent = 'Edit';
+    edit.addEventListener('click', () => startEditNote(note.id));
+    const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Hapus';
+    remove.className = 'danger';
+    remove.addEventListener('click', () => removeNote(note.id));
+    actions.append(edit, remove);
+    head.append(title, actions);
+    item.append(head);
+    if (note.body) {
+      const body = document.createElement('div'); body.className = 'note-body'; body.textContent = note.body;
+      item.append(body);
+    }
+    const meta = document.createElement('div'); meta.className = 'note-meta';
+    meta.textContent = 'Dibuat ' + noteTime(note.createdAt) + ' • Diperbarui ' + noteTime(note.updatedAt);
+    item.append(meta);
+    list.append(item);
+  }
+}
+
+function resetNoteForm() {
+  editingNoteId = null;
+  $('note-title').value = '';
+  $('note-body').value = '';
+  $('note-save').firstChild.textContent = 'Tambah note ';
+  $('note-cancel').classList.add('hidden');
+  renderNotes();
+}
+
+function startEditNote(id) {
+  const note = noteRows.find(row => row.id === id);
+  if (!note) return;
+  editingNoteId = id;
+  $('note-title').value = note.title || '';
+  $('note-body').value = note.body || '';
+  $('note-save').firstChild.textContent = 'Simpan perubahan ';
+  $('note-cancel').classList.remove('hidden');
+  setNoteStatus('Mengedit note. Perubahan belum disimpan.');
+  renderNotes();
+  $('note-title').focus();
+}
+
+async function saveNote() {
+  if (!guildId) return;
+  const title = $('note-title').value.trim();
+  const body = $('note-body').value.trim();
+  if (!title && !body) return setNoteStatus('Judul atau isi note wajib diisi.', true);
+  $('note-save').disabled = true;
+  try {
+    const editing = editingNoteId;
+    const payload = { guildId, id: editing, title, body };
+    const data = await api('/api/notes', { method: editing ? 'PUT' : 'POST', body: JSON.stringify(payload) });
+    if (editing) noteRows = noteRows.map(row => (row.id === editing ? data.note : row));
+    else noteRows = [data.note, ...noteRows];
+    resetNoteForm();
+    setNoteStatus(editing ? 'Note diperbarui.' : 'Note ditambahkan.');
+  } catch (error) {
+    setNoteStatus(error.message, true);
+  } finally {
+    $('note-save').disabled = false;
+  }
+}
+
+async function removeNote(id) {
+  if (!guildId) return;
+  if (!window.confirm('Hapus note ini?')) return;
+  try {
+    await api('/api/notes', { method: 'DELETE', body: JSON.stringify({ guildId, id }) });
+    noteRows = noteRows.filter(row => row.id !== id);
+    if (editingNoteId === id) resetNoteForm();
+    else renderNotes();
+    setNoteStatus('Note dihapus.');
+  } catch (error) {
+    setNoteStatus(error.message, true);
+  }
+}
+
+async function loadNotes() {
+  setNoteStatus('Memuat note…');
+  try {
+    const data = await api('/api/notes?guildId=' + encodeURIComponent(guildId));
+    noteRows = data.notes || [];
+    resetNoteForm();
+    setNoteStatus('');
+  } catch (error) {
+    noteRows = [];
+    renderNotes();
+    setNoteStatus(error.message, true);
+  }
+}
+
 async function loadGuild(id) {
   guildId = id;
   setStatus('Memuat konfigurasi…');
@@ -58,7 +215,11 @@ async function loadGuild(id) {
   selectOptions($('lucy-blacklisted-channels'), data.channels, 'Pilih channel untuk di-blacklist', '');
   selectOptions($('lucy-whitelisted-channels'), data.channels, 'Pilih channel untuk di-whitelist', '');
   selectOptions($('role-id'), data.roles, 'Pilih role', data.settings.roleId);
+  selectOptions($('reward-channel'), data.channels, 'Pilih channel reward', data.bossRewards?.channelId);
+  selectOptions($('reward-role'), data.roles, 'Pilih role reward', data.bossRewards?.roleId);
   renderSettings(data.settings);
+  renderBossRewards(data.bossRewards || {});
+  await loadNotes();
   setStatus('Konfigurasi dimuat. Perubahan belum disimpan.');
 }
 function collectSettings() {
@@ -176,5 +337,8 @@ async function boot() {
   }
 }
 $('save').addEventListener('click', saveSettings);
+$('reward-save').addEventListener('click', saveBossRewards);
+$('note-save').addEventListener('click', saveNote);
+$('note-cancel').addEventListener('click', () => { resetNoteForm(); setNoteStatus(''); });
 $('clear-logs').addEventListener('click', () => { logRows = []; renderLogs(); });
 boot();

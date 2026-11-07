@@ -4,6 +4,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
 const logBuffer = require('../utils/logBuffer');
+const bossRewardStore = require('../utils/bossRewardStorage');
+const noteStorage = require('../utils/noteStorage');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
@@ -148,7 +150,60 @@ function startDashboard(client, tracker) {
         const roles = [...guild.roles.cache.values()]
           .filter(r => !r.managed && r.id !== guild.id)
           .map(r => ({ id: r.id, name: r.name }));
-        return json(res, 200, { settings: publicSettings(getGuildSettings(guild.id)), channels, roles });
+        return json(res, 200, { settings: publicSettings(getGuildSettings(guild.id)), bossRewards: bossRewardStore.getServer(guild.id), channels, roles });
+      }
+      if (req.method === 'PUT' && url.pathname === '/api/boss-rewards') {
+        const input = await readBody(req);
+        const guild = getGuild(client, input.guildId);
+        const value = input.settings || {};
+        if (typeof value.enabled !== 'boolean') throw new Error('Status Server Reward Reminder tidak valid.');
+        const channelId = value.channelId || null;
+        const roleId = value.roleId || null;
+        if (channelId && !/^\d{17,20}$/.test(channelId)) throw new Error('ID channel reward tidak valid.');
+        if (roleId && !/^\d{17,20}$/.test(roleId)) throw new Error('ID role reward tidak valid.');
+        const targets = {};
+        for (const key of ['weapon_shards', 'weapon_crate', 'fabled_lootbox', 'experience']) {
+          const raw = value.targets?.[key];
+          if (raw === '' || raw === null || raw === undefined) continue;
+          const target = Number(raw);
+          if (!Number.isSafeInteger(target) || target < 1) throw new Error('Target reward harus bilangan bulat positif.');
+          targets[key] = { target, operator: '>=' };
+        }
+        if (value.enabled && (!channelId || !roleId || !Object.keys(targets).length)) {
+          throw new Error('Saat diaktifkan, pilih channel, role, dan minimal satu target reward.');
+        }
+        if (channelId) {
+          const channel = await guild.channels.fetch(channelId);
+          if (!channel || channel.guildId !== guild.id || !channel.isTextBased() || channel.isThread?.()) throw new Error('Channel reward harus channel teks dari server ini.');
+        }
+        if (roleId) {
+          const role = await guild.roles.fetch(roleId);
+          if (!role || role.guild.id !== guild.id || role.managed || role.id === guild.id) throw new Error('Role reward tidak valid untuk server ini.');
+        }
+        const saved = bossRewardStore.setServer(guild.id, { enabled: value.enabled, channelId, roleId, targets });
+        console.log('[Dashboard] Server Reward Reminder diperbarui untuk guild', guild.id);
+        return json(res, 200, { ok: true, settings: saved });
+      }
+      if (req.method === 'GET' && url.pathname === '/api/notes') {
+        const guild = getGuild(client, url.searchParams.get('guildId'));
+        return json(res, 200, { notes: noteStorage.listNotes(guild.id) });
+      }
+      if (req.method === 'POST' && url.pathname === '/api/notes') {
+        const input = await readBody(req);
+        const guild = getGuild(client, input.guildId);
+        return json(res, 200, { ok: true, note: noteStorage.addNote(guild.id, input) });
+      }
+      if (req.method === 'PUT' && url.pathname === '/api/notes') {
+        const input = await readBody(req);
+        const guild = getGuild(client, input.guildId);
+        if (!input.id) throw new Error('ID note wajib diisi.');
+        return json(res, 200, { ok: true, note: noteStorage.updateNote(guild.id, String(input.id), input) });
+      }
+      if (req.method === 'DELETE' && url.pathname === '/api/notes') {
+        const input = await readBody(req);
+        const guild = getGuild(client, input.guildId);
+        if (!input.id) throw new Error('ID note wajib diisi.');
+        return json(res, 200, noteStorage.deleteNote(guild.id, String(input.id)));
       }
       if (req.method === 'PUT' && url.pathname === '/api/settings') {
         const input = await readBody(req);

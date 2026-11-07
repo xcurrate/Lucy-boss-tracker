@@ -16,6 +16,8 @@
       <a class="nav" href="#boss">🐉 <span>Boss Tracker</span></a>
       <a class="nav" href="#rep">🧵 <span>Auto Thread Rep</span></a>
       <a class="nav" href="#lucy-counter">🔢 <span>Lucy Counter</span></a>
+      <a class="nav" href="#boss-rewards">🎁 <span>Boss Reward Reminder</span></a>
+      <a class="nav" href="#notes">📝 <span>Notes</span></a>
       <a class="nav" href="#logs">▤ <span>System Logs</span></a>
       <div class="sidebar-bottom"><span class="live-dot"></span> Local runtime monitor <span class="muted">●</span></div>
     </aside>
@@ -66,7 +68,20 @@
             <div class="field"><label for="lucy-target-start">MULAI TARGET (WIB)</label><input id="lucy-target-start" type="time" value="12:00" required><small>Awal siklus baru; progres target direset pada jam ini.</small></div>
             <div class="field"><label for="lucy-target-stop">BERHENTI TARGET (WIB)</label><input id="lucy-target-stop" type="time" value="10:00" required><small>Jam berhenti di hari berikutnya jika lebih awal dari waktu mulai.</small></div>
 </div>
-          <p>Leaderboard: <code>[prefix]lcountd</code> (hari ini), <code>[prefix]lcountall</code> (sepanjang masa), <code>[prefix]lucytarget status</code> (status target).</p>
+          <p>Leaderboard: <code>[prefix]lcount</code> (harian), <code>[prefix]ltarget</code> (target), <code>[prefix]lservers</code> (per server), <code>[prefix]lcountall</code> (sepanjang masa). Semua bisa difilter tanggal, mis. <code>[prefix]lcount 5 nov</code>.</p>
+        </section>
+        <section class="panel" id="boss-rewards">
+          <div class="panel-heading"><div><div class="eyebrow">CATEGORY 04 / REWARD ALERTS</div><h2>🎁 Boss Reward Reminder</h2><p>Notifikasi role server saat jumlah reward pada gambar Lucy mencapai target. Pengaturan ini tersedia melalui dashboard developer.</p></div><label class="switch"><input id="reward-enabled" type="checkbox"><span></span></label></div>
+          <div class="form-grid">
+            <div class="field"><label for="reward-channel">CHANNEL NOTIFIKASI REWARD</label><select id="reward-channel"></select><small>Channel teks untuk pengumuman saat target reward tercapai.</small></div>
+            <div class="field"><label for="reward-role">ROLE YANG DI-TAG</label><select id="reward-role"></select><small>Role server yang menerima pengingat.</small></div>
+            <div class="field"><label for="reward-ws">WEAPON SHARDS TARGET</label><input id="reward-ws" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"><small>Kosongkan untuk tidak memantau kategori ini.</small></div>
+            <div class="field"><label for="reward-wc">WEAPON CRATE TARGET</label><input id="reward-wc" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"></div>
+            <div class="field"><label for="reward-flb">FABLED LOOTBOX TARGET</label><input id="reward-flb" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"></div>
+            <div class="field"><label for="reward-xp">EXPERIENCE TARGET</label><input id="reward-xp" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"></div>
+          </div>
+          <p>Target server menggunakan operator minimal (≥). Setelah notifikasi berhasil dikirim, kategori yang terpenuhi otomatis dihapus dari target server. Target personal anggota tetap dikelola melalui perintah chat.</p>
+          <div class="savebar"><span>Konfigurasi reward server terpisah dari Boss Tracker.</span><button id="reward-save" class="primary">Simpan pengaturan reward <span>→</span></button></div>
         </section>
         <section class="panel" id="rep">
           <div class="panel-heading"><div><div class="eyebrow">CATEGORY 02 / AUTOMATION</div><h2>🧵 Auto Thread Rep</h2><p>Buat thread otomatis dari pesan *rep dengan mention target yang benar.</p></div><label class="switch"><input id="rep-enabled" type="checkbox"><span></span></label></div>
@@ -77,6 +92,20 @@
             <div class="field"><label for="thread-prefix">AWALAN NAMA THREAD</label><input id="thread-prefix" maxlength="40" placeholder="Rep"><small>Nama thread menjadi awalan + nama pengirim.</small></div>
             <div class="field"><label for="archive-duration">AUTO-ARCHIVE</label><select id="archive-duration"><option value="60">1 jam</option><option value="1440">24 jam</option><option value="4320">3 hari</option><option value="10080">7 hari</option></select><small>Durasi arsip otomatis thread.</small></div>
           </div>
+        </section>
+        <section class="panel" id="notes">
+          <div class="panel-heading"><div><div class="eyebrow">CATEGORY 05 / CATATAN</div><h2>📝 Notes</h2><p>Catatan bebas per server, tersimpan lokal di dashboard.</p></div></div>
+          <div class="form-grid">
+            <div class="field"><label for="note-title">JUDUL NOTE</label><input id="note-title" maxlength="120" placeholder="Judul singkat"><small>Opsional bila isi note diisi.</small></div>
+            <div class="field"><label for="note-body">ISI NOTE</label><textarea id="note-body" maxlength="4000" rows="5" placeholder="Tulis catatan di sini…"></textarea><small>Maksimal 4000 karakter.</small></div>
+          </div>
+          <div class="note-actions">
+            <button id="note-save" class="primary">Tambah note <span>→</span></button>
+            <button id="note-cancel" class="ghost hidden">Batal edit</button>
+            <span id="note-status" role="status" aria-live="polite"></span>
+          </div>
+          <div class="note-toolbar"><span>DAFTAR NOTE (<span id="note-count">0</span>)</span></div>
+          <div id="note-list" class="note-list"><div class="empty-log">Belum ada note untuk server ini.</div></div>
         </section>
         <section class="panel logs-panel" id="logs">
           <div class="panel-heading"><div><div class="eyebrow">CATEGORY 03 / DIAGNOSTICS</div><h2>▤ System logs</h2><p>Log runtime terbaru, diperbarui otomatis.</p></div><button id="clear-logs" class="ghost">Bersihkan tampilan</button></div>

@@ -60,11 +60,11 @@ describe('prefix command handler', () => {
     assert.match(deps.calls[0].content, /5 menit/);
   });
 
-  it('handles status alias and returns embed', async () => {
+  it('handles status alias and returns status text', async () => {
     const { handlePrefixCommand } = require('../src/commands/prefix');
     const deps = makeDeps();
     await handlePrefixCommand(makeMessage('!boss cek'), null, deps);
-    assert.ok(deps.calls[0].embeds.length > 0);
+    assert.match(deps.calls[0].content, /Boss Tracker|Lucy|notifikasi/i);
   });
 
   it('handles menu alias with v2 components', async () => {
@@ -105,5 +105,21 @@ describe('prefix command handler', () => {
     const deps = makeDeps();
     await handlePrefixCommand(makeMessage('!hello world'), null, deps);
     assert.strictEqual(deps.calls.length, 0);
+  });
+
+  it('responds to ping with latency info', async () => {
+    const { handlePrefixCommand } = require('../src/commands/prefix');
+    const deps = makeDeps();
+    await handlePrefixCommand(makeMessage('!ping'), null, deps);
+    assert.strictEqual(deps.calls.length, 1);
+    assert.match(deps.calls[0].content, /Pong/);
+    assert.match(deps.calls[0].content, /Roundtrip/);
+  });
+
+  it('responds to the ping short alias', async () => {
+    const { handlePrefixCommand } = require('../src/commands/prefix');
+    const deps = makeDeps();
+    await handlePrefixCommand(makeMessage('!p'), null, deps);
+    assert.match(deps.calls[0].content, /Pong/);
   });
 });

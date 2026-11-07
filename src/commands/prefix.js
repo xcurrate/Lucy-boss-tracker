@@ -1,10 +1,12 @@
 const { getGuildSettings, updateGuildSettings, setUserMode, setUserWarnSeconds } = require('../utils/storage');
 const { modeLabel, warnLabel, personalPanel, statusEmbed, helpEmbed } = require('../ui/panel');
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
+const { handlePersonalCommand } = require('./bossRewardNotify');
+const { buildDexResponse } = require('../services/animalDex');
 
 const ALIASES = {
   help: ['bantuan', 'help', '?'],
-  notify: ['notif', 'pengingat', 'notify'],
+  notify: ['notif', 'pengingat', 'notify', 'n'],
   on: ['nyalakan', 'aktifkan', 'enable', 'on'],
   off: ['matikan', 'nonaktifkan', 'disable', 'off'],
   status: ['cek', 'info', 'state', 'status'],
@@ -41,6 +43,35 @@ function parsePrefixInput(content, prefix) {
   };
 }
 
+// Perintah ping gaya bot Discord umum: `<prefix>ping`, berdiri sendiri di luar
+// root `boss`. Mendukung alias singkat `p`.
+function parsePingInput(content, prefix) {
+  if (typeof content !== 'string' || typeof prefix !== 'string' || !content.startsWith(prefix)) return null;
+  const rest = content.slice(prefix.length).trim();
+  const parts = rest.split(/\s+/);
+  if (!['ping', 'p'].includes((parts[0] || '').toLowerCase())) return null;
+  return { args: parts.slice(1) };
+}
+
+function pingContent(tracker, message) {
+  const created = Number.isFinite(message?.createdTimestamp) ? message.createdTimestamp : Date.now();
+  const roundtrip = Math.max(0, Date.now() - created);
+  const wsPing = tracker?.client?.ws?.ping;
+  const wsText = Number.isFinite(wsPing) && wsPing >= 0 ? wsPing + 'ms' : 'tidak tersedia';
+  return '🏓 **Pong!**\n' +
+    '⏱️ Roundtrip: **' + roundtrip + 'ms**\n' +
+    '💓 WebSocket: **' + wsText + '**';
+}
+
+// Perintah dex hewan: `<prefix>dex [query]` (alias `d`), berdiri sendiri di luar root `boss`.
+function parseDexInput(content, prefix) {
+  if (typeof content !== 'string' || typeof prefix !== 'string' || !content.startsWith(prefix)) return null;
+  const rest = content.slice(prefix.length).trim();
+  const parts = rest.split(/\s+/);
+  if (!['dex', 'd'].includes((parts[0] || '').toLowerCase())) return null;
+  return { args: parts.slice(1) };
+}
+
 function isAdmin(message) {
   return Boolean(message.member?.permissions?.has(PermissionFlagsBits.ManageGuild));
 }
@@ -57,6 +88,14 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   if (!message.guildId || message.author?.bot) return;
   const settings = getGuildSettings(message.guildId);
   const prefix = settings.prefix || '!';
+
+  if (parsePingInput(message.content, prefix)) {
+    return _sendText(message, pingContent(tracker, message));
+  }
+
+  const dex = parseDexInput(message.content, prefix);
+  if (dex) return _send(message, await buildDexResponse(dex.args, { prefix }));
+
   const parsed = parsePrefixInput(message.content, prefix);
   if (!parsed) return;
 
@@ -78,9 +117,7 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
 
   if (sub === 'notify') {
     const mode = (args[0] || '').toLowerCase();
-    if (!['dm', 'channel', 'both'].includes(mode)) {
-      return _sendText(message, 'Pilih mode: `' + prefix + 'boss notify dm`, `channel`, atau `both`.');
-    }
+    if (!['dm', 'channel', 'both'].includes(mode)) return handlePersonalCommand(message, args, prefix);
     setUserMode(message.guildId, message.author.id, mode);
     return _sendText(message, '✅ Pilihan notifikasi kamu: **' + modeLabel(mode) + '**. Notifikasi channel server tetap berlaku untuk semua anggota.');
   }
@@ -158,4 +195,4 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   return _sendText(message, 'Perintah tidak dikenal. Gunakan `' + prefix + 'boss help`.');
 }
 
-module.exports = { handlePrefixCommand, parsePrefixInput, ALIASES, ALIAS_MAP, isAdmin };
+module.exports = { handlePrefixCommand, parsePrefixInput, parsePingInput, pingContent, parseDexInput, ALIASES, ALIAS_MAP, isAdmin };

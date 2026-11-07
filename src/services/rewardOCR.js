@@ -1,0 +1,96 @@
+const fs = require('node:fs');
+const { PNG } = require('pngjs');
+const { createWorker } = require('tesseract.js');
+
+const REGIONS = Object.freeze({
+  weapon_shards: [0.08, 0.245],
+  weapon_crate: [0.32, 0.493],
+  fabled_lootbox: [0.57, 0.738],
+  experience: [0.82, 0.984]
+});
+
+let workerPromise;
+let workerClosed = false;
+
+function cropNumber(image, xStart, xEnd) {
+  const x = Math.floor(image.width * xStart);
+  const x2 = Math.floor(image.width * xEnd);
+  const y = Math.floor(image.height * 0.27);
+  const y2 = Math.floor(image.height * 0.57);
+  if (x2 <= x || y2 <= y) throw new Error('Area OCR tidak valid.');
+  const crop = new PNG({ width: x2 - x, height: y2 - y });
+  let luminance = 0;
+  for (let cy = 0; cy < crop.height; cy++) {
+    for (let cx = 0; cx < crop.width; cx++) {
+      const si = ((y + cy) * image.width + (x + cx)) * 4;
+      luminance += 0.299 * image.data[si] + 0.587 * image.data[si + 1] + 0.114 * image.data[si + 2];
+    }
+  }
+  const darkBackground = luminance / (crop.width * crop.height) < 128;
+  for (let cy = 0; cy < crop.height; cy++) {
+    for (let cx = 0; cx < crop.width; cx++) {
+      const si = ((y + cy) * image.width + (x + cx)) * 4;
+      const ti = (cy * crop.width + cx) * 4;
+      const gray = 0.299 * image.data[si] + 0.587 * image.data[si + 1] + 0.114 * image.data[si + 2];
+      const value = darkBackground ? (gray > 150 ? 0 : 255) : (gray > 150 ? 255 : 0);
+      crop.data[ti] = crop.data[ti + 1] = crop.data[ti + 2] = value;
+      crop.data[ti + 3] = 255;
+    }
+  }
+  const scale = 3;
+  const enlarged = new PNG({ width: crop.width * scale, height: crop.height * scale });
+  for (let cy = 0; cy < crop.height; cy++) {
+    for (let cx = 0; cx < crop.width; cx++) {
+      const si = (cy * crop.width + cx) * 4;
+      for (let sy = 0; sy < scale; sy++) {
+        for (let sx = 0; sx < scale; sx++) {
+          const ti = (((cy * scale + sy) * enlarged.width) + (cx * scale + sx)) * 4;
+          enlarged.data[ti] = crop.data[si];
+          enlarged.data[ti + 1] = crop.data[si + 1];
+          enlarged.data[ti + 2] = crop.data[si + 2];
+          enlarged.data[ti + 3] = 255;
+        }
+      }
+    }
+  }
+  return PNG.sync.write(enlarged);
+}
+
+async function getWorker() {
+  if (workerClosed) throw new Error('OCR worker sudah ditutup.');
+  if (!workerPromise) {
+    workerPromise = createWorker('eng').then(async worker => {
+      await worker.setParameters({ tessedit_char_whitelist: '0123456789,', tessedit_pageseg_mode: '7' });
+      return worker;
+    }).catch(error => { workerPromise = null; throw error; });
+  }
+  return workerPromise;
+}
+
+// Satu pemanggilan membaca seluruh kategori; null berarti tidak terbaca, bukan nol.
+async function readRewards(input) {
+  const buffer = Buffer.isBuffer(input) ? input : fs.readFileSync(input);
+  const image = PNG.sync.read(buffer);
+  if (image.width < 100 || image.height < 50) throw new Error('Resolusi gambar reward terlalu kecil.');
+  const worker = await getWorker();
+  const results = {};
+  for (const [name, [start, end]] of Object.entries(REGIONS)) {
+    const crop = cropNumber(image, start, end);
+    const { data } = await worker.recognize(crop);
+    const digits = String(data.text || '').replace(/[^\d]/g, '');
+    const value = digits ? Number(digits) : null;
+    results[name] = Number.isSafeInteger(value) ? value : null;
+    console.info('[RewardOCR][region] category=' + name + ' cropBytes=' + crop.length + ' raw=' + JSON.stringify(String(data.text || '').trim()) + ' digits=' + digits + ' parsed=' + results[name] + ' confidence=' + Number(data.confidence || 0).toFixed(1) + '%');
+  }
+  return results;
+}
+
+async function shutdownOCR() {
+  if (!workerPromise) return;
+  const worker = await workerPromise.catch(() => null);
+  workerClosed = true;
+  workerPromise = null;
+  if (worker) await worker.terminate();
+}
+
+module.exports = { readRewards, shutdownOCR, REGIONS };
