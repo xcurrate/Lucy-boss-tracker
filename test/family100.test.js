@@ -12,19 +12,33 @@ function resetModules() {
   }
 }
 
+let messageCounter = 0;
+
 function makeMessage(content, { guildId = 'guild1', channelId = 'chan1', userId = 'user1', name = 'Tester', admin = false } = {}) {
   const sent = [];
+  const boards = [];
+  const deleted = [];
+  const nextId = () => 'm' + (++messageCounter);
   return {
     guildId,
     channelId,
     author: { id: userId, bot: false, username: name },
     member: { displayName: name, permissions: { has: () => admin } },
     content,
-    client: { channels: { fetch: async () => ({ messages: { fetch: async () => ({ edit: async () => {} }) } }) } },
+    client: {
+      channels: {
+        fetch: async () => ({
+          messages: { fetch: async id => ({ id, delete: async () => deleted.push(id) }) },
+          send: async payload => { sent.push(payload); boards.push(payload); return { id: nextId() }; }
+        })
+      }
+    },
     react: async () => {},
-    reply: async payload => { sent.push(payload); return { id: 'msg-reply' }; },
-    channel: { send: async payload => { sent.push(payload); return { id: 'msg-send' }; } },
-    sent
+    reply: async payload => { sent.push(payload); boards.push(payload); return { id: nextId() }; },
+    channel: { send: async payload => { sent.push(payload); boards.push(payload); return { id: nextId() }; } },
+    sent,
+    boards,
+    deleted
   };
 }
 
@@ -142,6 +156,45 @@ describe('family 100 round engine', () => {
     assert.equal(session.ended, true);
     assert.equal(session.endReason, 'semua jawaban terbuka');
     assert.equal(session.revealed.size, session.question.answers.length);
+  });
+
+  it('reposts the board on a correct answer and removes the old one', async () => {
+    const svc = require('../src/services/family100');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: '!' }));
+    await svc.handleMessage(makeMessage('!f100'));
+    const session = svc.sessions.get('guild1');
+    const firstBoardId = session.messageId;
+    assert.ok(firstBoardId, 'papan awal harus terkirim');
+
+    const guess = makeMessage(session.question.answers[0].text, { name: 'Budi' });
+    assert.equal(await svc.handleMessage(guess), true);
+
+    assert.notEqual(session.messageId, firstBoardId, 'papan harus dikirim sebagai pesan baru');
+    assert.ok(guess.deleted.includes(firstBoardId), 'papan lama harus dihapus');
+    const embed = guess.boards.at(-1).embeds[0].data;
+    assert.match(embed.description, /✅ 01\. \*\*.+?\*\* — \d+ poin \(Budi\)/, 'papan baru memuat jawaban benar');
+    assert.equal(embed.footer.text.split(' ')[0], '1/' + session.question.answers.length);
+  });
+
+  it('keeps exactly one board when two correct answers arrive at once', async () => {
+    const svc = require('../src/services/family100');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: '!' }));
+    await svc.handleMessage(makeMessage('!f100'));
+    const session = svc.sessions.get('guild1');
+    const firstBoardId = session.messageId;
+
+    const [a, b] = [session.question.answers[0].text, session.question.answers[1].text];
+    const m1 = makeMessage(a, { userId: 'u1', name: 'Budi' });
+    const m2 = makeMessage(b, { userId: 'u2', name: 'Sari' });
+    await Promise.all([svc.handleMessage(m1), svc.handleMessage(m2)]);
+
+    const deleted = [...m1.deleted, ...m2.deleted];
+    assert.equal(session.revealed.size, 2, 'kedua jawaban terbuka');
+    assert.ok(deleted.includes(firstBoardId), 'papan awal dihapus');
+    assert.equal(deleted.length, 2, 'hanya papan sebelumnya yang dihapus');
+    assert.ok(!deleted.includes(session.messageId), 'papan terbaru tidak boleh ikut terhapus');
   });
 
   it('lets an admin stop the round and refuses non-admins', async () => {

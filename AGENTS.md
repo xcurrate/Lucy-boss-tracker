@@ -92,12 +92,18 @@
   [YangJunMing12/family100-database](https://github.com/YangJunMing12/family100-database)
   (Apache-2.0). Untuk memperbarui, ganti JSON-nya; `src/data/family100Bank.js` menormalkan
   ulang saat dimuat, jadi tidak ada langkah build.
+- **Papan soal dikirim ulang setiap ada jawaban benar.** Papan lama dihapus dan papan baru
+  dikirim sebagai pesan baru (via `reply` ke pesan penebak) supaya selalu berada di dasar channel —
+  kalau hanya di-*edit* di tempat, di channel ramai pesannya tertimbun dan tidak terbaca lagi.
+  Pengiriman diserialkan per sesi (`session.boardQueue`) agar dua tebakan benar yang hampir
+  bersamaan tidak menyisakan dua papan. Jika hapus/ kirim gagal (mis. izin kurang), hanya dicatat
+  ke console — ronde tetap jalan dan papan lama dibiarkan.
 - Poin disimpan di SQLite `data/family100.db` (`family100_scores` per pemain per hari WIB,
   `family100_users` untuk nama) via `src/utils/family100Storage.js`. Leaderboard mingguan
   dihitung dari rentang Senin–Minggu WIB (`weekRange`), all-time dari seluruh baris.
 - Durasi ronde opsional (detik) diatur dari dashboard; `0` = tanpa batas. Jika diisi, ronde
   otomatis ditutup saat waktu habis. Kolom channel opsional membatasi channel tempat ronde boleh mulai.
-- Test: `test/family100.test.js` (skor, pencocokan, mesin ronde, bank) dan
+- Test: `test/family100.test.js` (skor, pencocokan, mesin ronde, kirim ulang papan, bank) dan
   `test/dashboardFamily100.test.js` (API settings + leaderboard).
 
 ## Dashboard

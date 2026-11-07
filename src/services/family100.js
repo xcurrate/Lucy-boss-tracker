@@ -97,20 +97,52 @@ function scheduleTimeout(client, session) {
   session.timer = setTimeout(async () => {
     if (sessions.get(session.guildId) !== session || session.ended) return;
     endRound(session, { reason: 'waktu habis' });
-    await refreshMessage(client, session);
+    await postBoard(client, session, { finished: true });
   }, seconds * 1000);
   session.timer.unref?.();
 }
 
-async function refreshMessage(client, session) {
-  if (!session.messageId) return;
+async function fetchChannel(client, channelId) {
+  return client.channels.fetch(channelId);
+}
+
+async function deleteMessage(client, channelId, messageId) {
+  if (!messageId) return;
   try {
-    const channel = await client.channels.fetch(session.channelId);
-    const message = await channel.messages.fetch(session.messageId);
-    await message.edit({ embeds: [roundEmbed(session, { finished: session.ended })] });
+    const channel = await fetchChannel(client, channelId);
+    const message = await channel.messages.fetch(messageId);
+    await message.delete();
   } catch (e) {
-    console.error('[Family100] gagal memperbarui pesan:', e.message);
+    console.error('[Family100] gagal menghapus papan lama:', e.message);
   }
+}
+
+// Kirim papan terbaru sebagai pesan BARU (di dasar channel) lalu hapus papan
+// sebelumnya, supaya selalu ada tepat satu papan yang terlihat. Di channel ramai,
+// mengedit papan lama tidak cukup: pesannya sudah tertimbun pesan-pesan lain.
+async function sendBoard(client, session, { replyTo = null, finished = false } = {}) {
+  const payload = { embeds: [roundEmbed(session, { finished })] };
+  let sent = null;
+  try {
+    if (replyTo) sent = await replyTo.reply({ ...payload, allowedMentions: { parse: [] } });
+    else sent = await (await fetchChannel(client, session.channelId)).send(payload);
+  } catch (e) {
+    console.error('[Family100] gagal mengirim papan:', e.message);
+    return null;
+  }
+  const previous = session.messageId;
+  if (sent?.id) session.messageId = sent.id;
+  if (previous && previous !== session.messageId) await deleteMessage(client, session.channelId, previous);
+  return sent;
+}
+
+// Serialkan pengiriman papan per sesi: dua tebakan benar yang datang hampir
+// bersamaan tidak boleh menghasilkan dua papan yang sama-sama tersisa.
+function postBoard(client, session, options = {}) {
+  const run = () => sendBoard(client, session, options);
+  const chained = (session.boardQueue || Promise.resolve()).then(run, run);
+  session.boardQueue = chained.then(() => {}, () => {});
+  return chained;
 }
 
 // Titik masuk untuk setiap pesan: perintah prefix dulu, baru tebakan jawaban.
@@ -145,7 +177,8 @@ async function handleGuess(message) {
 
   await message.react('✅').catch(() => {});
   if (session.revealed.size === session.question.answers.length) endRound(session, { reason: 'semua jawaban terbuka' });
-  await refreshMessage(message.client, session);
+  // Kirim ulang papan sebagai pesan baru supaya tetap terlihat di channel ramai.
+  await postBoard(message.client, session, { replyTo: message, finished: session.ended === true });
   return true;
 }
 
@@ -218,8 +251,7 @@ async function handleCommand(message) {
       return true;
     }
     endRound(session, { reason: 'dihentikan' });
-    await refreshMessage(message.client, session);
-    await message.reply({ embeds: [roundEmbed(session, { finished: true })] });
+    await postBoard(message.client, session, { finished: true });
     sessions.delete(message.guildId);
     return true;
   }
@@ -228,12 +260,13 @@ async function handleCommand(message) {
     const session = sessions.get(message.guildId);
     if (!session || session.ended) return message.reply('Tidak ada ronde Family 100 yang aktif.').then(() => true);
     endRound(session, { reason: 'dilewati' });
-    await refreshMessage(message.client, session);
+    const skippedId = session.messageId;
     sessions.delete(message.guildId);
     const next = startRound(message.guildId, message.channelId);
     next.startedBy = message.author.id;
     const sent = await message.channel.send({ embeds: [roundEmbed(next)] });
     next.messageId = sent.id;
+    await deleteMessage(message.client, message.channelId, skippedId);
     scheduleTimeout(message.client, next);
     return true;
   }
@@ -278,8 +311,7 @@ async function handleCommand(message) {
 
   const session = startRound(message.guildId, message.channelId);
   session.startedBy = message.author.id;
-  const sent = await message.reply({ embeds: [roundEmbed(session)] });
-  session.messageId = sent?.id || null;
+  await postBoard(message.client, session, { replyTo: message });
   scheduleTimeout(message.client, session);
   return true;
 }
