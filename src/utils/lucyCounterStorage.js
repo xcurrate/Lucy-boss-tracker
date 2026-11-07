@@ -41,6 +41,16 @@ function getDb() {
       count INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (guild_id, user_id, day)
     );
+    -- Riwayat progres Target Lucy per siklus. lucy_users hanya menyimpan siklus
+    -- terakhir (ditimpa saat siklus baru), jadi tabel ini yang mempertahankan
+    -- data lama agar bisa dibaca per tanggal.
+    CREATE TABLE IF NOT EXISTS lucy_target_daily (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      cycle_key TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (guild_id, user_id, cycle_key)
+    );
   `);
   migrateLegacyJson(db, paths().legacyFile);
   return db;
@@ -176,6 +186,14 @@ function recordLucy({ guildId, userId, name, day, cycleKey, targetActive, goal }
     if (targetActive && goal > 0 && count >= goal && !notified) { notified = 1; notifiedNow = true; }
     database.prepare('UPDATE lucy_users SET challenge_cycle_key = ?, challenge_count = ?, challenge_notified = ? WHERE guild_id = ? AND user_id = ?')
       .run(cycle, count, notified, guildId, userId);
+    // Simpan juga ke riwayat per siklus agar leaderboard target per tanggal
+    // tetap bisa dibaca setelah siklus berganti.
+    if (targetActive) {
+      database.prepare(`
+        INSERT INTO lucy_target_daily (guild_id, user_id, cycle_key, count) VALUES (?, ?, ?, 1)
+        ON CONFLICT(guild_id, user_id, cycle_key) DO UPDATE SET count = count + 1`)
+        .run(guildId, userId, cycleKey);
+    }
     database.exec('COMMIT');
     return { challengeCount: count, notifiedNow };
   } catch (error) {
@@ -192,4 +210,24 @@ function resetChallenge(guildId, userId, name, cycleKey) {
     .run(cycleKey, guildId, userId);
 }
 
-module.exports = { getDb, getGuildData, getAllData, getLastAcceptedAt, markAccepted, recordLucy, resetChallenge };
+// Progres Target Lucy untuk satu siklus dari riwayat (lucy_target_daily),
+// dipakai leaderboard target per tanggal setelah siklusnya berganti. Bentuk
+// barisnya disamakan dengan state user agar bisa dipakai targetRanking apa adanya.
+function getTargetCounts(guildId, cycleKey) {
+  const rows = getDb().prepare(`
+    SELECT t.user_id, t.count, u.name
+    FROM lucy_target_daily t
+    LEFT JOIN lucy_users u ON u.guild_id = t.guild_id AND u.user_id = t.user_id
+    WHERE t.guild_id = ? AND t.cycle_key = ?`).all(guildId, String(cycleKey));
+  const users = {};
+  for (const row of rows) {
+    users[row.user_id] = {
+      name: row.name || undefined,
+      challengeDayKey: String(cycleKey),
+      challengeCount: Number(row.count) || 0
+    };
+  }
+  return { users };
+}
+
+module.exports = { getDb, getGuildData, getAllData, getLastAcceptedAt, markAccepted, recordLucy, resetChallenge, getTargetCounts };

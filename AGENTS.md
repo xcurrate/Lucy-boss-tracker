@@ -49,6 +49,30 @@
   (`?size=96,64,48,32`) — parameter CDN ini mengecilkan berkas tanpa membuang frame animasi —
   baru versi penuh. Kegagalan mirror dicatat ke console (terlihat di dashboard log).
 
+## Lucy Counter — leaderboard per tanggal
+- Perintah leaderboard menerima argumen **tanggal opsional**: `lcount`, `ltarget`, `lservers`
+  (juga `lcountall`, tapi all-time selalu memakai semua tanggal). Contoh: `!lcount 5 nov`,
+  `!ltarget 5 nov 2` (tanggal + halaman).
+- Format tanggal yang diterima `parseIndonesianDate`: `5 nov`, `5 november 2026`, `5/11/2026`,
+  `2026-11-05`. Tahun opsional — tanpa tahun dipakai tahun berjalan (WIB). Nama bulan Indonesia
+  ada di `MONTHS_ID`; `formatIndonesianDate` mengubah key kembali jadi `5 nov 2026` untuk footer.
+- `extractDateArg(args)` memisahkan token tanggal dari sisa argumen (nomor halaman) dan
+  mengembalikan `invalid` untuk teks yang menyerupai tanggal tapi tidak valid (mis. `32 nov`),
+  supaya perintah bisa membalas pesan kesalahan alih-alih diam-diam mengabaikannya.
+- Data harian sudah ada di tabel `lucy_daily (guild_id, user_id, day, count)`, jadi filter
+  tanggal untuk `lcount`/`lservers` langsung jalan.
+- **Progres Target Lucy hanya menyimpan siklus terakhir** di `lucy_users` (ditimpa saat siklus
+  berganti), jadi ditambah tabel riwayat `lucy_target_daily (guild_id, user_id, cycle_key, count)`
+  yang diisi `recordLucy` setiap Lucy diterima dalam jendela target. `getTargetCounts(guildId, cycleKey)`
+  membaca riwayat ini; bentuk barisnya disamakan dengan state user (`challengeDayKey`/`challengeCount`)
+  agar bisa dipakai `targetRanking` apa adanya. Siklus berjalan tetap dibaca dari state user.
+- Siklus target berjalan 12:00 → 10:00 WIB (`challengeCycleKey`), jadi "tanggal" pada `ltarget`
+  berarti tanggal **mulai siklus**, bukan tanggal kalender biasa.
+- Tombol navigasi `lcnav` kini membawa tanggal: `lcnav:<tipe>:<tanggal|-:><aksi>`, mis.
+  `lcnav:daily:2026-11-05:next`. Tanggal `-` berarti tanpa filter, sehingga klik tombol tetap
+  menampilkan tanggal yang sama saat memuat ulang data dari SQLite.
+- Data riwayat target **mulai terkumpul sejak tabel ini ada**; tanggal sebelum itu kosong.
+
 ## Dashboard
 - `src/dashboard/server.js` (API + static) dan `src/dashboard/public/` (UI: `index.html`, `app.js`,
   `styles.css`). Semua endpoint `/api/*` butuh header `Authorization: Bearer <DASHBOARD_TOKEN>`.

@@ -14,6 +14,7 @@ function resetModules() {
 
 function makeMessage(content, { guildId = 'guild1', userId = 'user1', admin = false } = {}) {
   const replies = [];
+  const payloads = [];
   return {
     guildId,
     channelId: 'chan1',
@@ -22,9 +23,14 @@ function makeMessage(content, { guildId = 'guild1', userId = 'user1', admin = fa
     member: { displayName: 'tester', permissions: { has: () => admin } },
     createdTimestamp: Date.now(),
     client: {},
-    reply: async payload => { replies.push(typeof payload === 'string' ? payload : payload.content); return { id: 'msg' }; },
+    reply: async payload => {
+      payloads.push(payload);
+      replies.push(typeof payload === 'string' ? payload : payload.content);
+      return { id: 'msg' };
+    },
     react: async () => {},
-    replies
+    replies,
+    payloads
   };
 }
 
@@ -77,6 +83,45 @@ describe('lucy counter command routing', () => {
     // Cooldown: a second message within 10 seconds is ignored.
     await lucyCounter.handleMessage(makeMessage('lucy lagi', { userId: 'user1' }));
     assert.strictEqual(store.getGuildData('guild1').users.user1.days[day], 1);
+  });
+
+  it('filters each leaderboard by the date typed as "5 nov"', async () => {
+    const { updateGuildSettings } = require('../src/utils/storage');
+    const lucyCounter = require('../src/services/lucyCounter');
+    const store = require('../src/utils/lucyCounterStorage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: '!', lucyCounter: { ...s.lucyCounter, enabled: true, targetEnabled: true, targetGoal: 5 } }));
+
+    // Data dua tanggal berbeda: 5 nov (3 Lucy) dan 6 nov (1 Lucy).
+    store.recordLucy({ guildId: 'guild1', userId: 'user1', name: 'tester', day: '2026-11-05', cycleKey: '2026-11-05', targetActive: false, goal: 0 });
+    store.recordLucy({ guildId: 'guild1', userId: 'user1', name: 'tester', day: '2026-11-05', cycleKey: '2026-11-05', targetActive: false, goal: 0 });
+    store.recordLucy({ guildId: 'guild1', userId: 'user1', name: 'tester', day: '2026-11-06', cycleKey: '2026-11-06', targetActive: false, goal: 0 });
+    store.recordLucy({ guildId: 'guild1', userId: 'user1', name: 'tester', day: '2026-11-05', cycleKey: '2026-11-05', targetActive: true, goal: 5 });
+
+    const daily = makeMessage('!lcount 5 nov');
+    assert.ok(await lucyCounter.handleCommand(daily));
+    assert.match(daily.payloads[0].embeds[0].data.description, /\*\*3\*\* — tester/);
+    assert.ok(daily.payloads[0].embeds[0].data.footer.text.includes('5 nov 2026'));
+    // Tombol navigasi membawa tanggal yang sama.
+    assert.match(daily.payloads[0].components[0].components[0].data.custom_id, /lcnav:daily:2026-11-05:/);
+
+    const target = makeMessage('!ltarget 5 nov');
+    assert.ok(await lucyCounter.handleCommand(target));
+    assert.match(target.payloads[0].embeds[0].data.description, /\*\*1\*\* — tester/);
+    assert.match(target.payloads[0].components[0].components[0].data.custom_id, /lcnav:target:2026-11-05:/);
+
+    const servers = makeMessage('!lservers 5 nov');
+    assert.ok(await lucyCounter.handleCommand(servers));
+    assert.ok(servers.payloads[0].embeds[0].data.footer.text.includes('5 nov 2026'));
+  });
+
+  it('rejects an impossible date instead of silently ignoring it', async () => {
+    const { updateGuildSettings } = require('../src/utils/storage');
+    const lucyCounter = require('../src/services/lucyCounter');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: '!' }));
+
+    const message = makeMessage('!lcount 32 nov');
+    assert.ok(await lucyCounter.handleCommand(message));
+    assert.match(message.replies[0], /Tanggal tidak dikenali/);
   });
 
   it('still handles lucytarget status and admin settings', async () => {
