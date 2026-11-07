@@ -76,10 +76,20 @@
 ## Family 100
 - Game tebak jawaban tersembunyi. Satu soal punya beberapa jawaban yang **disembunyikan**
   sebagai slot `▓▓▓`; bot mendengarkan semua pesan di channel ronde dan mencocokkannya.
-- Perintah: `!f100` / `!family100` (mulai), `!f100 stop`, `!f100 skip` (admin), `!f100 status`,
-  `!f100 lb [all]`, `!f100 on|off` (admin). Alias perintah: `kuis`.
-- **Satu sesi aktif per server**, terikat ke channel tempat `!f100` dijalankan. Memanggil `!f100`
-  saat masih ada sesi aktif membalas bahwa sesi sudah jalan di channel itu (bukan memulai ronde baru).
+- Perintah: `!f100` / `!family100` (mulai; **kalau ronde sudah jalan, menampilkan ulang soalnya**),
+  `!f100 soal` (alias `status`, tampilkan ulang soal & jawaban terbuka), `!f100 skip` (**semua orang**),
+  `!f100 stop` & `!f100 on|off` (**moderator/admin/developer**), `!f100 lb [all]`. Alias perintah: `kuis`.
+- **Izin**: `skip` bebas untuk semua orang supaya soal mentok bisa dilanjutkan siapa saja. `stop`
+  dan `on|off` hanya untuk moderator/admin (`ManageGuild`), pemilik server, atau developer.
+  "Developer" = pemilik aplikasi bot, ID di env `DEVELOPER_IDS` (dipisah koma), atau pemilik server
+  (`src/services/family100.js`: `isModerator`/`isDeveloper`/`isAdmin`).
+- **Satu sesi aktif per server**, terikat ke channel tempat `!f100` dijalankan. `!f100` di channel
+  yang sama saat ronde berjalan akan **mengirim ulang papan soal** (bukan memulai ronde baru);
+  di channel berbeda hanya membalas lokasi sesi. Ini cara cepat menemukan soal yang tenggelam saat
+  tak ada yang bisa menjawab.
+- **Auto-bump**: kalau channel ronde dibanjiri pesan biasa (`AUTO_BUMP_AFTER`, default 20) tanpa
+  jawaban benar, papan dikirim ulang otomatis (`noteChannelActivity`) supaya soal tetap terlihat.
+  Penghitung direset setiap kali papan dikirim, jadi tidak bisa spam.
 - Poin **skema C**: tiap soal bernilai total **100 poin**, tanpa bonus penutup ronde, tanpa
   penalti untuk jawaban salah. Bobot menurun linier mengikuti urutan jawaban (jawaban teratas
   dapat poin terbesar), dibulatkan dengan metode sisa terbesar supaya total tepat 100 dan tidak
@@ -103,7 +113,7 @@
   dihitung dari rentang Senin–Minggu WIB (`weekRange`), all-time dari seluruh baris.
 - Durasi ronde opsional (detik) diatur dari dashboard; `0` = tanpa batas. Jika diisi, ronde
   otomatis ditutup saat waktu habis. Kolom channel opsional membatasi channel tempat ronde boleh mulai.
-- Test: `test/family100.test.js` (skor, pencocokan, mesin ronde, kirim ulang papan, bank) dan
+- Test: `test/family100.test.js` (skor, pencocokan, mesin ronde, kirim ulang papan, izin, bank) dan
   `test/dashboardFamily100.test.js` (API settings + leaderboard).
 
 ## Dashboard

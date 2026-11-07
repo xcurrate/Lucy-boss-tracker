@@ -15,6 +15,9 @@ const WIB = 'Asia/Jakarta';
 const F100_NAV = 'f100nav';
 const PAGE_SIZE = 10;
 const MEDALS = ['🥇', '🥈', '🥉'];
+// Jumlah pesan biasa di channel ronde sebelum papan otomatis dikirim ulang. Menjaga
+// soal tetap terlihat saat ramai walau tak ada yang menjawab (lihat noteChannelActivity).
+const AUTO_BUMP_AFTER = 20;
 
 // guildId -> sesi berjalan
 const sessions = new Map();
@@ -139,6 +142,7 @@ async function sendBoard(client, session, { replyTo = null, finished = false } =
 // Serialkan pengiriman papan per sesi: dua tebakan benar yang datang hampir
 // bersamaan tidak boleh menghasilkan dua papan yang sama-sama tersisa.
 function postBoard(client, session, options = {}) {
+  session.messagesSinceBoard = 0;
   const run = () => sendBoard(client, session, options);
   const chained = (session.boardQueue || Promise.resolve()).then(run, run);
   session.boardQueue = chained.then(() => {}, () => {});
@@ -148,6 +152,7 @@ function postBoard(client, session, options = {}) {
 // Titik masuk untuk setiap pesan: perintah prefix dulu, baru tebakan jawaban.
 async function handleMessage(message) {
   if (!message.guildId || message.author?.bot || !message.content) return false;
+  noteChannelActivity(message);
   if (await handleCommand(message)) return true;
   return handleGuess(message);
 }
@@ -221,8 +226,35 @@ function parsePage(value) {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
 }
 
-function isAdmin(message) {
+function isModerator(message) {
   return Boolean(message.member?.permissions?.has?.(PermissionFlagsBits.ManageGuild));
+}
+
+// "Developer" = pemilik bot (application owner) atau ID di env DEVELOPER_IDS,
+// ditambah pemilik server. Dipakai untuk perintah pengelolaan ronde.
+function isDeveloper(message) {
+  const ids = new Set(String(process.env.DEVELOPER_IDS || '').split(',').map(s => s.trim()).filter(Boolean));
+  const owner = message.client?.application?.owner;
+  if (owner?.id) ids.add(owner.id);
+  else if (owner?.members) for (const id of owner.members.keys()) ids.add(id);
+  if (ids.has(message.author?.id)) return true;
+  return Boolean(message.guild?.ownerId && message.guild.ownerId === message.author.id);
+}
+
+function isAdmin(message) {
+  return isModerator(message) || isDeveloper(message);
+}
+
+// Dipanggil untuk setiap pesan di guild yang punya ronde aktif. Kalau channel ronde
+// sudah kebanjiran pesan biasa tanpa ada jawaban benar, papan dikirim ulang supaya
+// soal tidak tenggelam. Aman dari spam karena tiap bump mereset penghitung.
+function noteChannelActivity(message) {
+  const session = sessions.get(message.guildId);
+  if (!session || session.ended || message.channelId !== session.channelId) return;
+  session.messagesSinceBoard = (session.messagesSinceBoard || 0) + 1;
+  if (session.messagesSinceBoard < AUTO_BUMP_AFTER) return;
+  session.messagesSinceBoard = 0;
+  postBoard(message.client, session).catch(e => console.error('[Family100] bump papan:', e.message));
 }
 
 async function handleCommand(message) {
@@ -246,8 +278,8 @@ async function handleCommand(message) {
   if (sub === 'stop' || sub === 'selesai') {
     const session = sessions.get(message.guildId);
     if (!session || session.ended) return message.reply('Tidak ada ronde Family 100 yang aktif.').then(() => true);
-    if (!isAdmin(message) && message.author.id !== session.startedBy) {
-      await message.reply('Hanya moderator/admin atau pemula ronde yang bisa menghentikan ronde.');
+    if (!isAdmin(message)) {
+      await message.reply('Hanya moderator/admin atau developer yang bisa menghentikan ronde.');
       return true;
     }
     endRound(session, { reason: 'dihentikan' });
@@ -256,9 +288,10 @@ async function handleCommand(message) {
     return true;
   }
   if (sub === 'skip' || sub === 'lewati') {
-    if (!isAdmin(message)) return message.reply('Hanya moderator/admin yang bisa melewati soal.').then(() => true);
     const session = sessions.get(message.guildId);
     if (!session || session.ended) return message.reply('Tidak ada ronde Family 100 yang aktif.').then(() => true);
+    // Skip terbuka untuk semua orang: kalau satu soal mentok dan tak ada yang bisa
+    // menjawab, siapa pun boleh melanjutkan ke soal berikutnya.
     endRound(session, { reason: 'dilewati' });
     const skippedId = session.messageId;
     sessions.delete(message.guildId);
@@ -271,18 +304,19 @@ async function handleCommand(message) {
     return true;
   }
 
-  if (sub === 'status') {
+  if (sub === 'status' || sub === 'soal') {
     const session = sessions.get(message.guildId);
     if (!session || session.ended) {
       await message.reply(`Family 100 tidak ada ronde aktif. Bank soal: **${bank.count()}** soal. Total 100 poin per soal.`);
       return true;
     }
-    await message.reply({ embeds: [roundEmbed(session)] });
+    // Tampilkan ulang papan di dasar channel: pesan lama mungkin sudah tenggelam.
+    await postBoard(message.client, session, { replyTo: message, finished: session.ended === true });
     return true;
   }
 
   if (sub === 'on' || sub === 'off') {
-    if (!isAdmin(message)) return message.reply('Hanya moderator/admin yang bisa mengubah pengaturan.').then(() => true);
+    if (!isAdmin(message)) return message.reply('Hanya moderator/admin atau developer yang bisa mengubah pengaturan.').then(() => true);
     const enabled = sub === 'on';
     updateGuildSettings(message.guildId, s => ({ ...s, family100: { ...s.family100, enabled } }));
     await message.reply(`Family 100 ${enabled ? 'diaktifkan' : 'dimatikan'}.`);
@@ -294,10 +328,15 @@ async function handleCommand(message) {
     return true;
   }
 
-  // Mulai ronde.
+  // Mulai ronde. Kalau sudah ada ronde berjalan, `!f100` menampilkan ulang soalnya
+  // di dasar channel alih-alih menolak — ini cara cepat menemukan soal yang tenggelam.
   const active = sessions.get(message.guildId);
   if (active && !active.ended) {
-    await message.reply(`Masih ada sesi Family 100 aktif di <#${active.channelId}>. Selesaikan atau hentikan dulu dengan \`${prefix}f100 stop\`.`);
+    if (active.channelId !== message.channelId) {
+      await message.reply(`Masih ada sesi Family 100 aktif di <#${active.channelId}>. Tampilkan soalnya dengan \`${prefix}f100\` di sana, atau hentikan dengan \`${prefix}f100 stop\`.`);
+      return true;
+    }
+    await postBoard(message.client, active, { replyTo: message });
     return true;
   }
   if (cfg.enabled === false) {
@@ -330,17 +369,18 @@ async function handleNavigation(interaction) {
 function helpText(prefix) {
   return [
     `**Family 100** — ${bank.count()} soal, total 100 poin per soal.`,
-    `\`${prefix}f100\` — mulai ronde di channel ini`,
-    `\`${prefix}f100 stop\` — hentikan ronde`,
-    `\`${prefix}f100 skip\` — lewati ke soal berikutnya (admin)`,
-    `\`${prefix}f100 status\` — lihat soal & progres ronde`,
+    `\`${prefix}f100\` — mulai ronde; jika sudah jalan, tampilkan ulang soalnya`,
+    `\`${prefix}f100 soal\` — tampilkan ulang soal & jawaban terbuka (alias \`status\`)`,
+    `\`${prefix}f100 skip\` — lewati ke soal berikutnya (semua orang)`,
+    `\`${prefix}f100 stop\` — hentikan ronde (moderator/admin/developer)`,
     `\`${prefix}f100 lb [all]\` — leaderboard mingguan/all-time`,
-    `\`${prefix}f100 on|off\` — aktifkan/matikan (admin)`
+    `\`${prefix}f100 on|off\` — aktifkan/matikan (moderator/admin/developer)`
   ].join('\n');
 }
 
 module.exports = {
   handleCommand, handleMessage, handleNavigation, isF100Nav, navRow, helpText,
   leaderboardView, roundEmbed, pointsFor, weekRange, dayKey,
+  isModerator, isDeveloper, isAdmin, noteChannelActivity, AUTO_BUMP_AFTER,
   sessions, startRound, endRound, matchAnswer
 };

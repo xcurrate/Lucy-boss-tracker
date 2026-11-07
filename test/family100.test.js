@@ -14,18 +14,20 @@ function resetModules() {
 
 let messageCounter = 0;
 
-function makeMessage(content, { guildId = 'guild1', channelId = 'chan1', userId = 'user1', name = 'Tester', admin = false } = {}) {
+function makeMessage(content, { guildId = 'guild1', channelId = 'chan1', userId = 'user1', name = 'Tester', admin = false, dev = false, guildOwner = false } = {}) {
   const sent = [];
   const boards = [];
   const deleted = [];
   const nextId = () => 'm' + (++messageCounter);
   return {
     guildId,
+    guild: { id: guildId, ownerId: guildOwner ? userId : 'someone-else' },
     channelId,
     author: { id: userId, bot: false, username: name },
     member: { displayName: name, permissions: { has: () => admin } },
     content,
     client: {
+      application: { owner: dev ? { id: userId } : null },
       channels: {
         fetch: async () => ({
           messages: { fetch: async id => ({ id, delete: async () => deleted.push(id) }) },
@@ -195,6 +197,63 @@ describe('family 100 round engine', () => {
     assert.ok(deleted.includes(firstBoardId), 'papan awal dihapus');
     assert.equal(deleted.length, 2, 'hanya papan sebelumnya yang dihapus');
     assert.ok(!deleted.includes(session.messageId), 'papan terbaru tidak boleh ikut terhapus');
+  });
+
+  it('lets anyone skip, and reposts the current question on a repeat !f100', async () => {
+    const svc = require('../src/services/family100');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: '!' }));
+    await svc.handleMessage(makeMessage('!f100'));
+    const session = svc.sessions.get('guild1');
+    const firstQuestion = session.question.id;
+    const firstBoardId = session.messageId;
+
+    // `!f100` di channel yang sama = tampilkan ulang soal, bukan ronde baru.
+    const repeat = makeMessage('!f100', { userId: 'user9', name: 'Warga' });
+    assert.equal(await svc.handleMessage(repeat), true);
+    assert.equal(svc.sessions.get('guild1').question.id, firstQuestion, 'soal tidak boleh berganti');
+    assert.ok(repeat.deleted.includes(firstBoardId), 'papan lama dihapus saat tampilkan ulang');
+    assert.match(repeat.boards.at(-1).embeds[0].data.title, /FAMILY 100/, 'papan soal dikirim ulang');
+
+    // Skip oleh pengguna biasa (bukan admin) harus jalan.
+    const skip = makeMessage('!f100 skip', { userId: 'user9', name: 'Warga', admin: false });
+    assert.equal(await svc.handleMessage(skip), true);
+    const next = svc.sessions.get('guild1');
+    assert.ok(next, 'ronde berikutnya tetap jalan');
+    assert.notEqual(next.question.id, firstQuestion, 'soal berganti setelah skip');
+  });
+
+  it('lets a developer stop the round without server admin permission', async () => {
+    const svc = require('../src/services/family100');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: '!' }));
+    await svc.handleMessage(makeMessage('!f100'));
+
+    const dev = makeMessage('!f100 stop', { userId: 'dev1', admin: false, dev: true });
+    assert.equal(await svc.handleMessage(dev), true);
+    assert.equal(svc.sessions.has('guild1'), false, 'developer boleh menghentikan ronde');
+
+    await svc.handleMessage(makeMessage('!f100'));
+    const owner = makeMessage('!f100 stop', { userId: 'owner1', admin: false, guildOwner: true });
+    assert.equal(await svc.handleMessage(owner), true);
+    assert.equal(svc.sessions.has('guild1'), false, 'pemilik server boleh menghentikan ronde');
+  });
+
+  it('auto-bumps the board after enough idle chatter so the question stays visible', async () => {
+    const svc = require('../src/services/family100');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: '!' }));
+    await svc.handleMessage(makeMessage('!f100'));
+    const session = svc.sessions.get('guild1');
+    const startBoardId = session.messageId;
+
+    const noise = makeMessage('ngobrol aja', { userId: 'user9', name: 'Warga' });
+    for (let i = 0; i < svc.AUTO_BUMP_AFTER; i++) await svc.handleMessage(noise);
+    await session.boardQueue;
+
+    assert.notEqual(session.messageId, startBoardId, 'papan harus dikirim ulang setelah channel ramai');
+    assert.ok(noise.deleted.includes(startBoardId), 'papan lama dihapus saat bump');
+    assert.equal(session.revealed.size, 0, 'bump tidak membuka jawaban');
   });
 
   it('lets an admin stop the round and refuses non-admins', async () => {
