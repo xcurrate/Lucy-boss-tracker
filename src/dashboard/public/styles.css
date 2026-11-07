@@ -957,3 +957,36 @@ textarea:focus {
   opacity:.65;
   cursor:wait
 }
+
+.table-wrap {
+  overflow-x:auto;
+  border:1px solid var(--line);
+  border-radius:12px
+}
+
+.table-wrap table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px
+}
+
+.table-wrap th,.table-wrap td {
+  text-align:left;
+  padding:10px 14px;
+  border-bottom:1px solid var(--line)
+}
+
+.table-wrap thead th {
+  color:var(--muted);
+  font-size:11px;
+  letter-spacing:.08em
+}
+
+.table-wrap tbody tr:last-child td {
+  border-bottom:none
+}
+
+.table-wrap td:last-child {
+  text-align:right;
+  font-variant-numeric:tabular-nums
+}

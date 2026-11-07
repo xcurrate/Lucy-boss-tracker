@@ -73,6 +73,33 @@
   menampilkan tanggal yang sama saat memuat ulang data dari SQLite.
 - Data riwayat target **mulai terkumpul sejak tabel ini ada**; tanggal sebelum itu kosong.
 
+## Family 100
+- Game tebak jawaban tersembunyi. Satu soal punya beberapa jawaban yang **disembunyikan**
+  sebagai slot `▓▓▓`; bot mendengarkan semua pesan di channel ronde dan mencocokkannya.
+- Perintah: `!f100` / `!family100` (mulai), `!f100 stop`, `!f100 skip` (admin), `!f100 status`,
+  `!f100 lb [all]`, `!f100 on|off` (admin). Alias perintah: `kuis`.
+- **Satu sesi aktif per server**, terikat ke channel tempat `!f100` dijalankan. Memanggil `!f100`
+  saat masih ada sesi aktif membalas bahwa sesi sudah jalan di channel itu (bukan memulai ronde baru).
+- Poin **skema C**: tiap soal bernilai total **100 poin**, tanpa bonus penutup ronde, tanpa
+  penalti untuk jawaban salah. Bobot menurun linier mengikuti urutan jawaban (jawaban teratas
+  dapat poin terbesar), dibulatkan dengan metode sisa terbesar supaya total tepat 100 dan tidak
+  ada jawaban bernilai 0 (`src/services/family100Score.js`).
+- Pencocokan jawaban (`src/services/family100Match.js`) toleran: huruf besar/kecil, tanda baca,
+  kata depan (`yang`, `itu`, `di`, …), dan spasi/tanda hubung dibuang; salah ketik 1–2 huruf
+  dimaafkan **hanya untuk jawaban satu kata** agar "goreng" tidak cocok dengan "nasi goreng".
+  Pesan yang berawalan prefix (perintah) tidak pernah dihitung sebagai jawaban.
+- Bank soal: `src/data/family100.json` — 1.767 soal unik hasil deduplikasi dari
+  [YangJunMing12/family100-database](https://github.com/YangJunMing12/family100-database)
+  (Apache-2.0). Untuk memperbarui, ganti JSON-nya; `src/data/family100Bank.js` menormalkan
+  ulang saat dimuat, jadi tidak ada langkah build.
+- Poin disimpan di SQLite `data/family100.db` (`family100_scores` per pemain per hari WIB,
+  `family100_users` untuk nama) via `src/utils/family100Storage.js`. Leaderboard mingguan
+  dihitung dari rentang Senin–Minggu WIB (`weekRange`), all-time dari seluruh baris.
+- Durasi ronde opsional (detik) diatur dari dashboard; `0` = tanpa batas. Jika diisi, ronde
+  otomatis ditutup saat waktu habis. Kolom channel opsional membatasi channel tempat ronde boleh mulai.
+- Test: `test/family100.test.js` (skor, pencocokan, mesin ronde, bank) dan
+  `test/dashboardFamily100.test.js` (API settings + leaderboard).
+
 ## Dashboard
 - `src/dashboard/server.js` (API + static) dan `src/dashboard/public/` (UI: `index.html`, `app.js`,
   `styles.css`). Semua endpoint `/api/*` butuh header `Authorization: Bearer <DASHBOARD_TOKEN>`.

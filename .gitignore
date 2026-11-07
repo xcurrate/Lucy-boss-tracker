@@ -1,5 +1,7 @@
 node_modules/
-.env
 data/
+!src/data/
+!src/data/**
+.env
 *.log
 eng.traineddata

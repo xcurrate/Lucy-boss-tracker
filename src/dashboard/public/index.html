@@ -16,6 +16,7 @@
       <a class="nav" href="#boss">🐉 <span>Boss Tracker</span></a>
       <a class="nav" href="#rep">🧵 <span>Auto Thread Rep</span></a>
       <a class="nav" href="#lucy-counter">🔢 <span>Lucy Counter</span></a>
+      <a class="nav" href="#family100">📺 <span>Family 100</span></a>
       <a class="nav" href="#boss-rewards">🎁 <span>Boss Reward Reminder</span></a>
       <a class="nav" href="#notes">📝 <span>Notes</span></a>
       <a class="nav" href="#logs">▤ <span>System Logs</span></a>
@@ -69,6 +70,18 @@
             <div class="field"><label for="lucy-target-stop">BERHENTI TARGET (WIB)</label><input id="lucy-target-stop" type="time" value="10:00" required><small>Jam berhenti di hari berikutnya jika lebih awal dari waktu mulai.</small></div>
 </div>
           <p>Leaderboard: <code>[prefix]lcount</code> (harian), <code>[prefix]ltarget</code> (target), <code>[prefix]lservers</code> (per server), <code>[prefix]lcountall</code> (sepanjang masa). Semua bisa difilter tanggal, mis. <code>[prefix]lcount 5 nov</code>.</p>
+        </section>
+        <section class="panel" id="family100">
+          <div class="panel-heading"><div><div class="eyebrow">CATEGORY 03B / COMMUNITY</div><h2>📺 Family 100</h2><p>Game tebak jawaban tersembunyi. Satu ronde aktif per server, terikat channel tempat <code>[prefix]f100</code> dijalankan.</p></div></div>
+          <p>Bot menampilkan satu soal dan sejumlah slot jawaban tertutup. Pemain mengetik jawaban di channel ronde; jawaban benar membuka slot dan memberi poin. Total tiap soal 100 poin: jawaban paling populer dapat poin terbesar. Tidak ada bonus penutup ronde. Pesan berawalan prefix (perintah) tidak pernah dihitung sebagai jawaban. Bank soal berisi 1767 soal, dapat diperbarui dengan mengganti <code>src/data/family100.json</code>.</p>
+          <div class="form-grid">
+            <div class="field"><label for="family100-enabled">FAMILY 100 SERVER ON/OFF</label><label class="switch"><input id="family100-enabled" type="checkbox"><span></span></label><small>Aktif/nonaktif hanya untuk server yang sedang dipilih di atas.</small></div>
+            <div class="field"><label for="family100-channel">CHANNEL RONDE</label><select id="family100-channel"></select><small>Jika diisi, ronde hanya boleh dimulai di channel ini. Kosong = channel mana pun.</small></div>
+            <div class="field"><label for="family100-duration">DURASI RONDE (DETIK)</label><input id="family100-duration" type="number" min="0" max="86400" step="1" value="0"><small>0 = tanpa batas waktu. Jika diisi, ronde otomatis ditutup setelah durasi ini.</small></div>
+          </div>
+          <p>Perintah: <code>[prefix]f100</code> (mulai), <code>[prefix]f100 stop</code>, <code>[prefix]f100 skip</code> (admin), <code>[prefix]f100 status</code>, <code>[prefix]f100 lb [all]</code>, <code>[prefix]f100 on|off</code>.</p>
+          <div class="field"><label for="family100-scope">TABEL POIN</label><select id="family100-scope"><option value="weekly">Mingguan (Senin–Minggu, WIB)</option><option value="alltime">Sepanjang masa</option></select><small>Peringkat pemain berdasarkan poin yang sudah terbuka dari jawaban benar.</small></div>
+          <div class="table-wrap"><table id="family100-board"><thead><tr><th>#</th><th>PEMAIN</th><th>POIN</th></tr></thead><tbody><tr><td colspan="3" class="muted">Pilih server untuk memuat data.</td></tr></tbody></table></div>
         </section>
         <section class="panel" id="boss-rewards">
           <div class="panel-heading"><div><div class="eyebrow">CATEGORY 04 / REWARD ALERTS</div><h2>🎁 Boss Reward Reminder</h2><p>Notifikasi role server saat jumlah reward pada gambar Lucy mencapai target. Pengaturan ini tersedia melalui dashboard developer.</p></div><label class="switch"><input id="reward-enabled" type="checkbox"><span></span></label></div>

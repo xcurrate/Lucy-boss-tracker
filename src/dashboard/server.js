@@ -6,6 +6,8 @@ const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
 const logBuffer = require('../utils/logBuffer');
 const bossRewardStore = require('../utils/bossRewardStorage');
 const noteStorage = require('../utils/noteStorage');
+const family100Scores = require('../utils/family100Storage');
+const family100 = require('../services/family100');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
@@ -47,6 +49,7 @@ function publicSettings(settings) {
     prefix: settings.prefix || '!',
     lastBossTimestamp: settings.lastBossTimestamp,
     autoThreadRep: { ...settings.autoThreadRep, channelId: settings.autoThreadRep.channelId || '' },
+    family100: { enabled: settings.family100?.enabled !== false, channelId: settings.family100?.channelId || '', durationSeconds: Number(settings.family100?.durationSeconds || 0) },
     lucyCounter: { enabled: Boolean(settings.lucyCounter?.enabled), targetEnabled: Boolean(settings.lucyCounter?.targetEnabled), targetGoal: Number(settings.lucyCounter?.targetGoal || 0), targetMessage: settings.lucyCounter?.targetMessage || '🎉 Target Lucy tercapai!', targetChannelId: settings.lucyCounter?.targetChannelId || '', targetStartTime: settings.lucyCounter?.targetStartTime || '12:00', targetStopTime: settings.lucyCounter?.targetStopTime || '10:00', blacklistedChannelIds: Array.isArray(settings.lucyCounter?.blacklistedChannelIds) ? settings.lucyCounter.blacklistedChannelIds : [], whitelistedChannelIds: Array.isArray(settings.lucyCounter?.whitelistedChannelIds) ? settings.lucyCounter.whitelistedChannelIds : [] }
   };
 }
@@ -73,6 +76,12 @@ function validateSettings(input) {
   const targetStartTime = validateTargetTime(lucyCounter.targetStartTime, '12:00', 'Waktu mulai target');
   const targetStopTime = validateTargetTime(lucyCounter.targetStopTime, '10:00', 'Waktu berhenti target');
   if (targetStartTime === targetStopTime) throw new Error('Waktu mulai dan berhenti target tidak boleh sama.');
+  const family100 = input.family100 || {};
+  if (typeof family100.enabled !== 'boolean') throw new Error('Status Family 100 tidak valid.');
+  const familyChannelId = family100.channelId || null;
+  if (familyChannelId && !/^\d{17,20}$/.test(familyChannelId)) throw new Error('ID channel Family 100 tidak valid.');
+  const familyDuration = Number(family100.durationSeconds || 0);
+  if (!Number.isSafeInteger(familyDuration) || familyDuration < 0 || familyDuration > 86400) throw new Error('Durasi Family 100 harus 0–86400 detik (0 = tanpa batas).');
   const channelId = input.channelId || null;
   const roleId = input.roleId || null;
   if (channelId && !/^\d{17,20}$/.test(channelId)) throw new Error('ID channel notifikasi tidak valid.');
@@ -98,6 +107,7 @@ function validateSettings(input) {
     roleId,
     prefix: input.prefix,
     lucyCounter: { enabled: lucyCounter.enabled, targetEnabled: Boolean(lucyCounter.targetEnabled), targetGoal, targetMessage: targetMessage || '🎉 Target Lucy tercapai!', targetChannelId, targetStartTime, targetStopTime, blacklistedChannelIds, whitelistedChannelIds },
+    family100: { enabled: family100.enabled, channelId: familyChannelId, durationSeconds: familyDuration },
     autoThreadRep: {
       enabled: rep.enabled,
       channelId: repChannelId,
@@ -141,6 +151,14 @@ function startDashboard(client, tracker) {
       if (req.method === 'GET' && url.pathname === '/api/logs') {
         const after = Number(url.searchParams.get('after') || 0);
         return json(res, 200, { logs: logBuffer.read(after), latestId: logBuffer.latestId() });
+      }
+      if (req.method === 'GET' && url.pathname === '/api/family100/leaderboard') {
+        const guild = getGuild(client, url.searchParams.get('guildId'));
+        const scope = url.searchParams.get('scope') === 'alltime' ? 'alltime' : 'weekly';
+        const rows = scope === 'alltime'
+          ? family100Scores.topAllTime(guild.id)
+          : family100Scores.topByRange(guild.id, ...Object.values(family100.weekRange()));
+        return json(res, 200, { scope, rows: rows.slice(0, 50) });
       }
       if (req.method === 'GET' && url.pathname === '/api/settings') {
         const guild = getGuild(client, url.searchParams.get('guildId'));
@@ -211,7 +229,7 @@ function startDashboard(client, tracker) {
         const value = validateSettings(input.settings);
         if (value.enabled && (!value.channelId || !value.roleId)) throw new Error('Pilih channel dan role sebelum mengaktifkan Boss Tracker.');
         if (value.autoThreadRep.enabled && !value.autoThreadRep.channelId) throw new Error('Pilih channel Auto Thread Rep sebelum mengaktifkan fitur tersebut.');
-        for (const [id, label] of [[value.channelId, 'Channel notifikasi'], [value.autoThreadRep.channelId, 'Channel Auto Thread Rep'], [value.lucyCounter.targetChannelId, 'Channel laporan target Lucy'], ...value.lucyCounter.blacklistedChannelIds.map(id => [id, 'Channel blacklist Lucy']), ...value.lucyCounter.whitelistedChannelIds.map(id => [id, 'Channel whitelist Lucy'])]) {
+        for (const [id, label] of [[value.channelId, 'Channel notifikasi'], [value.autoThreadRep.channelId, 'Channel Auto Thread Rep'], [value.family100.channelId, 'Channel ronde Family 100'], [value.lucyCounter.targetChannelId, 'Channel laporan target Lucy'], ...value.lucyCounter.blacklistedChannelIds.map(id => [id, 'Channel blacklist Lucy']), ...value.lucyCounter.whitelistedChannelIds.map(id => [id, 'Channel whitelist Lucy'])]) {
           if (!id) continue;
           const channel = await guild.channels.fetch(id);
           if (!channel || channel.guildId !== guild.id || !channel.isTextBased() || channel.isThread?.()) {

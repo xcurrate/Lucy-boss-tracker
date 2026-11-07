@@ -21,6 +21,9 @@ function selectOptions(select, rows, placeholder, selected) {
 }
 function renderSettings(settings) {
   $('boss-enabled').checked = settings.enabled;
+  $('family100-enabled').checked = settings.family100?.enabled !== false;
+  $('family100-channel').value = settings.family100?.channelId || '';
+  $('family100-duration').value = Number(settings.family100?.durationSeconds || 0);
   $('lucy-counter-enabled').checked = Boolean(settings.lucyCounter?.enabled);
   $('lucy-target-enabled').checked = Boolean(settings.lucyCounter?.targetEnabled);
   $('lucy-target-goal').value = Number(settings.lucyCounter?.targetGoal || 0);
@@ -205,12 +208,44 @@ async function loadNotes() {
   }
 }
 
+async function loadFamily100Board() {
+  const body = $('family100-board').querySelector('tbody');
+  if (!guildId) return;
+  const scope = $('family100-scope').value;
+  try {
+    const data = await api('/api/family100/leaderboard?guildId=' + encodeURIComponent(guildId) + '&scope=' + scope);
+    const rows = data.rows || [];
+    body.replaceChildren();
+    if (!rows.length) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 3; td.className = 'muted'; td.textContent = 'Belum ada poin tercatat.';
+      tr.appendChild(td); body.appendChild(tr);
+      return;
+    }
+    rows.forEach((row, index) => {
+      const tr = document.createElement('tr');
+      const rank = document.createElement('td'); rank.textContent = String(index + 1);
+      const name = document.createElement('td'); name.textContent = row.name || 'Pemain';
+      const points = document.createElement('td'); points.textContent = Number(row.points || 0).toLocaleString('id-ID');
+      tr.append(rank, name, points); body.appendChild(tr);
+    });
+  } catch (error) {
+    body.replaceChildren();
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 3; td.className = 'muted'; td.textContent = error.message;
+    tr.appendChild(td); body.appendChild(tr);
+  }
+}
+
 async function loadGuild(id) {
   guildId = id;
   setStatus('Memuat konfigurasi…');
   const data = await api('/api/settings?guildId=' + encodeURIComponent(id));
   selectOptions($('channel-id'), data.channels, 'Pilih channel teks', data.settings.channelId);
   selectOptions($('rep-channel-id'), data.channels, 'Pilih channel Auto Thread Rep', data.settings.autoThreadRep.channelId);
+  selectOptions($('family100-channel'), data.channels, 'Semua channel (default)', data.settings.family100?.channelId);
   selectOptions($('lucy-target-channel'), data.channels, 'Pilih channel laporan target', data.settings.lucyCounter?.targetChannelId);
   selectOptions($('lucy-blacklisted-channels'), data.channels, 'Pilih channel untuk di-blacklist', '');
   selectOptions($('lucy-whitelisted-channels'), data.channels, 'Pilih channel untuk di-whitelist', '');
@@ -220,11 +255,17 @@ async function loadGuild(id) {
   renderSettings(data.settings);
   renderBossRewards(data.bossRewards || {});
   await loadNotes();
+  await loadFamily100Board();
   setStatus('Konfigurasi dimuat. Perubahan belum disimpan.');
 }
 function collectSettings() {
   return {
     enabled: $('boss-enabled').checked,
+    family100: {
+      enabled: $('family100-enabled').checked,
+      channelId: $('family100-channel').value,
+      durationSeconds: Number($('family100-duration').value || 0)
+    },
     lucyCounter: {
       enabled: $('lucy-counter-enabled').checked,
       targetEnabled: $('lucy-target-enabled').checked,
@@ -341,4 +382,5 @@ $('reward-save').addEventListener('click', saveBossRewards);
 $('note-save').addEventListener('click', saveNote);
 $('note-cancel').addEventListener('click', () => { resetNoteForm(); setNoteStatus(''); });
 $('clear-logs').addEventListener('click', () => { logRows = []; renderLogs(); });
+$('family100-scope').addEventListener('change', () => loadFamily100Board());
 boot();

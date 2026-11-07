@@ -6,6 +6,7 @@ const defaults = () => ({
   enabled: false, channelId: null, roleId: null, prefix: '!', lastBossTimestamp: null, lastNotifiedTimestamp: null,
   dmUsers: [], userModes: {}, userWarnSeconds: {},
   lucyCounter: { enabled: false, targetEnabled: false, targetGoal: 0, targetMessage: '🎉 Target Lucy tercapai!', targetChannelId: null, targetStartTime: '12:00', targetStopTime: '10:00', blacklistedChannelIds: [], whitelistedChannelIds: [] },
+  family100: { enabled: true, channelId: null, durationSeconds: 0 },
   autoThreadRep: { enabled: true, channelId: null, targetUserId: '1515658233174294569', amount: '50k', threadNamePrefix: 'Rep', autoArchiveDuration: 1440 }
 });
 function readAll() {
@@ -24,6 +25,7 @@ function mergeSettings(saved = {}) {
   return {
     ...base, ...saved,
     lucyCounter: { ...base.lucyCounter, ...(saved.lucyCounter || {}) },
+    family100: { ...base.family100, ...(saved.family100 || {}) },
     autoThreadRep: { ...base.autoThreadRep, ...(saved.autoThreadRep || {}) },
     userModes: { ...(saved.userModes || {}) },
     userWarnSeconds: { ...(saved.userWarnSeconds || {}) },

@@ -7,6 +7,7 @@ const { getGuildSettings } = require('./utils/storage');
 const logBuffer = require('./utils/logBuffer');
 const { startDashboard } = require('./dashboard/server');
 const lucyCounter = require('./services/lucyCounter');
+const family100 = require('./services/family100');
 const bossRewards = require('./services/bossRewardNotifications');
 const animalDex = require('./services/animalDex');
 
@@ -69,6 +70,7 @@ client.once(Events.ClientReady, async c => {
 });
 client.on(Events.MessageCreate, async message => {
   lucyCounter.handleMessage(message).catch(e => console.error('[LucyCounter]', e));
+  family100.handleMessage(message).catch(e => console.error('[Family100]', e));
   tracker.handleMessage(message).catch(console.error);
   bossRewards.enqueue(message);
   captureAnimalDex(message);
@@ -90,6 +92,7 @@ client.on(Events.InteractionCreate, async i => {
   try {
     if (i.isChatInputCommand() && i.commandName === 'boss') { await command.execute(i, tracker); return; }
     if (i.isButton() && lucyCounter.isLucyNav(i.customId)) { await lucyCounter.handleNavigation(i); return; }
+    if (i.isButton() && family100.isF100Nav(i.customId)) { await family100.handleNavigation(i); return; }
     if (i.isButton() || i.isStringSelectMenu()) { await command.handleComponent(i, tracker); return; }
   } catch (e) {
     console.error(e);
