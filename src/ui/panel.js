@@ -159,12 +159,12 @@ function helpEmbed(prefix, { isAdmin = false } = {}) {
 
     // 👤 Pengguna — padanan prefix, prefix server diambil dari settings.
     { name: '📝 Pengguna — Prefix Command', value: [
-      '`' + prefix + ' menu` — panel pengaturan pribadi',
-      '`' + prefix + ' notify dm|channel|both` — pilih mode notifikasi',
-      '`' + prefix + ' warn <detik>` — peringatan DM (0 = matikan)',
-      '`' + prefix + ' on` / `' + prefix + ' off` — aktifkan/matikan DM',
-      '`' + prefix + ' status` — cek status tracker',
-      '`' + prefix + ' help` — panduan ini',
+      '`' + prefix + ' boss menu` — panel pengaturan pribadi',
+      '`' + prefix + ' boss notify dm|channel|both` — pilih mode notifikasi',
+      '`' + prefix + ' boss warn <detik>` — peringatan DM (0 = matikan)',
+      '`' + prefix + ' boss on` / `' + prefix + ' boss off` — aktifkan/matikan DM',
+      '`' + prefix + ' boss status` — cek status tracker',
+      '`' + prefix + ' help` — panduan ini (alias: `' + prefix + '`)',
       '`' + prefix + ' ping` — cek latency bot (alias: `' + prefix + ' p`)',
       '`' + prefix + ' dex <nama...> [-c]` — lihat Animal Dex; `-c` = tabel stat ringkas (alias: `' + prefix + ' d`)'
     ].join('\n'), inline: false },
@@ -180,11 +180,11 @@ function helpEmbed(prefix, { isAdmin = false } = {}) {
 
     // ⚙️ Admin — padanan prefix untuk perintah admin, hanya tampil jika isAdmin.
     { name: '⚙️ Admin — Prefix Command', value: [
-      '`' + prefix + ' setup #channel @role` — atur channel & role tag',
-      '`' + prefix + ' server on` — aktifkan tracker seluruh server',
-      '`' + prefix + ' server off` — matikan tracker server',
+      '`' + prefix + ' boss setup #channel @role` — atur channel & role tag',
+      '`' + prefix + ' boss server on` — aktifkan tracker seluruh server',
+      '`' + prefix + ' boss server off` — matikan tracker server',
       '`' + prefix + ' prefix` — lihat/ubah prefix server',
-      '`' + prefix + ' admin-help` — panduan moderator'
+      '`' + prefix + ' boss admin-help` — panduan moderator'
     ].join('\n'), inline: false },
 
     // 🎛️ Panel — menjelaskan elemen interaktif pada panel /boss menu.

@@ -128,9 +128,11 @@
 - **Prefix bawaan = `d`** (inisial bot Dragneel), konstanta `DEFAULT_PREFIX` di
   `src/utils/storage.js`. Semua fallback `|| '!'` sudah memakai konstanta ini, jadi jangan
   menulis `'!'` langsung di kode baru.
-- **Subcommand langsung mengikuti prefix — tanpa kata `boss`.** Contoh: `d status`, `d menu`,
-  `d f100`, `d dex lawliet`, `d ping`. Bentuk lama `<prefix>boss <sub>` masih diterima
-  (`d boss status`) untuk kompatibilitas, dan `parsePrefixInput` menangani keduanya.
+- **Dua level perintah.** Fitur boss ada di bawah kategori `boss` (`d boss status`, `d boss menu`,
+  `d boss setup`, `d boss admin-help`). Perintah tingkat bot langsung mengikuti prefix, tanpa
+  kategori: `d help`, `d prefix`, `d ping`, `d dex`, `d f100` (Family 100 punya root sendiri).
+  `parsePrefixInput` memisahkan keduanya lewat `TOP_SUBS` (help, prefix) vs `KNOWN_SUBS`
+  (sub di bawah kategori boss).
 - **Subcommand tak dikenal diabaikan, bukan dibalas.** Dengan prefix satu huruf (`d`), chat biasa
   seperti "duh", "dah", "dulu aku pergi" berawalan sama. `parsePrefixInput` mengembalikan `null`
   bila sub tidak ada di `KNOWN_SUBS` (turunan `ALIASES`), jadi bot tidak berisik. Karena itu

@@ -40,17 +40,19 @@ Tidak menggunakan OAuth atau login Discord. Untuk hosting Pterodactyl, dashboard
 - /boss status — lihat status tracker dan waktu boss berikutnya.
 - /boss help — panduan singkat.
 
-Versi prefix (prefix default `d`, inisial bot Dragneel) — perintah langsung mengikuti prefix,
-tidak perlu kata `boss`:
-- d notify dm / d notify channel / d notify both
-- d warn <detik> — DM peringatan sebelum boss muncul (0 untuk matikan)
-- d menu, d status, d help
-- d ping (alias d p) — cek latency bot (roundtrip & WebSocket)
+Versi prefix (prefix default `d`, inisial bot Dragneel). Fitur boss ada di bawah kategori `boss`,
+perintah tingkat bot langsung mengikuti prefix:
+- d boss notify dm / d boss notify channel / d boss notify both
+- d boss warn <detik> — DM peringatan sebelum boss muncul (0 untuk matikan)
+- d boss menu, d boss status
 - d f100 — mulai ronde Family 100
+- d ping (alias d p) — cek latency bot (roundtrip & WebSocket)
+- d dex <nama...> — Animal Dex (alias d d)
+- d help (alias d) — panduan; d prefix — lihat/ubah prefix server
 
-Bentuk lama `dboss status` masih diterima. Prefix bisa diganti per server oleh moderator
-(`d prefix <prefix-baru>`) atau lewat dashboard developer. Subcommand yang tidak dikenal diabaikan
-supaya chat biasa seperti "duh" tidak memicu balasan bot.
+Prefix bisa diganti per server oleh moderator (`d prefix <prefix-baru>`) atau lewat dashboard
+developer. Subcommand yang tidak dikenal diabaikan supaya chat biasa seperti "duh" tidak memicu
+balasan bot.
 
 ## Lucy Counter & Leaderboard
 Menghitung pesan yang memuat kata "lucy" per anggota (cooldown 10 detik per anggota, maksimal 1 per pesan).

@@ -24,42 +24,45 @@ describe('prefix aliases', () => {
   });
 
   it('parses alias with remaining args', () => {
-    const out = parsePrefixInput('! notif dm', '!');
+    const out = parsePrefixInput('!boss notif dm', '!');
     assert.strictEqual(out.sub, 'notify');
     assert.deepStrictEqual(out.args, ['dm']);
   });
 
   it('parses alias for warn', () => {
-    const out = parsePrefixInput('! peringatan 300', '!');
+    const out = parsePrefixInput('!boss peringatan 300', '!');
     assert.strictEqual(out.sub, 'warn');
     assert.deepStrictEqual(out.args, ['300']);
   });
 
   it('parses setup alias', () => {
-    const out = parsePrefixInput('! set #general @boss', '!');
+    const out = parsePrefixInput('!boss set #general @boss', '!');
     assert.strictEqual(out.sub, 'setup');
     assert.deepStrictEqual(out.args, ['#general', '@boss']);
   });
 
   it('parses server-on alias with action', () => {
-    const out = parsePrefixInput('! server-nyalakan', '!');
+    const out = parsePrefixInput('!boss server-nyalakan', '!');
     assert.strictEqual(out.sub, 'server-on');
   });
 
   it('ignores unknown subs instead of replying', () => {
-    assert.strictEqual(parsePrefixInput('! somethingelse foo', '!'), null);
+    assert.strictEqual(parsePrefixInput('!boss somethingelse foo', '!'), null);
   });
 
-  it('still accepts the legacy "boss" root', () => {
-    const out = parsePrefixInput('!boss status', '!');
+  it('keeps the boss category prefix for boss features', () => {
+    const out = parsePrefixInput('d boss status', 'd');
     assert.strictEqual(out.sub, 'status');
     assert.deepStrictEqual(out.args, []);
+    assert.strictEqual(parsePrefixInput('d boss prefix dragneel', 'd').sub, 'prefix');
   });
 
-  it('parses rootless form with prefix d', () => {
-    assert.strictEqual(parsePrefixInput('d prefix dragneel', 'd').sub, 'prefix');
+  it('puts bot-level commands at the top level, without the boss category', () => {
+    assert.strictEqual(parsePrefixInput('d prefix', 'd').sub, 'prefix');
     assert.deepStrictEqual(parsePrefixInput('d prefix dragneel', 'd').args, ['dragneel']);
-    assert.strictEqual(parsePrefixInput('d status', 'd').sub, 'status');
+    assert.strictEqual(parsePrefixInput('d help', 'd').sub, 'help');
+    // `d status` bukan perintah bot-level: status ada di bawah kategori boss.
+    assert.strictEqual(parsePrefixInput('d status', 'd'), null);
   });
 
   it('ignores ordinary chat that merely starts with the prefix', () => {
@@ -76,11 +79,11 @@ describe('prefix aliases', () => {
     assert.strictEqual(parsePrefixInput('hello boss', '!'), null);
     assert.strictEqual(parsePrefixInput('', '!'), null);
     assert.strictEqual(parsePrefixInput(null, '!'), null);
-    assert.strictEqual(parsePrefixInput('! foo', '?'), null);
+    assert.strictEqual(parsePrefixInput('!boss foo', '?'), null);
   });
 
   it('respects custom prefix', () => {
-    const out = parsePrefixInput('? cek', '?');
+    const out = parsePrefixInput('? boss cek', '?');
     assert.strictEqual(out.sub, 'status');
   });
 });
