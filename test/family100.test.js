@@ -28,6 +28,7 @@ function makeMessage(content, { guildId = 'guild1', channelId = 'chan1', userId 
   const sent = [];
   const boards = [];
   const deleted = [];
+  const replied = [];
   const nextId = () => 'm' + (++messageCounter);
   return {
     guildId,
@@ -46,11 +47,18 @@ function makeMessage(content, { guildId = 'guild1', channelId = 'chan1', userId 
       }
     },
     react: async () => {},
-    reply: async payload => { sent.push(payload); boards.push(payload); return { id: nextId() }; },
+    reply: async payload => {
+      sent.push(payload);
+      boards.push(payload);
+      const obj = { id: nextId(), deleted: false, delete: async () => { obj.deleted = true; } };
+      replied.push(obj);
+      return obj;
+    },
     channel: { send: async payload => { sent.push(payload); boards.push(payload); return { id: nextId() }; } },
     sent,
     boards,
-    deleted
+    deleted,
+    replied
   };
 }
 
@@ -269,6 +277,54 @@ describe('family 100 round engine', () => {
     const owner = makeMessage('!f100 stop', { userId: 'owner1', admin: false, guildOwner: true });
     assert.equal(await svc.handleMessage(owner), true);
     assert.equal(svc.sessions.has('guild1'), false, 'pemilik server boleh menghentikan ronde');
+  });
+
+  it('reveals every answer to a developer, then deletes the message after 2 seconds', async () => {
+    const svc = require('../src/services/family100');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: '!' }));
+    await svc.handleMessage(makeMessage('!f100'));
+    const session = svc.sessions.get('guild1');
+    const boardId = session.messageId;
+
+    const dev = makeMessage('!f100 reveal', { userId: 'dev1', admin: false, dev: true });
+    assert.equal(await svc.handleMessage(dev), true, 'developer boleh memakai skill reveal');
+    const embed = dev.boards.at(-1).embeds[0].data;
+    assert.match(embed.title, /Developer/, 'judul menandai ini alat developer');
+    for (const answer of session.question.answers) {
+      assert.ok(embed.description.includes(answer.text), 'jawaban "' + answer.text + '" harus terlihat');
+    }
+
+    // Skill ini tidak boleh mengubah state ronde maupun papan.
+    assert.equal(session.revealed.size, 0, 'reveal tidak membuka jawaban secara permanen');
+    assert.equal(session.messageId, boardId, 'papan ronde tidak disentuh');
+    assert.equal(dev.deleted.length, 0, 'papan lama tidak dihapus');
+
+    const revealed = dev.replied.at(-1);
+    assert.equal(revealed.deleted, false, 'pesan masih ada sebelum 2 detik');
+    await new Promise(resolve => setTimeout(resolve, svc.REVEAL_MS + 200));
+    assert.equal(revealed.deleted, true, 'pesan jawaban dihapus otomatis setelah 2 detik');
+  });
+
+  it('refuses the reveal skill for non-developers without leaking answers', async () => {
+    const svc = require('../src/services/family100');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: '!' }));
+    await svc.handleMessage(makeMessage('!f100'));
+    const session = svc.sessions.get('guild1');
+
+    const warga = makeMessage('!f100 reveal', { userId: 'user9', name: 'Warga', admin: false });
+    assert.equal(await svc.handleMessage(warga), true, 'pesan tetap ditangani');
+    assert.equal(warga.boards.filter(p => p.embeds).length, 0, 'tidak ada embed jawaban yang dikirim');
+    assert.match(warga.sent.at(-1), /khusus developer bot/);
+    assert.equal(session.revealed.size, 0);
+  });
+
+  it('reports when the reveal skill has no active round', async () => {
+    const svc = require('../src/services/family100');
+    const dev = makeMessage('!f100 reveal', { userId: 'dev1', dev: true });
+    assert.equal(await svc.handleMessage(dev), true);
+    assert.match(dev.sent.at(-1), /Tidak ada ronde Family 100 yang aktif/);
   });
 
   it('auto-bumps the board after enough idle chatter so the question stays visible', async () => {

@@ -46,6 +46,7 @@ perintah tingkat bot langsung mengikuti prefix:
 - d boss warn <detik> — DM peringatan sebelum boss muncul (0 untuk matikan)
 - d boss menu, d boss status
 - d f100 — mulai ronde Family 100
+- d f100 reveal — tampilkan semua jawaban soal aktif selama 2 detik lalu hilang (khusus developer)
 - d ping (alias d p) — cek latency bot (roundtrip & WebSocket)
 - d dex <nama...> — Animal Dex (alias d d)
 - d help (alias d) — panduan; d prefix — lihat/ubah prefix server

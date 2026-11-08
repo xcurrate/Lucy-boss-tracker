@@ -87,6 +87,12 @@
   lain baru memakai clue pertamanya. Kuota dan level direset setiap soal baru. Huruf di tengah tetap
   `▓` dan selalu disisakan minimal satu huruf tersembunyi, jadi jawaban pendek tidak terbuka penuh.
   Clue tidak membuka slot dan tidak menambah poin; tingkat clue tampil di footer (`Clue n/3`).
+- **Skill developer `reveal`** (`!f100 reveal`, alias `bocorkan`/`dev`): mengirim embed berisi
+  **semua jawaban** soal aktif (menandai mana yang sudah terbuka beserta penemunya), lalu pesannya
+  **dihapus otomatis setelah `REVEAL_MS` (2000 ms)**. Hanya pemilik bot / `DEVELOPER_IDS` / pemilik
+  server (`isDeveloper`); moderator biasa ditolak. Tidak mengubah state ronde maupun papan — murni
+  alat pengawasan. Pakai `message.reply(...)` lalu `setTimeout(...).unref()` supaya timer tidak
+  menahan proses saat test.
 - **Izin**: `skip` bebas untuk semua orang supaya soal mentok bisa dilanjutkan siapa saja. `stop`
   dan `on|off` hanya untuk moderator/admin (`ManageGuild`), pemilik server, atau developer.
   "Developer" = pemilik aplikasi bot, ID di env `DEVELOPER_IDS` (dipisah koma), atau pemilik server

@@ -22,7 +22,9 @@ const AUTO_BUMP_AFTER = 20;
 // depan lagi pada semua jawaban yang masih tersembunyi (lihat clueMask); level papan
 // adalah yang tertinggi yang pernah diminta siapa pun.
 const CLUE_MAX = 3;
-
+// Skill developer `f100 reveal`: tampilkan semua jawaban soal aktif, lalu hapus
+// pesannya otomatis setelah jendela singkat ini (ms).
+const REVEAL_MS = 2000;
 // guildId -> sesi berjalan
 const sessions = new Map();
 
@@ -105,6 +107,25 @@ function roundEmbed(session, { finished = false } = {}) {
   return embed;
 }
 
+// Embed jawaban lengkap untuk skill developer `f100 reveal`. Hanya dikirim
+// sementara (lihat REVEAL_MS), jadi tidak mengubah state ronde.
+function revealEmbed(session) {
+  const { question, points, revealed, players } = session;
+  const lines = question.answers.map((a, i) => {
+    const slot = String(i + 1).padStart(2, '0');
+    if (revealed.has(i)) {
+      const finder = players.get(i);
+      return `✅ ${slot}. ${a.text} — ${points[i]} poin${finder ? ' (' + finder.name + ')' : ''}`;
+    }
+    return `⬜ ${slot}. ${a.text} — ${points[i]} poin`;
+  });
+  return new EmbedBuilder()
+    .setColor(0xEB459E)
+    .setTitle('🛠️ [Developer] Semua jawaban — Soal #' + (question.id + 1))
+    .setDescription('**' + question.soal + '**\n\n' + lines.join('\n'))
+    .setFooter({ text: 'Pesan ini hilang otomatis dalam ' + (REVEAL_MS / 1000) + ' detik.' });
+}
+
 function startRound(guildId, channelId) {
   const question = bank.all()[Math.floor(Math.random() * bank.count())];
   const points = pointsFor(question.answers.length);
@@ -174,6 +195,24 @@ function postBoard(client, session, options = {}) {
   const chained = (session.boardQueue || Promise.resolve()).then(run, run);
   session.boardQueue = chained.then(() => {}, () => {});
   return chained;
+}
+
+// Kirim embed jawaban lengkap lalu hapus otomatis setelah REVEAL_MS. Dipakai skill
+// developer `f100 reveal`; kegagalan menghapus tidak fatal (mis. izin kurang).
+async function revealTemporarily(message, session) {
+  let sent;
+  try {
+    sent = await message.reply({ embeds: [revealEmbed(session)], allowedMentions: { parse: [] } });
+  } catch (e) {
+    console.error('[Family100] gagal mengirim reveal:', e.message);
+    return;
+  }
+  const timer = setTimeout(() => {
+    Promise.resolve()
+      .then(() => sent.delete())
+      .catch(e => console.error('[Family100] gagal menghapus reveal:', e.message));
+  }, REVEAL_MS);
+  if (typeof timer.unref === 'function') timer.unref();
 }
 
 // Titik masuk untuk setiap pesan: perintah prefix dulu, baru tebakan jawaban.
@@ -370,6 +409,22 @@ async function handleCommand(message) {
     return true;
   }
 
+  // Skill developer: tampilkan semua jawaban soal aktif selama REVEAL_MS, lalu hapus.
+  // Sesi & papan tidak diubah — ini murni alat bantu pengawasan.
+  if (sub === 'reveal' || sub === 'bocorkan' || sub === 'dev') {
+    const session = sessions.get(message.guildId);
+    if (!session || session.ended) {
+      await message.reply('Tidak ada ronde Family 100 yang aktif.');
+      return true;
+    }
+    if (!isDeveloper(message)) {
+      await message.reply('Skill ini khusus developer bot.');
+      return true;
+    }
+    await revealTemporarily(message, session);
+    return true;
+  }
+
   if (sub === 'on' || sub === 'off') {
     if (!isAdmin(message)) return message.reply('Hanya moderator/admin atau developer yang bisa mengubah pengaturan.').then(() => true);
     const enabled = sub === 'on';
@@ -427,6 +482,7 @@ function helpText(prefix) {
     `\`${prefix}f100\` — mulai ronde; jika sudah jalan, tampilkan ulang soalnya`,
     `\`${prefix}f100 soal\` — tampilkan ulang soal & jawaban terbuka (alias \`status\`)`,
     `\`${prefix}f100 clue\` — buka 1 huruf depan jawaban tersembunyi (jatah ${CLUE_MAX}× per pemain, semua orang)`,
+    `\`${prefix}f100 reveal\` — tampilkan semua jawaban ${REVEAL_MS / 1000} detik lalu hilang (khusus developer)`,
     `\`${prefix}f100 skip\` — lewati ke soal berikutnya (semua orang)`,
     `\`${prefix}f100 stop\` — hentikan ronde (moderator/admin/developer)`,
     `\`${prefix}f100 lb [all]\` — leaderboard mingguan/all-time`,
@@ -437,6 +493,7 @@ function helpText(prefix) {
 module.exports = {
   handleCommand, handleMessage, handleNavigation, isF100Nav, navRow, helpText,
   leaderboardView, roundEmbed, pointsFor, weekRange, dayKey,
-  isModerator, isDeveloper, isAdmin, noteChannelActivity, AUTO_BUMP_AFTER, clueMask, CLUE_MAX,
+  isModerator, isDeveloper, isAdmin, noteChannelActivity, AUTO_BUMP_AFTER, clueMask, CLUE_MAX, REVEAL_MS,
+  revealEmbed, revealTemporarily,
   sessions, startRound, endRound, matchAnswer
 };
