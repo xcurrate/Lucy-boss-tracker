@@ -46,7 +46,7 @@ describe('prefix command handler', () => {
     const { handlePrefixCommand } = require('../src/commands/prefix');
     const { getGuildSettings } = require('../src/utils/storage');
     const deps = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss notif dm'), null, deps);
+    await handlePrefixCommand(makeMessage('d notif dm'), null, deps);
     assert.strictEqual(getGuildSettings('guild1').userModes.user1, 'dm');
     assert.match(deps.calls[0].content, /DM pribadi/);
   });
@@ -55,7 +55,7 @@ describe('prefix command handler', () => {
     const { handlePrefixCommand } = require('../src/commands/prefix');
     const { getGuildSettings } = require('../src/utils/storage');
     const deps = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss peringatan 300'), null, deps);
+    await handlePrefixCommand(makeMessage('d peringatan 300'), null, deps);
     assert.strictEqual(getGuildSettings('guild1').userWarnSeconds.user1, 300);
     assert.match(deps.calls[0].content, /5 menit/);
   });
@@ -63,14 +63,14 @@ describe('prefix command handler', () => {
   it('handles status alias and returns status text', async () => {
     const { handlePrefixCommand } = require('../src/commands/prefix');
     const deps = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss cek'), null, deps);
+    await handlePrefixCommand(makeMessage('d cek'), null, deps);
     assert.match(deps.calls[0].content, /Boss Tracker|Lucy|notifikasi/i);
   });
 
   it('handles menu alias with v2 components', async () => {
     const { handlePrefixCommand } = require('../src/commands/prefix');
     const deps = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss menu'), null, deps);
+    await handlePrefixCommand(makeMessage('d menu'), null, deps);
     const payload = deps.calls[0];
     assert.ok(payload.components.length > 0, 'should include component rows');
     const ids = payload.components.flatMap(r => r.components.map(c => c.data.custom_id));
@@ -81,14 +81,14 @@ describe('prefix command handler', () => {
   it('rejects non-admin for setup alias', async () => {
     const { handlePrefixCommand } = require('../src/commands/prefix');
     const deps = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss set #general @boss'), null, deps);
+    await handlePrefixCommand(makeMessage('d set #general @boss'), null, deps);
     assert.match(deps.calls[0].content, /moderator\/admin/);
   });
 
   it('rejects non-admin for server-on alias', async () => {
     const { handlePrefixCommand } = require('../src/commands/prefix');
     const deps = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss aktif'), null, deps);
+    await handlePrefixCommand(makeMessage('d aktif'), null, deps);
     assert.match(deps.calls[0].content, /moderator\/admin/);
   });
 
@@ -96,7 +96,7 @@ describe('prefix command handler', () => {
     const { handlePrefixCommand } = require('../src/commands/prefix');
     const { getGuildSettings } = require('../src/utils/storage');
     const deps = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss nyalakan'), null, deps);
+    await handlePrefixCommand(makeMessage('d nyalakan'), null, deps);
     assert.strictEqual(getGuildSettings('guild1').userModes.user1, 'both');
   });
 
@@ -126,17 +126,17 @@ describe('prefix command handler', () => {
   it('shows the admin section (including prefix command) to admins', async () => {
     const { handlePrefixCommand } = require('../src/commands/prefix');
     const deps = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss help', 'guild1', 'user1', true), null, deps);
+    await handlePrefixCommand(makeMessage('d help', 'guild1', 'user1', true), null, deps);
     const names = deps.calls[0].embeds[0].data.fields.map(f => f.name);
     assert.ok(names.some(n => n.startsWith('⚙️')), 'bagian admin harus tampil untuk moderator');
     const text = deps.calls[0].embeds[0].data.fields.map(f => f.value).join('\n');
-    assert.match(text, /boss prefix/);
+    assert.match(text, /prefix/);
   });
 
   it('hides the admin section from regular members', async () => {
     const { handlePrefixCommand } = require('../src/commands/prefix');
     const deps = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss help', 'guild1', 'user1', false), null, deps);
+    await handlePrefixCommand(makeMessage('d help', 'guild1', 'user1', false), null, deps);
     const names = deps.calls[0].embeds[0].data.fields.map(f => f.name);
     assert.ok(!names.some(n => n.startsWith('⚙️')), 'bagian admin tidak boleh tampil untuk anggota biasa');
   });
@@ -146,7 +146,7 @@ describe('prefix command handler', () => {
     const { getGuildSettings } = require('../src/utils/storage');
     assert.strictEqual(getGuildSettings('guild1').prefix, 'd');
     const deps = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss status'), null, deps);
+    await handlePrefixCommand(makeMessage('d status'), null, deps);
     assert.strictEqual(deps.calls.length, 1, 'prefix bawaan d harus dikenali');
   });
 
@@ -154,15 +154,15 @@ describe('prefix command handler', () => {
     const { handlePrefixCommand } = require('../src/commands/prefix');
     const { getGuildSettings } = require('../src/utils/storage');
     const deps = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss prefix dragneel', 'guild1', 'user1', true), null, deps);
+    await handlePrefixCommand(makeMessage('d prefix dragneel', 'guild1', 'user1', true), null, deps);
     assert.strictEqual(getGuildSettings('guild1').prefix, 'dragneel');
 
     const after = makeDeps();
-    await handlePrefixCommand(makeMessage('dragneelboss status', 'guild1', 'user1'), null, after);
+    await handlePrefixCommand(makeMessage('dragneel status', 'guild1', 'user1'), null, after);
     assert.strictEqual(after.calls.length, 1, 'prefix baru harus dikenali');
 
     const old = makeDeps();
-    await handlePrefixCommand(makeMessage('dboss status', 'guild1', 'user1'), null, old);
+    await handlePrefixCommand(makeMessage('d status', 'guild1', 'user1'), null, old);
     assert.strictEqual(old.calls.length, 0, 'prefix lama tidak boleh lagi memicu perintah');
   });
 });

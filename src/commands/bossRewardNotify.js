@@ -66,7 +66,7 @@ async function handlePersonalCommand(message, args, prefix = DEFAULT_PREFIX) {
     store.setPersonal(message.guildId, userId, targets);
     await message.reply({ content: '✅ Target reward personal diperbarui.\n' + display(targets), allowedMentions: { parse: [] } });
   } catch (error) {
-    await message.reply({ content: '❌ ' + error.message + '\nContoh: `' + prefix + 'boss notify ws 100 xp 10,000++ flb 5`', allowedMentions: { parse: [] } });
+    await message.reply({ content: '❌ ' + error.message + '\nContoh: `' + prefix + ' notify ws 100 xp 10,000++ flb 5`', allowedMentions: { parse: [] } });
   }
   return true;
 }

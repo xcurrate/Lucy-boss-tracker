@@ -55,10 +55,10 @@ function adminHelpEmbed(prefix) {
       { name: '/boss server-on', value: 'Aktifkan tracker untuk semua anggota server.', inline: false },
       { name: '/boss server-off', value: 'Matikan notifikasi server tanpa menghapus konfigurasi.', inline: false },
       { name: '/boss prefix', value: 'Lihat atau ubah prefix server (1–10 karakter tanpa spasi).', inline: false },
-      { name: prefix + 'boss setup #channel @role', value: 'Contoh pengaturan melalui prefix.', inline: false },
-      { name: prefix + 'boss server-on', value: 'Aktifkan tracker untuk semua anggota server.', inline: false },
-      { name: prefix + 'boss server-off', value: 'Matikan tracker server.', inline: false },
-      { name: prefix + 'boss prefix ?', value: 'Lihat prefix; tambahkan nilai baru untuk mengubahnya.', inline: false }
+      { name: prefix + ' setup #channel @role', value: 'Contoh pengaturan melalui prefix.', inline: false },
+      { name: prefix + ' server-on', value: 'Aktifkan tracker untuk semua anggota server.', inline: false },
+      { name: prefix + ' server-off', value: 'Matikan tracker server.', inline: false },
+      { name: prefix + ' prefix [nilai]', value: 'Lihat prefix; tambahkan nilai baru untuk mengubahnya.', inline: false }
     );
 }
 
@@ -156,7 +156,7 @@ async function execute(i, tracker) {
     if (value === null) return i.reply({ content: 'Prefix server saat ini: `' + current + '`', flags: MessageFlags.Ephemeral });
     if (!validPrefix(value)) return i.reply({ content: 'Prefix harus 1–10 karakter dan tidak boleh mengandung spasi.', flags: MessageFlags.Ephemeral });
     updateGuildSettings(i.guildId, s => ({ ...s, prefix: value }));
-    return i.reply({ content: '✅ Prefix server diubah menjadi `' + value + '`. Contoh: `' + value + 'boss help`', flags: MessageFlags.Ephemeral });
+    return i.reply({ content: '✅ Prefix server diubah menjadi `' + value + '`. Contoh: `' + value + ' help`', flags: MessageFlags.Ephemeral });
   }
 
   return i.reply({ content: 'Subcommand tidak dikenali.', flags: MessageFlags.Ephemeral });

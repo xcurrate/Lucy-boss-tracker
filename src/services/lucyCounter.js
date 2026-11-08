@@ -349,7 +349,7 @@ async function handleCommand(message) {
     return true;
   }
 
-  // Sisa subperintah di bawah hanya milik `lucytarget`; perintah lain (mis. `boss status`)
+  // Sisa subperintah di bawah hanya milik `lucytarget`; perintah lain (mis. `d status`)
   // harus dilepas agar tidak ditangani ganda oleh handler prefix boss.
   if (command !== 'lucytarget') return false;
 
@@ -391,7 +391,7 @@ async function handleCommand(message) {
     updateGuildSettings(message.guildId, s => ({ ...s, lucyCounter: { ...s.lucyCounter, targetMessage: value } }));
     return message.reply('Pesan target tercapai berhasil disimpan.');
   }
-  return message.reply('Perintah Target: ' + prefix + 'lucytarget on|off|target on|off|set <jumlah>|message <pesan>|status|leaderboard [tanggal] [halaman]\nLeaderboard: ' + prefix + 'lcount [tanggal] [halaman] (harian), ' + prefix + 'lcountall [halaman] (all-time), ' + prefix + 'ltarget [tanggal] [halaman] (alias: ' + prefix + 'ltargetlb / ' + prefix + 'lucytarget leaderboard), ' + prefix + 'lservers [tanggal] [halaman] (alias: ' + prefix + 'lserver).\nTanggal: `5 nov`, `5 november 2026`, `5/11/2026`, atau `2026-11-05` — contoh: `' + prefix + 'lcount 5 nov`.');
+  return message.reply('Perintah Target: ' + prefix + ' lucytarget on|off|target on|off|set <jumlah>|message <pesan>|status|leaderboard [tanggal] [halaman]\nLeaderboard: ' + prefix + ' lcount [tanggal] [halaman] (harian), ' + prefix + ' lcountall [halaman] (all-time), ' + prefix + ' ltarget [tanggal] [halaman] (alias: ' + prefix + ' ltargetlb / ' + prefix + ' lucytarget leaderboard), ' + prefix + ' lservers [tanggal] [halaman] (alias: ' + prefix + ' lserver).\nTanggal: `5 nov`, `5 november 2026`, `5/11/2026`, atau `2026-11-05` — contoh: `' + prefix + ' lcount 5 nov`.');
 }
 async function handleMessage(message) {
   if (!message.guildId || message.author?.bot || !message.content) return;

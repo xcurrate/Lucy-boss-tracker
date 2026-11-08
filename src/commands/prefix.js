@@ -30,16 +30,25 @@ function expandAliases() {
 
 const ALIAS_MAP = expandAliases();
 
+// Subcommand yang dikenal. Sub di luar daftar ini diabaikan (tidak dibalas)
+// supaya chat biasa yang kebetulan berawalan prefix — mis. "duh"/"dah" saat
+// prefix = "d" — tidak memicu balasan bot.
+const KNOWN_SUBS = new Set(Object.keys(ALIAS_MAP));
+
 function parsePrefixInput(content, prefix) {
   if (typeof content !== 'string' || typeof prefix !== 'string' || !content.startsWith(prefix)) return null;
   const rest = content.slice(prefix.length).trim();
   const parts = rest.split(/\s+/);
-  if ((parts[0] || '').toLowerCase() !== 'boss') return null;
-  const rawSub = (parts[1] || 'help').toLowerCase();
+  // Bentuk utama: `<prefix> <sub>` (mis. `d status`) — prefix sudah menjadi
+  // inisial bot, jadi tidak perlu kata "boss" lagi. Bentuk lama
+  // `<prefix>boss <sub>` tetap didukung agar tidak memutus kebiasaan lama.
+  const legacy = (parts[0] || '').toLowerCase() === 'boss';
+  const rawSub = ((legacy ? parts[1] : parts[0]) || 'help').toLowerCase();
+  if (!KNOWN_SUBS.has(rawSub)) return null;
   return {
     sub: ALIAS_MAP[rawSub] || rawSub,
     rawSub,
-    args: parts.slice(2)
+    args: parts.slice(legacy ? 2 : 1)
   };
 }
 
@@ -133,7 +142,7 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   if (sub === 'warn') {
     const arg = (args[0] || '').toLowerCase();
     if (!/^\d+$/.test(arg)) {
-      return _sendText(message, 'Format: `' + prefix + 'boss warn <detik>` — misal `' + prefix + 'boss warn 60` untuk peringatan 60 detik sebelum boss. Gunakan `0` untuk mematikan.');
+      return _sendText(message, 'Format: `' + prefix + ' warn <detik>` — misal `' + prefix + ' warn 60` untuk peringatan 60 detik sebelum boss. Gunakan `0` untuk mematikan.');
     }
     const seconds = Math.min(Number(arg), 86400);
     setUserWarnSeconds(message.guildId, message.author.id, seconds);
@@ -150,10 +159,10 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   if (sub === 'prefix') {
     if (!_isAdmin(message)) return _sendText(message, 'Pengaturan prefix hanya bisa digunakan moderator/admin.');
     const value = args[0];
-    if (!value) return _sendText(message, 'Prefix server saat ini: `' + prefix + '`. Ubah dengan `' + prefix + 'boss prefix <prefix-baru>`.');
+    if (!value) return _sendText(message, 'Prefix server saat ini: `' + prefix + '`. Ubah dengan `' + prefix + ' prefix <prefix-baru>`.');
     if (value.length > 10 || /\s/.test(value)) return _sendText(message, 'Prefix harus 1–10 karakter tanpa spasi.');
     updateGuildSettings(message.guildId, s => ({ ...s, prefix: value }));
-    return _sendText(message, '✅ Prefix diubah menjadi `' + value + '`. Contoh: `' + value + 'boss help`');
+    return _sendText(message, '✅ Prefix diubah menjadi `' + value + '`. Contoh: `' + value + ' help`');
   }
 
   if (sub === 'admin-help') {
@@ -161,9 +170,9 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
     return _send(message, { embeds: [new EmbedBuilder().setColor(0xFEE75C).setTitle('⚙️ Pengaturan Moderator/Admin')
       .setDescription('Khusus moderator dengan izin Manage Server atau administrator.')
       .addFields(
-        { name: prefix + 'boss setup #channel @role', value: 'Atur channel dan role tag (alias: set/atur/config).', inline: false },
-        { name: prefix + 'boss server on / off', value: 'Aktifkan atau matikan tracker server (alias: server-nyalakan/server-matikan).', inline: false },
-        { name: prefix + 'boss prefix <prefix>', value: 'Lihat atau ubah prefix server (alias: awalan).', inline: false },
+        { name: prefix + ' setup #channel @role', value: 'Atur channel dan role tag (alias: set/atur/config).', inline: false },
+        { name: prefix + ' server on / off', value: 'Aktifkan atau matikan tracker server (alias: server-nyalakan/server-matikan).', inline: false },
+        { name: prefix + ' prefix <prefix>', value: 'Lihat atau ubah prefix server (alias: awalan).', inline: false },
         { name: 'Slash', value: '/boss setup, /boss server-on, /boss server-off, /boss prefix.', inline: false }
       )] });
   }
@@ -175,26 +184,26 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   if (sub === 'setup') {
     const channelId = (args[0] || '').match(/^<#?(\d+)>?$/)?.[1];
     const roleId = (args[1] || '').match(/^<@&?(\d+)>?$/)?.[1];
-    if (!channelId || !roleId) return _sendText(message, 'Format: `' + prefix + 'boss setup #channel @role`');
+    if (!channelId || !roleId) return _sendText(message, 'Format: `' + prefix + ' setup #channel @role`');
     const channel = await message.guild.channels.fetch(channelId).catch(() => null);
     const role = await message.guild.roles.fetch(roleId).catch(() => null);
     if (typeof channel?.send !== 'function' || !role) return _sendText(message, 'Channel teks atau role tidak ditemukan. Pastikan pilihan benar.');
     updateGuildSettings(message.guildId, s => ({ ...s, channelId, roleId }));
-    return _sendText(message, '✅ Channel dan role notifikasi tersimpan. Aktifkan dengan `' + prefix + 'boss server on`.');
+    return _sendText(message, '✅ Channel dan role notifikasi tersimpan. Aktifkan dengan `' + prefix + ' server on`.');
   }
 
   if (sub === 'server' || sub === 'server-on' || sub === 'server-off') {
     const action = sub === 'server-on' ? 'on' : sub === 'server-off' ? 'off' : (args[0] || '').toLowerCase();
-    if (!['on', 'off'].includes(action)) return _sendText(message, 'Format: `' + prefix + 'boss server on` atau `' + prefix + 'boss server off`.');
+    if (!['on', 'off'].includes(action)) return _sendText(message, 'Format: `' + prefix + ' server on` atau `' + prefix + ' server off`.');
     const s0 = getGuildSettings(message.guildId);
-    if (action === 'on' && (!s0.channelId || !s0.roleId)) return _sendText(message, 'Atur channel dan role terlebih dahulu dengan `' + prefix + 'boss setup #channel @role`.');
+    if (action === 'on' && (!s0.channelId || !s0.roleId)) return _sendText(message, 'Atur channel dan role terlebih dahulu dengan `' + prefix + ' setup #channel @role`.');
     const enabled = action === 'on';
     const s = updateGuildSettings(message.guildId, old => ({ ...old, enabled }));
     if (enabled && s.lastBossTimestamp) tracker.scheduleGuild(message.guildId, s.lastBossTimestamp);
     else if (!enabled) tracker.stopGuild(message.guildId);
     return _sendText(message, enabled ? '✅ Tracker aktif untuk seluruh server.' : '🔕 Tracker server dimatikan.');
   }
-  return _sendText(message, 'Perintah tidak dikenal. Gunakan `' + prefix + 'boss help`.');
+  return _sendText(message, 'Perintah tidak dikenal. Gunakan `' + prefix + ' help`.');
 }
 
 module.exports = { handlePrefixCommand, parsePrefixInput, parsePingInput, pingContent, parseDexInput, ALIASES, ALIAS_MAP, isAdmin };

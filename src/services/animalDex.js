@@ -504,13 +504,13 @@ function formatDexUsage(prefix) {
   return new EmbedBuilder().setColor(0x9B59B6)
     .setTitle('📖 Animal Dex — cara pakai')
     .setDescription([
-      '`' + p + 'dex` butuh nama hewan. Contoh:',
-      '• `' + p + 'dex lawliet` — kartu detail satu hewan',
-      '• `' + p + 'dex lawliet buaya` — beberapa hewan sekaligus (pisah spasi/koma)',
-      '• `' + p + 'dex lawliet -c` — tabel stat ringkas',
+      '`' + p + ' dex` butuh nama hewan. Contoh:',
+      '• `' + p + ' dex lawliet` — kartu detail satu hewan',
+      '• `' + p + ' dex lawliet buaya` — beberapa hewan sekaligus (pisah spasi/koma)',
+      '• `' + p + ' dex lawliet -c` — tabel stat ringkas',
       '',
-      'Boleh menempel emoji hewan dari kartu Lucy, mis. `' + p + 'dex <a:lawliet:123>`.',
-      'Alias perintah: `' + p + 'd`.'
+      'Boleh menempel emoji hewan dari kartu Lucy, mis. `' + p + ' dex <a:lawliet:123>`.',
+      'Alias perintah: `' + p + ' d`.'
     ].join('\n'));
 }
 

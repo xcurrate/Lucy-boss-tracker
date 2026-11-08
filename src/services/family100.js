@@ -192,7 +192,7 @@ async function handleGuess(message) {
   if (message.channelId !== session.channelId) return false;
 
   const prefix = getGuildSettings(message.guildId).prefix || DEFAULT_PREFIX;
-  // Pesan perintah (mis. "!boss status") bukan tebakan.
+  // Pesan perintah (mis. "d status") bukan tebakan.
   if (message.content.trim().startsWith(prefix)) return false;
 
   const match = matchAnswer(message.content, session.question.answers);

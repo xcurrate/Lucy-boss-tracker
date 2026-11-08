@@ -188,7 +188,7 @@ describe('dex prefix command', () => {
     // Tanpa query sama sekali → panduan pemakaian, bukan daftar hewan.
     const usage = await buildDexResponse('', { prefix: '!' });
     assert.match(usage.embeds[0].data.title, /cara pakai/);
-    assert.match(usage.embeds[0].data.description, /!dex lawliet/);
+    assert.match(usage.embeds[0].data.description, /! dex lawliet/);
     assert.doesNotMatch(usage.embeds[0].data.description, /total dex/);
 
     const none = await buildDexResponse('zzz');
@@ -291,8 +291,8 @@ describe('dex prefix command', () => {
       assert.strictEqual(res.embeds.length, 1);
       assert.match(res.embeds[0].data.title, /cara pakai/);
       // Panduan menyebut contoh perintah yang tepat, bukan isi dex.
-      assert.match(res.embeds[0].data.description, /`!dex lawliet`/);
-      assert.match(res.embeds[0].data.description, /`!dex lawliet -c`/);
+      assert.match(res.embeds[0].data.description, /`! dex lawliet`/);
+      assert.match(res.embeds[0].data.description, /`! dex lawliet -c`/);
       assert.doesNotMatch(res.embeds[0].data.description, /lawliet.*buaya.*\d/);
       assert.strictEqual(res.embeds[0].data.fields, undefined);
     }

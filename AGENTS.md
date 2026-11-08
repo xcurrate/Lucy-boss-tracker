@@ -124,16 +124,24 @@
 - Test: `test/family100.test.js` (skor, pencocokan, mesin ronde, kirim ulang papan, clue, izin, bank) dan
   `test/dashboardFamily100.test.js` (API settings + leaderboard).
 
-## Prefix command (`<prefix>boss ...`)
-- **Prefix bawaan = `d`** (sesuai nama bot Dragneel), konstanta `DEFAULT_PREFIX` di
+## Prefix command (`<prefix> <perintah>`)
+- **Prefix bawaan = `d`** (inisial bot Dragneel), konstanta `DEFAULT_PREFIX` di
   `src/utils/storage.js`. Semua fallback `|| '!'` sudah memakai konstanta ini, jadi jangan
-  menulis `'!'` langsung di kode baru. Contoh: `d boss status`, `d f100`, `d dex lawliet`.
+  menulis `'!'` langsung di kode baru.
+- **Subcommand langsung mengikuti prefix — tanpa kata `boss`.** Contoh: `d status`, `d menu`,
+  `d f100`, `d dex lawliet`, `d ping`. Bentuk lama `<prefix>boss <sub>` masih diterima
+  (`d boss status`) untuk kompatibilitas, dan `parsePrefixInput` menangani keduanya.
+- **Subcommand tak dikenal diabaikan, bukan dibalas.** Dengan prefix satu huruf (`d`), chat biasa
+  seperti "duh", "dah", "dulu aku pergi" berawalan sama. `parsePrefixInput` mengembalikan `null`
+  bila sub tidak ada di `KNOWN_SUBS` (turunan `ALIASES`), jadi bot tidak berisik. Karena itu
+  **setiap subcommand baru wajib masuk `ALIASES`** — kalau tidak, perintahnya tidak pernah jalan.
+  `d` saja (prefix tanpa sub) = bantuan.
 - Handler: `src/commands/prefix.js`. Di `src/index.js`, handler ini dipanggil untuk **setiap** pesan
   (setelah `family100` dan `tracker`), jadi urutan pemanggilan penting: `family100` hanya menangkap
-  `f100`/`family100`/`kuis`, sehingga tidak menelan `boss`.
+  `f100`/`family100`/`kuis`, sehingga tidak menelan subcommand lain.
 - Subcommand: `help`, `menu`, `notify`, `on`/`off`, `warn`, `status`, `prefix`, `admin-help`,
   `setup`, `server on|off`. Alias di `ALIASES` (mis. `awalan`/`pref` → `prefix`).
-- **Ubah prefix per server:** `<prefix>boss prefix <baru>` (moderator, izin Manage Server) atau slash
+- **Ubah prefix per server:** `<prefix> prefix <baru>` (moderator, izin Manage Server) atau slash
   `/boss prefix nilai:<baru>`. Dashboard (developer) punya field `PREFIX PERINTAH` di panel Boss
   Tracker. Panjang prefix **1–10 karakter** tanpa spasi — batas ini dinaikkan dari 5 agar nama bot
   seperti `dragneel` bisa dipakai, dan harus konsisten di 3 tempat: `prefix.js`, `validPrefix` di

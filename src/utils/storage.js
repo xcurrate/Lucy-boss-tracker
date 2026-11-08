@@ -2,8 +2,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const dir = path.resolve(process.cwd(), 'data');
 const file = path.join(dir, 'guild-settings.json');
-// Prefix bawaan untuk memanggil bot (mis. `d boss status`, `d f100`). Server bisa
-// menggantinya lewat `boss prefix` (moderator) atau dashboard (developer).
+// Prefix bawaan untuk memanggil bot (mis. `d status`, `d f100`). Server bisa
+// menggantinya lewat `d prefix <baru>` (moderator) atau dashboard (developer).
 const DEFAULT_PREFIX = 'd';
 const defaults = () => ({
   enabled: false, channelId: null, roleId: null, prefix: DEFAULT_PREFIX, lastBossTimestamp: null, lastNotifiedTimestamp: null,

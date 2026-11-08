@@ -40,28 +40,34 @@ Tidak menggunakan OAuth atau login Discord. Untuk hosting Pterodactyl, dashboard
 - /boss status — lihat status tracker dan waktu boss berikutnya.
 - /boss help — panduan singkat.
 
-Versi prefix (prefix default !):
-- !boss notify dm / !boss notify channel / !boss notify both
-- !boss warn <detik> — DM peringatan sebelum boss muncul (0 untuk matikan)
-- !boss menu, !boss status, !boss help
-- !ping (alias !p) — cek latency bot (roundtrip & WebSocket)
+Versi prefix (prefix default `d`, inisial bot Dragneel) — perintah langsung mengikuti prefix,
+tidak perlu kata `boss`:
+- d notify dm / d notify channel / d notify both
+- d warn <detik> — DM peringatan sebelum boss muncul (0 untuk matikan)
+- d menu, d status, d help
+- d ping (alias d p) — cek latency bot (roundtrip & WebSocket)
+- d f100 — mulai ronde Family 100
+
+Bentuk lama `dboss status` masih diterima. Prefix bisa diganti per server oleh moderator
+(`d prefix <prefix-baru>`) atau lewat dashboard developer. Subcommand yang tidak dikenal diabaikan
+supaya chat biasa seperti "duh" tidak memicu balasan bot.
 
 ## Lucy Counter & Leaderboard
 Menghitung pesan yang memuat kata "lucy" per anggota (cooldown 10 detik per anggota, maksimal 1 per pesan).
-- !lcount [halaman] — leaderboard Lucy harian.
-- !lcountall [halaman] — leaderboard Lucy all-time.
-- !ltarget [halaman] — leaderboard progres Target Lucy (alias: !ltargetlb, !lucytarget leaderboard).
-- !lservers [halaman] — leaderboard all-time per server (alias: !lserver).
-- !lucytarget on|off, !lucytarget target on|off, !lucytarget set <jumlah>, !lucytarget message <pesan>, !lucytarget status — pengaturan Target Lucy (moderator/admin).
+- d lcount [halaman] — leaderboard Lucy harian.
+- d lcountall [halaman] — leaderboard Lucy all-time.
+- d ltarget [halaman] — leaderboard progres Target Lucy (alias: d ltargetlb, d lucytarget leaderboard).
+- d lservers [halaman] — leaderboard all-time per server (alias: d lserver).
+- d lucytarget on|off, d lucytarget target on|off, d lucytarget set <jumlah>, d lucytarget message <pesan>, d lucytarget status — pengaturan Target Lucy (moderator/admin).
 
 ## Animal Dex
 Menangkap kartu **"Informasi animal"** yang dikirim bot Lucy (pesan Components V2) secara otomatis, lalu menyimpannya ke database SQLite (`data/animal-dex.db`). Dex bersifat **global** — satu entri per nama hewan, digabung dari semua server (hewan yang sama tidak diduplikasi antar server). Setiap kali bot Lucy mengirim/memperbarui kartu animal, datanya di-*upsert* per nama hewan sehingga dex selalu terbarui. Database skema lama (per-server) dimigrasikan otomatis ke global saat pertama dijalankan.
-- !dex [nama...] — tampilkan detail satu atau beberapa hewan sekaligus; tanpa nama akan menampilkan seluruh daftar.
-- !d [nama...] — alias singkat.
-Nama bisa lebih dari satu, dipisah spasi atau koma. Contoh: `!dex lawliet`, `!dex lawliet buaya kudanil`, `!d patreon, hybrid`.
+- d dex [nama...] — tampilkan detail satu atau beberapa hewan sekaligus.
+- d d [nama...] — alias singkat.
+Nama bisa lebih dari satu, dipisah spasi atau koma. Contoh: `d dex lawliet`, `d dex lawliet buaya kudanil`, `d d patreon, hybrid`.
 Query mencocokkan nama, alias, nickname, rank, atau nama emoji hewan (tidak peka huruf besar/kecil). Bila sebuah nama cocok ke beberapa hewan, hasilnya ditampilkan sebagai daftar gabungan.
 
-Emoji hewan di kartu Lucy memuat nama hewannya, jadi user boleh **menempel emoji tersebut** langsung sebagai query (mis. `!dex <a:lawliet:1557672128059539466>`); bot akan memakai nama di balik emoji itu untuk mencari.
+Emoji hewan di kartu Lucy memuat nama hewannya, jadi user boleh **menempel emoji tersebut** langsung sebagai query (mis. `d dex <a:lawliet:1557672128059539466>`); bot akan memakai nama di balik emoji itu untuk mencari.
 
 Tambahkan flag **`-c`** (atau `--compact`) di akhir perintah untuk tampilan ringkas berupa **tabel** (tanpa tabel embed, hanya kolom & baris). Baris pertama berisi emoji statistik hp→mr, baris berikutnya berisi emoji hewan + angka statistiknya:
 
@@ -70,7 +76,7 @@ Animal | <hp> <att> <pr> | <wp> <mg> <mr> | Total
 <emoji hewan> | 2 0 1 | 3 14 2 | 22
 ```
 
-Setiap nama pada query menghasilkan satu baris, jadi `!dex lawliet buaya kudanil -c` menampilkan satu baris per hewan. Contoh: `!dex lawliet -c`, `!d -c` (seluruh dex).
+Setiap nama pada query menghasilkan satu baris, jadi `d dex lawliet buaya kudanil -c` menampilkan satu baris per hewan. Contoh: `d dex lawliet -c`, `d d -c` (seluruh dex).
 
 Data yang **ditampilkan** per hewan: nama, jumlah, rank, alias, role, statistik (HP/ATT/PR/WP/MG/MR), dan **total stat** (jumlah seluruh statistik). Data lain (nickname, points, sell, sacrifice, rekomendasi weapon, kelangkaan) tetap tersimpan di database tetapi tidak ditampilkan pada dex.
 
@@ -86,7 +92,8 @@ Setiap leaderboard memiliki tombol navigasi ⏮️ ◀️ ▶️ ⏭️ (awal, s
 Membutuhkan izin Discord Manage Server (Administrator juga diizinkan):
 - /boss setup channel:#channel role:@role — atur channel dan role yang akan ditag.
 - /boss server-on dan /boss server-off — aktifkan atau matikan tracker seluruh server.
-- /boss prefix nilai:$ — ubah prefix server.
+- /boss prefix nilai:$ — ubah prefix server (prefix bawaan `d`).
+- d prefix <prefix-baru> — ubah prefix lewat chat (moderator/admin).
 - /boss admin-help — panduan moderator/admin.
 
 ## Instalasi
