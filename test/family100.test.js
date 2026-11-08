@@ -256,6 +256,47 @@ describe('family 100 round engine', () => {
     assert.equal(session.revealed.size, 0, 'bump tidak membuka jawaban');
   });
 
+  it('reveals one extra leading letter per clue, capped, without unlocking answers', async () => {
+    const svc = require('../src/services/family100');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: '!' }));
+    await svc.handleMessage(makeMessage('!f100'));
+    const session = svc.sessions.get('guild1');
+
+    const first = makeMessage('!f100 clue', { userId: 'user9', name: 'Warga', admin: false });
+    assert.equal(await svc.handleMessage(first), true);
+    assert.equal(session.clueLevel, 1);
+    assert.equal(session.revealed.size, 0, 'clue tidak membuka jawaban');
+    const rows1 = first.boards.at(-1).embeds[0].data.description.split('\n');
+    const hidden1 = rows1.find(r => r.startsWith('⬜'));
+    assert.match(hidden1, /^\u2b1c \d\d\. [a-z]▓/, 'huruf depan pertama terbuka');
+    assert.match(first.boards.at(-1).embeds[0].data.footer.text, /Clue 1\/3/);
+
+    const second = makeMessage('!f100 clue', { userId: 'user9', name: 'Warga' });
+    await svc.handleMessage(second);
+    assert.equal(session.clueLevel, 2);
+    const rows2 = second.boards.at(-1).embeds[0].data.description.split('\n');
+    assert.match(rows2.find(r => r.startsWith('⬜')), /^\u2b1c \d\d\. [a-z]{2}▓/, 'clue kedua membuka 2 huruf');
+
+    const third = makeMessage('!f100 clue', { userId: 'user9', name: 'Warga' });
+    await svc.handleMessage(third);
+    assert.equal(session.clueLevel, 3, 'clue ketiga diterima');
+
+    const capped = makeMessage('!f100 clue', { userId: 'user9', name: 'Warga' });
+    assert.equal(await svc.handleMessage(capped), true);
+    assert.equal(session.clueLevel, 3, 'clue tidak melebihi batas');
+    assert.match(capped.sent.at(-1), /maksimal \(3\/3\)/);
+  });
+
+  it('keeps a short one-word answer unreadable after a clue', () => {
+    const { clueMask } = require('../src/services/family100');
+    assert.equal(clueMask('gula', 0), '▓▓▓▓', 'tanpa clue semua huruf tersembunyi');
+    assert.equal(clueMask('gula', 1), 'g▓▓▓');
+    assert.equal(clueMask('gula', 3), 'gul▓');
+    assert.equal(clueMask('nasi goreng', 2), 'na▓▓ ▓▓▓▓▓▓');
+    assert.equal(clueMask('abc', 3), 'ab▓', 'selalu sisakan minimal satu huruf tersembunyi');
+  });
+
   it('lets an admin stop the round and refuses non-admins', async () => {
     const svc = require('../src/services/family100');
     const { updateGuildSettings } = require('../src/utils/storage');

@@ -18,6 +18,9 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 // Jumlah pesan biasa di channel ronde sebelum papan otomatis dikirim ulang. Menjaga
 // soal tetap terlihat saat ramai walau tak ada yang menjawab (lihat noteChannelActivity).
 const AUTO_BUMP_AFTER = 20;
+// Batas pemakaian `!f100 clue` per ronde. Tiap pemakaian membuka satu huruf depan lagi
+// pada semua jawaban yang masih tersembunyi (lihat clueMask).
+const CLUE_MAX = 3;
 
 // guildId -> sesi berjalan
 const sessions = new Map();
@@ -49,30 +52,53 @@ function formatIndonesianDate(key) {
   return `${Number(d)} ${months[Number(m) - 1]} ${y}`;
 }
 
-function buildBoard(question, points, revealed, players) {
+// Slot jawaban tersembunyi. Setiap tingkat clue membuka satu huruf depan lagi;
+// huruf di tengah tetap disamarkan supaya jawaban tidak langsung terbaca.
+function clueMask(text, level) {
+  const letters = [...text].map(ch => (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ? ch.toLowerCase() : null);
+  const total = letters.filter(Boolean).length;
+  const reveal = Math.min(Math.max(level, 0), Math.max(total - 1, 1));
+  let shown = 0;
+  let out = '';
+  for (const ch of text) {
+    const letter = ch.toLowerCase();
+    if (letter >= 'a' && letter <= 'z') {
+      shown++;
+      out += shown <= reveal ? letter : '▓';
+    } else if (ch === ' ') {
+      out += ' ';
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+
+function buildBoard(session) {
+  const { question, points, revealed, players, clueLevel = 0 } = session;
   return question.answers.map((a, i) => {
     const slot = String(i + 1).padStart(2, '0');
-    if (!revealed.has(i)) return `⬜ ${slot}. ▓▓▓▓▓▓▓▓`;
+    if (!revealed.has(i)) return `⬜ ${slot}. ${clueMask(a.text, clueLevel)}`;
     const finder = players.get(i);
     return `✅ ${slot}. **${a.text}** — ${points[i]} poin${finder ? ' (' + finder.name + ')' : ''}`;
   }).join('\n');
 }
 
 function roundEmbed(session, { finished = false } = {}) {
-  const { question, points, revealed, players } = session;
+  const { question, points, revealed, players, clueLevel = 0 } = session;
   const found = revealed.size;
   const embed = new EmbedBuilder()
     .setColor(finished ? 0x57F287 : 0xFEE75C)
     .setTitle(`📺 FAMILY 100 — Soal #${question.id + 1}`)
-    .setDescription(`**${question.soal}**\n\n${buildBoard(question, points, revealed, players)}`)
-    .setFooter({ text: `${found}/${question.answers.length} jawaban terbuka` + (finished ? ' • Ronde selesai' : ' • Ketik jawabanmu di channel ini') });
+    .setDescription(`**${question.soal}**\n\n${buildBoard(session)}`)
+    .setFooter({ text: `${found}/${question.answers.length} jawaban terbuka` + (clueLevel ? ` • Clue ${clueLevel}/${CLUE_MAX}` : '') + (finished ? ' • Ronde selesai' : ' • Ketik jawabanmu di channel ini') });
   const leaderboard = [...players.entries()]
     .map(([index, p]) => ({ name: p.name, points: p.points, index }))
     .sort((a, b) => b.points - a.points);
   if (leaderboard.length) {
     embed.addFields({
       name: 'Papan skor ronde',
-      value: leaderboard.map(p => `${MEDALS[0]} ${p.name} — ${p.points} poin (jawaban #${p.index + 1})`).join('\n').slice(0, 1024)
+      value: leaderboard.map((p, i) => `${MEDALS[i] || (i + 1) + '.'} ${p.name} — ${p.points} poin (jawaban #${p.index + 1})`).join('\n').slice(0, 1024)
     });
   }
   return embed;
@@ -81,7 +107,7 @@ function roundEmbed(session, { finished = false } = {}) {
 function startRound(guildId, channelId) {
   const question = bank.all()[Math.floor(Math.random() * bank.count())];
   const points = pointsFor(question.answers.length);
-  const session = { guildId, channelId, question, points, revealed: new Set(), players: new Map(), messageId: null, timer: null, startedAt: Date.now() };
+  const session = { guildId, channelId, question, points, revealed: new Set(), players: new Map(), messageId: null, timer: null, startedAt: Date.now(), clueLevel: 0 };
   sessions.set(guildId, session);
   return session;
 }
@@ -315,6 +341,26 @@ async function handleCommand(message) {
     return true;
   }
 
+  if (sub === 'clue' || sub === 'petunjuk' || sub === 'hint') {
+    const session = sessions.get(message.guildId);
+    if (!session || session.ended) {
+      await message.reply('Tidak ada ronde Family 100 yang aktif. Mulai dengan `' + prefix + 'f100`.');
+      return true;
+    }
+    if (session.channelId !== message.channelId) {
+      await message.reply(`Ronde Family 100 berjalan di <#${session.channelId}>. Minta clue di sana.`);
+      return true;
+    }
+    if ((session.clueLevel || 0) >= CLUE_MAX) {
+      await message.reply(`Clue sudah dipakai maksimal (${CLUE_MAX}/${CLUE_MAX}) untuk soal ini. Gunakan \`${prefix}f100 skip\` untuk lanjut.`);
+      return true;
+    }
+    session.clueLevel = (session.clueLevel || 0) + 1;
+    await message.react('🔎').catch(() => {});
+    await postBoard(message.client, session, { replyTo: message, finished: session.ended === true });
+    return true;
+  }
+
   if (sub === 'on' || sub === 'off') {
     if (!isAdmin(message)) return message.reply('Hanya moderator/admin atau developer yang bisa mengubah pengaturan.').then(() => true);
     const enabled = sub === 'on';
@@ -371,6 +417,7 @@ function helpText(prefix) {
     `**Family 100** — ${bank.count()} soal, total 100 poin per soal.`,
     `\`${prefix}f100\` — mulai ronde; jika sudah jalan, tampilkan ulang soalnya`,
     `\`${prefix}f100 soal\` — tampilkan ulang soal & jawaban terbuka (alias \`status\`)`,
+    `\`${prefix}f100 clue\` — buka 1 huruf depan jawaban tersembunyi (maks ${CLUE_MAX}×, semua orang)`,
     `\`${prefix}f100 skip\` — lewati ke soal berikutnya (semua orang)`,
     `\`${prefix}f100 stop\` — hentikan ronde (moderator/admin/developer)`,
     `\`${prefix}f100 lb [all]\` — leaderboard mingguan/all-time`,
@@ -381,6 +428,6 @@ function helpText(prefix) {
 module.exports = {
   handleCommand, handleMessage, handleNavigation, isF100Nav, navRow, helpText,
   leaderboardView, roundEmbed, pointsFor, weekRange, dayKey,
-  isModerator, isDeveloper, isAdmin, noteChannelActivity, AUTO_BUMP_AFTER,
+  isModerator, isDeveloper, isAdmin, noteChannelActivity, AUTO_BUMP_AFTER, clueMask, CLUE_MAX,
   sessions, startRound, endRound, matchAnswer
 };

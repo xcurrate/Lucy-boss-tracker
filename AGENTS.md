@@ -77,8 +77,13 @@
 - Game tebak jawaban tersembunyi. Satu soal punya beberapa jawaban yang **disembunyikan**
   sebagai slot `▓▓▓`; bot mendengarkan semua pesan di channel ronde dan mencocokkannya.
 - Perintah: `!f100` / `!family100` (mulai; **kalau ronde sudah jalan, menampilkan ulang soalnya**),
-  `!f100 soal` (alias `status`, tampilkan ulang soal & jawaban terbuka), `!f100 skip` (**semua orang**),
-  `!f100 stop` & `!f100 on|off` (**moderator/admin/developer**), `!f100 lb [all]`. Alias perintah: `kuis`.
+  `!f100 soal` (alias `status`, tampilkan ulang soal & jawaban terbuka), `!f100 clue` (**semua orang**),
+  `!f100 skip` (**semua orang**), `!f100 stop` & `!f100 on|off` (**moderator/admin/developer**),
+  `!f100 lb [all]`. Alias perintah: `kuis`.
+- **Clue** (`!f100 clue` / `petunjuk` / `hint`): tiap pemakaian membuka satu huruf depan lagi pada
+  semua slot yang masih tersembunyi (`clueMask`), maks `CLUE_MAX` (3) kali per ronde. Huruf di tengah
+  tetap `▓` dan selalu disisakan minimal satu huruf tersembunyi, jadi jawaban pendek tidak terbuka
+  penuh. Clue tidak membuka slot dan tidak menambah poin; tingkat clue tampil di footer (`Clue n/3`).
 - **Izin**: `skip` bebas untuk semua orang supaya soal mentok bisa dilanjutkan siapa saja. `stop`
   dan `on|off` hanya untuk moderator/admin (`ManageGuild`), pemilik server, atau developer.
   "Developer" = pemilik aplikasi bot, ID di env `DEVELOPER_IDS` (dipisah koma), atau pemilik server
@@ -113,7 +118,7 @@
   dihitung dari rentang Senin–Minggu WIB (`weekRange`), all-time dari seluruh baris.
 - Durasi ronde opsional (detik) diatur dari dashboard; `0` = tanpa batas. Jika diisi, ronde
   otomatis ditutup saat waktu habis. Kolom channel opsional membatasi channel tempat ronde boleh mulai.
-- Test: `test/family100.test.js` (skor, pencocokan, mesin ronde, kirim ulang papan, izin, bank) dan
+- Test: `test/family100.test.js` (skor, pencocokan, mesin ronde, kirim ulang papan, clue, izin, bank) dan
   `test/dashboardFamily100.test.js` (API settings + leaderboard).
 
 ## Dashboard
