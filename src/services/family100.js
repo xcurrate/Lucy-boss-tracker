@@ -18,8 +18,9 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 // Jumlah pesan biasa di channel ronde sebelum papan otomatis dikirim ulang. Menjaga
 // soal tetap terlihat saat ramai walau tak ada yang menjawab (lihat noteChannelActivity).
 const AUTO_BUMP_AFTER = 20;
-// Batas pemakaian `!f100 clue` per ronde. Tiap pemakaian membuka satu huruf depan lagi
-// pada semua jawaban yang masih tersembunyi (lihat clueMask).
+// Batas pemakaian `!f100 clue` per pemain per ronde. Tiap pemakaian membuka satu huruf
+// depan lagi pada semua jawaban yang masih tersembunyi (lihat clueMask); level papan
+// adalah yang tertinggi yang pernah diminta siapa pun.
 const CLUE_MAX = 3;
 
 // guildId -> sesi berjalan
@@ -107,7 +108,7 @@ function roundEmbed(session, { finished = false } = {}) {
 function startRound(guildId, channelId) {
   const question = bank.all()[Math.floor(Math.random() * bank.count())];
   const points = pointsFor(question.answers.length);
-  const session = { guildId, channelId, question, points, revealed: new Set(), players: new Map(), messageId: null, timer: null, startedAt: Date.now(), clueLevel: 0 };
+  const session = { guildId, channelId, question, points, revealed: new Set(), players: new Map(), messageId: null, timer: null, startedAt: Date.now(), clueLevel: 0, clueByUser: new Map() };
   sessions.set(guildId, session);
   return session;
 }
@@ -351,11 +352,15 @@ async function handleCommand(message) {
       await message.reply(`Ronde Family 100 berjalan di <#${session.channelId}>. Minta clue di sana.`);
       return true;
     }
-    if ((session.clueLevel || 0) >= CLUE_MAX) {
-      await message.reply(`Clue sudah dipakai maksimal (${CLUE_MAX}/${CLUE_MAX}) untuk soal ini. Gunakan \`${prefix}f100 skip\` untuk lanjut.`);
+    const used = session.clueByUser.get(message.author.id) || 0;
+    if (used >= CLUE_MAX) {
+      await message.reply(`Jatah clue kamu sudah habis (${CLUE_MAX}/${CLUE_MAX}) untuk soal ini. Gunakan \`${prefix}f100 skip\` untuk lanjut.`);
       return true;
     }
-    session.clueLevel = (session.clueLevel || 0) + 1;
+    session.clueByUser.set(message.author.id, used + 1);
+    // Papan memakai level tertinggi yang pernah diminta siapa pun, supaya petunjuk tidak
+    // bisa "diturunkan" oleh pemain yang memakai clue lebih sedikit.
+    session.clueLevel = Math.max(session.clueLevel || 0, used + 1);
     await message.react('🔎').catch(() => {});
     await postBoard(message.client, session, { replyTo: message, finished: session.ended === true });
     return true;
@@ -417,7 +422,7 @@ function helpText(prefix) {
     `**Family 100** — ${bank.count()} soal, total 100 poin per soal.`,
     `\`${prefix}f100\` — mulai ronde; jika sudah jalan, tampilkan ulang soalnya`,
     `\`${prefix}f100 soal\` — tampilkan ulang soal & jawaban terbuka (alias \`status\`)`,
-    `\`${prefix}f100 clue\` — buka 1 huruf depan jawaban tersembunyi (maks ${CLUE_MAX}×, semua orang)`,
+    `\`${prefix}f100 clue\` — buka 1 huruf depan jawaban tersembunyi (jatah ${CLUE_MAX}× per pemain, semua orang)`,
     `\`${prefix}f100 skip\` — lewati ke soal berikutnya (semua orang)`,
     `\`${prefix}f100 stop\` — hentikan ronde (moderator/admin/developer)`,
     `\`${prefix}f100 lb [all]\` — leaderboard mingguan/all-time`,

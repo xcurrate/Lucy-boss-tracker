@@ -81,9 +81,12 @@
   `!f100 skip` (**semua orang**), `!f100 stop` & `!f100 on|off` (**moderator/admin/developer**),
   `!f100 lb [all]`. Alias perintah: `kuis`.
 - **Clue** (`!f100 clue` / `petunjuk` / `hint`): tiap pemakaian membuka satu huruf depan lagi pada
-  semua slot yang masih tersembunyi (`clueMask`), maks `CLUE_MAX` (3) kali per ronde. Huruf di tengah
-  tetap `▓` dan selalu disisakan minimal satu huruf tersembunyi, jadi jawaban pendek tidak terbuka
-  penuh. Clue tidak membuka slot dan tidak menambah poin; tingkat clue tampil di footer (`Clue n/3`).
+  semua slot yang masih tersembunyi (`clueMask`). Kuota **per pemain**: masing-masing pemain punya
+  jatah `CLUE_MAX` (3) sendiri per soal (`session.clueByUser`), tapi papan memakai level **tertinggi**
+  yang pernah diminta siapa pun (`session.clueLevel`), jadi petunjuk tidak bisa "mundur" walau pemain
+  lain baru memakai clue pertamanya. Kuota dan level direset setiap soal baru. Huruf di tengah tetap
+  `▓` dan selalu disisakan minimal satu huruf tersembunyi, jadi jawaban pendek tidak terbuka penuh.
+  Clue tidak membuka slot dan tidak menambah poin; tingkat clue tampil di footer (`Clue n/3`).
 - **Izin**: `skip` bebas untuk semua orang supaya soal mentok bisa dilanjutkan siapa saja. `stop`
   dan `on|off` hanya untuk moderator/admin (`ManageGuild`), pemilik server, atau developer.
   "Developer" = pemilik aplikasi bot, ID di env `DEVELOPER_IDS` (dipisah koma), atau pemilik server
