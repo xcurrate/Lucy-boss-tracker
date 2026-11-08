@@ -122,4 +122,22 @@ describe('prefix command handler', () => {
     await handlePrefixCommand(makeMessage('!p'), null, deps);
     assert.match(deps.calls[0].content, /Pong/);
   });
+
+  it('shows the admin section (including prefix command) to admins', async () => {
+    const { handlePrefixCommand } = require('../src/commands/prefix');
+    const deps = makeDeps();
+    await handlePrefixCommand(makeMessage('!boss help', 'guild1', 'user1', true), null, deps);
+    const names = deps.calls[0].embeds[0].data.fields.map(f => f.name);
+    assert.ok(names.some(n => n.startsWith('⚙️')), 'bagian admin harus tampil untuk moderator');
+    const text = deps.calls[0].embeds[0].data.fields.map(f => f.value).join('\n');
+    assert.match(text, /boss prefix/);
+  });
+
+  it('hides the admin section from regular members', async () => {
+    const { handlePrefixCommand } = require('../src/commands/prefix');
+    const deps = makeDeps();
+    await handlePrefixCommand(makeMessage('!boss help', 'guild1', 'user1', false), null, deps);
+    const names = deps.calls[0].embeds[0].data.fields.map(f => f.name);
+    assert.ok(!names.some(n => n.startsWith('⚙️')), 'bagian admin tidak boleh tampil untuk anggota biasa');
+  });
 });

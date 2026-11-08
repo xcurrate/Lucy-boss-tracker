@@ -124,6 +124,20 @@
 - Test: `test/family100.test.js` (skor, pencocokan, mesin ronde, kirim ulang papan, clue, izin, bank) dan
   `test/dashboardFamily100.test.js` (API settings + leaderboard).
 
+## Prefix command (`<prefix>boss ...`)
+- Handler: `src/commands/prefix.js`. Di `src/index.js`, handler ini dipanggil untuk **setiap** pesan
+  (setelah `family100` dan `tracker`), jadi urutan pemanggilan penting: `family100` hanya menangkap
+  `f100`/`family100`/`kuis`, sehingga tidak menelan `boss`.
+- Subcommand: `help`, `menu`, `notify`, `on`/`off`, `warn`, `status`, `prefix`, `admin-help`,
+  `setup`, `server on|off`. Alias di `ALIASES` (mis. `awalan`/`pref` → `prefix`).
+- **Ubah prefix per server:** `<prefix>boss prefix <baru>` (admin, izin Manage Server) atau slash
+  `/boss prefix nilai:<baru>`. Dashboard punya field `PREFIX PERINTAH` di panel Boss Tracker.
+- **Gotcha:** `helpEmbed(prefix, { isAdmin })` menyembunyikan semua field yang diawali `⚙️` bila
+  `isAdmin` tidak diisi. Jalur prefix dulu memanggil `helpEmbed(prefix)` tanpa flag ini, sehingga
+  moderator **tidak pernah melihat** bagian Admin (termasuk cara mengubah prefix) — padahal
+  perintahnya tetap bisa dipakai. Selalu teruskan `{ isAdmin: _isAdmin(message) }` di jalur prefix.
+  Dijaga oleh `test/prefix.test.js` ("shows the admin section ... to admins").
+
 ## Dashboard
 - `src/dashboard/server.js` (API + static) dan `src/dashboard/public/` (UI: `index.html`, `app.js`,
   `styles.css`). Semua endpoint `/api/*` butuh header `Authorization: Bearer <DASHBOARD_TOKEN>`.

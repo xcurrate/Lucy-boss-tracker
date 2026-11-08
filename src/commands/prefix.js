@@ -105,9 +105,11 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
   if (sub === 'help') {
     // statusEmbed() sekarang string biasa → dipindah ke `content`,
     // helpEmbed() tetap EmbedBuilder → tetap di `embeds`.
+    // Teruskan isAdmin agar moderator melihat bagian ⚙️ Admin (termasuk cara
+    // mengubah prefix); tanpa ini bagian tersebut selalu tersembunyi.
     return _send(message, {
       content: statusEmbed(settings, message.author.id),
-      embeds: [helpEmbed(prefix)]
+      embeds: [helpEmbed(prefix, { isAdmin: _isAdmin(message) })]
     });
   }
 
