@@ -1,4 +1,5 @@
 const store = require('../utils/bossRewardStorage');
+const { DEFAULT_PREFIX } = require('../utils/storage');
 
 const ALIASES = Object.freeze({
   ws: 'weapon_shards', weapon_shards: 'weapon_shards',
@@ -37,7 +38,7 @@ function display(targets) {
   if (!entries.length) return 'Belum ada target reward personal yang aktif.';
   return entries.map(([key, value]) => '• **' + LABELS[key] + '**: ' + (value.operator === '>' ? 'lebih dari ' : 'minimal ') + value.target.toLocaleString('en-US')).join('\n');
 }
-async function handlePersonalCommand(message, args, prefix = '!') {
+async function handlePersonalCommand(message, args, prefix = DEFAULT_PREFIX) {
   if (!message.guildId || message.author?.bot) return false;
   const userId = message.author.id;
   const sub = (args[0] || '').toLowerCase();

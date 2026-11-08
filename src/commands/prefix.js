@@ -1,4 +1,4 @@
-const { getGuildSettings, updateGuildSettings, setUserMode, setUserWarnSeconds } = require('../utils/storage');
+const { getGuildSettings, updateGuildSettings, setUserMode, setUserWarnSeconds, DEFAULT_PREFIX } = require('../utils/storage');
 const { modeLabel, warnLabel, personalPanel, statusEmbed, helpEmbed } = require('../ui/panel');
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const { handlePersonalCommand } = require('./bossRewardNotify');
@@ -87,7 +87,7 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
 
   if (!message.guildId || message.author?.bot) return;
   const settings = getGuildSettings(message.guildId);
-  const prefix = settings.prefix || '!';
+  const prefix = settings.prefix || DEFAULT_PREFIX;
 
   if (parsePingInput(message.content, prefix)) {
     return _sendText(message, pingContent(tracker, message));
@@ -151,7 +151,7 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
     if (!_isAdmin(message)) return _sendText(message, 'Pengaturan prefix hanya bisa digunakan moderator/admin.');
     const value = args[0];
     if (!value) return _sendText(message, 'Prefix server saat ini: `' + prefix + '`. Ubah dengan `' + prefix + 'boss prefix <prefix-baru>`.');
-    if (value.length > 5 || /\s/.test(value)) return _sendText(message, 'Prefix harus 1–5 karakter tanpa spasi.');
+    if (value.length > 10 || /\s/.test(value)) return _sendText(message, 'Prefix harus 1–10 karakter tanpa spasi.');
     updateGuildSettings(message.guildId, s => ({ ...s, prefix: value }));
     return _sendText(message, '✅ Prefix diubah menjadi `' + value + '`. Contoh: `' + value + 'boss help`');
   }

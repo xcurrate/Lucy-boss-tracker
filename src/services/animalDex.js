@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const store = require('../utils/animalDexStorage');
+const { DEFAULT_PREFIX } = require('../utils/storage');
 
 // Pemetaan emoji statistik/role/weapon berdasarkan nama shortcode Discord,
 // bukan ID, supaya tahan terhadap perubahan aset Lucy.
@@ -499,7 +500,7 @@ async function buildDexResponse(input, { prefix } = {}) {
 }
 
 function formatDexUsage(prefix) {
-  const p = prefix || '!';
+  const p = prefix || DEFAULT_PREFIX;
   return new EmbedBuilder().setColor(0x9B59B6)
     .setTitle('📖 Animal Dex — cara pakai')
     .setDescription([

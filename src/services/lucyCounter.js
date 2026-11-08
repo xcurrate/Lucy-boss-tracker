@@ -1,5 +1,5 @@
 const { EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
+const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX } = require('../utils/storage');
 const store = require('../utils/lucyCounterStorage');
 
 const WIB = 'Asia/Jakarta';
@@ -311,7 +311,7 @@ async function handleCommand(message) {
   if (!message.guildId || message.author?.bot) return false;
   const settings = getGuildSettings(message.guildId);
   const config = settings.lucyCounter;
-  const prefix = settings.prefix || '!';
+  const prefix = settings.prefix || DEFAULT_PREFIX;
   const text = message.content.trim();
   if (!text.startsWith(prefix)) return false;
   const lower = text.toLowerCase();
@@ -396,7 +396,7 @@ async function handleCommand(message) {
 async function handleMessage(message) {
   if (!message.guildId || message.author?.bot || !message.content) return;
   if (await handleCommand(message)) return;
-  const prefix = getGuildSettings(message.guildId).prefix || '!';
+  const prefix = getGuildSettings(message.guildId).prefix || DEFAULT_PREFIX;
   if (message.content.startsWith(prefix) && /^\s*(?:lcountd|lcountall|lcount|lucycount|lucy\s+count|ltarget|ltargetlb|lservers|lserver|lserverlb|lucytarget)(?:\s|$)/i.test(message.content.slice(prefix.length))) return;
 
   const settings = getGuildSettings(message.guildId);

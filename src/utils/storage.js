@@ -2,8 +2,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const dir = path.resolve(process.cwd(), 'data');
 const file = path.join(dir, 'guild-settings.json');
+// Prefix bawaan untuk memanggil bot (mis. `d boss status`, `d f100`). Server bisa
+// menggantinya lewat `boss prefix` (moderator) atau dashboard (developer).
+const DEFAULT_PREFIX = 'd';
 const defaults = () => ({
-  enabled: false, channelId: null, roleId: null, prefix: '!', lastBossTimestamp: null, lastNotifiedTimestamp: null,
+  enabled: false, channelId: null, roleId: null, prefix: DEFAULT_PREFIX, lastBossTimestamp: null, lastNotifiedTimestamp: null,
   dmUsers: [], userModes: {}, userWarnSeconds: {},
   lucyCounter: { enabled: false, targetEnabled: false, targetGoal: 0, targetMessage: '🎉 Target Lucy tercapai!', targetChannelId: null, targetStartTime: '12:00', targetStopTime: '10:00', blacklistedChannelIds: [], whitelistedChannelIds: [] },
   family100: { enabled: true, channelId: null, durationSeconds: 0 },
@@ -55,4 +58,4 @@ function setUserMode(guildId, userId, mode) {
 function setUserWarnSeconds(guildId, userId, seconds) {
   updateGuildSettings(guildId, s => ({ ...s, userWarnSeconds: { ...(s.userWarnSeconds || {}), [userId]: seconds } }));
 }
-module.exports = { getGuildSettings, updateGuildSettings, getUserSettings, setUserMode, setUserWarnSeconds };
+module.exports = { DEFAULT_PREFIX, getGuildSettings, updateGuildSettings, getUserSettings, setUserMode, setUserWarnSeconds };

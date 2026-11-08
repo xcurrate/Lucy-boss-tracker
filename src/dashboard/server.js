@@ -2,7 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
+const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX } = require('../utils/storage');
 const logBuffer = require('../utils/logBuffer');
 const bossRewardStore = require('../utils/bossRewardStorage');
 const noteStorage = require('../utils/noteStorage');
@@ -46,7 +46,7 @@ function publicSettings(settings) {
     enabled: settings.enabled,
     channelId: settings.channelId || '',
     roleId: settings.roleId || '',
-    prefix: settings.prefix || '!',
+    prefix: settings.prefix || DEFAULT_PREFIX,
     lastBossTimestamp: settings.lastBossTimestamp,
     autoThreadRep: { ...settings.autoThreadRep, channelId: settings.autoThreadRep.channelId || '' },
     family100: { enabled: settings.family100?.enabled !== false, channelId: settings.family100?.channelId || '', durationSeconds: Number(settings.family100?.durationSeconds || 0) },
@@ -86,8 +86,8 @@ function validateSettings(input) {
   const roleId = input.roleId || null;
   if (channelId && !/^\d{17,20}$/.test(channelId)) throw new Error('ID channel notifikasi tidak valid.');
   if (roleId && !/^\d{17,20}$/.test(roleId)) throw new Error('ID role tidak valid.');
-  if (typeof input.prefix !== 'string' || input.prefix.length < 1 || input.prefix.length > 5 || /\s/.test(input.prefix)) {
-    throw new Error('Prefix harus 1–5 karakter tanpa spasi.');
+  if (typeof input.prefix !== 'string' || input.prefix.length < 1 || input.prefix.length > 10 || /\s/.test(input.prefix)) {
+    throw new Error('Prefix harus 1–10 karakter tanpa spasi.');
   }
   const rep = input.autoThreadRep || {};
   if (typeof rep.enabled !== 'boolean') throw new Error('Status Auto Thread Rep tidak valid.');

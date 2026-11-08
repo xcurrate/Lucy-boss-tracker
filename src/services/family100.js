@@ -5,7 +5,7 @@
 // jawaban tersembunyi (lihat family100Match). Poin memakai skema total 100 per
 // soal (family100Score), tanpa bonus penutup ronde.
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
-const { getGuildSettings, updateGuildSettings } = require('../utils/storage');
+const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX } = require('../utils/storage');
 const bank = require('../data/family100Bank');
 const scores = require('../utils/family100Storage');
 const { matchAnswer } = require('./family100Match');
@@ -191,7 +191,7 @@ async function handleGuess(message) {
   if (!session || session.ended) return false;
   if (message.channelId !== session.channelId) return false;
 
-  const prefix = getGuildSettings(message.guildId).prefix || '!';
+  const prefix = getGuildSettings(message.guildId).prefix || DEFAULT_PREFIX;
   // Pesan perintah (mis. "!boss status") bukan tebakan.
   if (message.content.trim().startsWith(prefix)) return false;
 
@@ -286,7 +286,7 @@ function noteChannelActivity(message) {
 
 async function handleCommand(message) {
   if (!message.guildId || !message.content) return false;
-  const prefix = getGuildSettings(message.guildId).prefix || '!';
+  const prefix = getGuildSettings(message.guildId).prefix || DEFAULT_PREFIX;
   const text = message.content.trim();
   if (!text.startsWith(prefix)) return false;
   const parts = text.slice(prefix.length).trim().split(/\s+/);

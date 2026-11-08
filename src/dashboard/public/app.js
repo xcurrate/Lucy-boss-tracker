@@ -37,7 +37,7 @@ function renderSettings(settings) {
   for (const option of $('lucy-whitelisted-channels').options) option.selected = whitelistedChannels.has(option.value);
   $('channel-id').value = settings.channelId || '';
   $('role-id').value = settings.roleId || '';
-  $('prefix').value = settings.prefix || '!';
+  $('prefix').value = settings.prefix || 'd';
   $('next-boss').textContent = settings.lastBossTimestamp ? new Date(settings.lastBossTimestamp * 1000).toLocaleString('id-ID') : 'Belum terdeteksi';
   const rep = settings.autoThreadRep;
   $('rep-enabled').checked = rep.enabled;
