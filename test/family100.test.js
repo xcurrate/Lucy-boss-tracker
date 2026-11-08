@@ -486,4 +486,37 @@ describe('family 100 question bank', () => {
       keys.add(dedupKey);
     }
   });
+
+  it('has no answer set shared by two different questions', () => {
+    const bank = require('../src/data/family100Bank');
+    const norm = s => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const byAnswers = new Map();
+    for (const q of bank.all()) {
+      const key = q.answers.map(a => norm(a.text)).sort().join('|');
+      if (!byAnswers.has(key)) byAnswers.set(key, []);
+      byAnswers.get(key).push(q.soal);
+    }
+    const dupes = [...byAnswers.values()].filter(v => v.length > 1);
+    assert.deepEqual(dupes, [], 'soal kembar harus dibuang, bukan disimpan dua kali');
+  });
+
+  it('keeps every answer relevant: no joke/gibberish slots left behind', () => {
+    const bank = require('../src/data/family100Bank');
+    // Penanda jawaban sampah: kata ganti/slang era IRC dan emotikon.
+    const junk = /(^|[^a-z])(wakz|wekz|ngumpat|patkai|ngaca|bokkk|euy|ahk|wkwk|haha)([^a-z]|$)|-\\.-|\\.\\.\\./i;
+    const offenders = [];
+    for (const q of bank.all()) {
+      for (const a of q.answers) {
+        if (junk.test(a.text)) offenders.push(q.soal + ' => ' + a.text);
+      }
+    }
+    assert.deepEqual(offenders, [], 'jawaban sampah harus sudah dikurasi');
+  });
+
+  it('drops joke questions that only had nonsense answers', () => {
+    const bank = require('../src/data/family100Bank');
+    const gone = ['Intip Soal Dan Jawaban', 'Cowo Brengsek Neh…', 'Orang Jelek', 'Nregira', 'Hacker', 'Dunia Dalam Berita'];
+    const soal = new Set(bank.all().map(q => q.soal));
+    for (const g of gone) assert.ok(!soal.has(g), 'soal lelucon harus dibuang: ' + g);
+  });
 });

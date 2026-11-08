@@ -67,7 +67,6 @@
    "akita",
    "poodle",
    "dalmation",
-   "buldog",
    "pom"
   ]
  },
@@ -85,12 +84,6 @@
    "ngelaba",
    "ketoprak humor",
    "kanan kiri ok"
-  ]
- },
- {
-  "soal": "Pak Haji Tidak Mau Difoto",
-  "jawaban": [
-   "ajinomoto"
   ]
  },
  {
@@ -153,8 +146,7 @@
    "ada petir",
    "basah",
    "banjir",
-   "becek",
-   "sange"
+   "becek"
   ]
  },
  {
@@ -235,15 +227,6 @@
    "mentari",
    "telkomsel",
    "mobile 8"
-  ]
- },
- {
-  "soal": "Orang Jelek",
-  "jawaban": [
-   "gue",
-   "elo",
-   "ya kamu",
-   "sialan lu ngumpat gue"
   ]
  },
  {
@@ -512,7 +495,6 @@
    "minum susu",
    "menguap",
    "berdoa",
-   "cium anjing",
    "membaca",
    "merokok"
   ]
@@ -574,7 +556,6 @@
  {
   "soal": "Nama-Nama Restoran Impor?",
   "jawaban": [
-   "cfc",
    "pizza hut",
    "texas fried chicken",
    "dunkin donut",
@@ -613,7 +594,7 @@
  {
   "soal": "Pembalap Sepeda Yang Menjuarai Enam Kali Tour",
   "jawaban": [
-   "lance amstrong"
+   "lance armstrong"
   ]
  },
  {
@@ -624,9 +605,9 @@
    "garlic",
    "eggplant",
    "spinach",
-   "chickpen",
+   "chickpea",
    "shallots",
-   "chinese cabage",
+   "chinese cabbage",
    "watercress",
    "coleslaw",
    "bean sprouts"
@@ -796,7 +777,6 @@
   "soal": "Virus Lokal",
   "jawaban": [
    "fawn",
-   "rontok bro",
    "tabaru",
    "kangen",
    "roro",
@@ -896,9 +876,7 @@
  {
   "soal": "Apa Yang Terucap Saat Kamu Dicium Doi",
   "jawaban": [
-   "lagi dong",
    "asik2",
-   "wakz",
    "slurp"
   ]
  },
@@ -1314,8 +1292,7 @@
    "pakaian",
    "mayat",
    "sampah",
-   "kayu",
-   "tokai"
+   "kayu"
   ]
  },
  {
@@ -1672,23 +1649,6 @@
   ]
  },
  {
-  "soal": "Cowo Brengsek Neh…",
-  "jawaban": [
-   "ya elo tuh si brengsek",
-   "itu gue",
-   "memang brengsek lu",
-   "cowok lu ye",
-   "wekz cowok gue dibahas",
-   "wakz gue ketahuan"
-  ]
- },
- {
-  "soal": "Ular Kejepit Pagar",
-  "jawaban": [
-   "making love"
-  ]
- },
- {
   "soal": "Kota Besar Di Usa",
   "jawaban": [
    "new york",
@@ -1710,7 +1670,7 @@
   "jawaban": [
    "hyatt",
    "sheraton",
-   "shangrilla",
+   "shangri-la",
    "jw marriot",
    "majapahit",
    "garden palace",
@@ -1777,7 +1737,6 @@
  {
   "soal": "Erangan Indah",
   "jawaban": [
-   "again please",
    "ah ah ahh",
    "auw auw",
    "oh yesss",
@@ -1847,17 +1806,6 @@
   "soal": "Berapa Juta Sel Dalam Otak Manusia",
   "jawaban": [
    "1000 juta"
-  ]
- },
- {
-  "soal": "Min",
-  "jawaban": [
-   "basah deh",
-   "min ya minus",
-   "nasebmu nak dibikin bingung",
-   "minta loncat",
-   "nama orang",
-   "lawan positif"
   ]
  },
  {
@@ -2306,7 +2254,6 @@
    "wolipop",
    "spotlite",
    "mancing mania",
-   "iseng banget",
    "redaksi",
    "cctv",
    "dua dunia",
@@ -2373,8 +2320,7 @@
    "cendrawasih",
    "merak",
    "kasuari",
-   "beo",
-   "burungmu"
+   "beo"
   ]
  },
  {
@@ -3182,7 +3128,7 @@
  {
   "soal": "Bandara Bangkok Yang Ada Di Thailand",
   "jawaban": [
-   "suvahnabhumi"
+   "suvarnabhumi"
   ]
  },
  {
@@ -3668,7 +3614,6 @@
    "sinema aksi",
    "fenomania",
    "topik",
-   "klik !",
    "tawa sutra xl",
    "gema rohani"
   ]
@@ -4335,12 +4280,6 @@
   ]
  },
  {
-  "soal": "Nregira",
-  "jawaban": [
-   "rangier"
-  ]
- },
- {
   "soal": "Jenis Kain",
   "jawaban": [
    "sutra",
@@ -4500,12 +4439,6 @@
    "vios",
    "starlet",
    "corona"
-  ]
- },
- {
-  "soal": "Binatang Berkaki Tiga",
-  "jawaban": [
-   "anjing jantan sedang kencing"
   ]
  },
  {
@@ -5083,23 +5016,6 @@
   ]
  },
  {
-  "soal": "Dari Dulu Beginilah Cinta",
-  "jawaban": [
-   "dasar patkai lu"
-  ]
- },
- {
-  "soal": "Jenis Minuman Yang Dapat Menambah Energi",
-  "jawaban": [
-   "fit up",
-   "hemafiton jreng",
-   "extrajos",
-   "m150",
-   "kratingdaeng",
-   "lipovitan"
-  ]
- },
- {
   "soal": "Apa Yang Biasanya Ada Di Kamar Anak Kos",
   "jawaban": [
    "kondom",
@@ -5281,12 +5197,6 @@
    "penggalang",
    "siaga",
    "penegak"
-  ]
- },
- {
-  "soal": "Warnet Itu Perlu Dihajar",
-  "jawaban": [
-   "kasihan lah -.-"
   ]
  },
  {
@@ -5617,12 +5527,6 @@
   ]
  },
  {
-  "soal": "Gara Pantat Cewe Nih …..",
-  "jawaban": [
-   "colek gue lagi please"
-  ]
- },
- {
   "soal": "Apa Saja Yang Tidak Dapat Dibeli Dengan Uang",
   "jawaban": [
    "cinta",
@@ -5911,12 +5815,6 @@
   ]
  },
  {
-  "soal": "Efek Buang Gas….",
-  "jawaban": [
-   "ditampar orang lagi makan"
-  ]
- },
- {
   "soal": "Rukun Iman",
   "jawaban": [
    "iman kepada allah",
@@ -6089,12 +5987,6 @@
    "tidak membual",
    "tidak banyak tingkah",
    "benar-benar kreatif"
-  ]
- },
- {
-  "soal": "Jangan Ibu Mengandung",
-  "jawaban": [
-   "salahkan burungnya"
   ]
  },
  {
@@ -6279,18 +6171,6 @@
    "takut",
    "pucat",
    "gemetar"
-  ]
- },
- {
-  "soal": "Apa Yang Berhubungan Dengan Hitam",
-  "jawaban": [
-   "gelap",
-   "rambut",
-   "baju",
-   "malam",
-   "celana",
-   "bh",
-   "kulit"
   ]
  },
  {
@@ -6546,9 +6426,7 @@
    "pake peci",
    "pake kacamata",
    "pake batik",
-   "selalu benar",
-   "nyeleneh",
-   "gitu aja koq repot"
+   "nyeleneh"
   ]
  },
  {
@@ -6842,7 +6720,6 @@
    "kebelet boker",
    "makan",
    "pengen ml",
-   "dimarahin doi",
    "diusir",
    "telepon"
   ]
@@ -6892,16 +6769,6 @@
    "makan",
    "pelukan",
    "ngobrol"
-  ]
- },
- {
-  "soal": "Ciri Orang Yang Baru Ketemu Hantu",
-  "jawaban": [
-   "takut",
-   "pucat",
-   "gemetar",
-   "pingsan",
-   "panik"
   ]
  },
  {
@@ -6958,7 +6825,6 @@
    "peda",
    "sabel",
    "pasatimpo",
-   "salawaki",
    "salawaku",
    "kalawai",
    "pisau belati"
@@ -6992,12 +6858,6 @@
    "debu",
    "silau",
    "juling"
-  ]
- },
- {
-  "soal": "Presiden Congo Yang Ditembak Mati",
-  "jawaban": [
-   "laurent kabila"
   ]
  },
  {
@@ -7235,16 +7095,6 @@
   ]
  },
  {
-  "soal": "Apa Yang Diperlukan Pada Saat Ujian",
-  "jawaban": [
-   "pensil",
-   "pulpen",
-   "contekan",
-   "penghapus",
-   "kertas"
-  ]
- },
- {
   "soal": "Cara Pria Menenangkan Wanita Yang Lagi Menangis",
   "jawaban": [
    "memeluk",
@@ -7337,13 +7187,6 @@
    "kucing",
    "kera",
    "burung"
-  ]
- },
- {
-  "soal": "Apa Saja Kepanjangan Dari Pasutri",
-  "jawaban": [
-   "pasangan suami istri",
-   "pasangan suami takut istri"
   ]
  },
  {
@@ -7564,7 +7407,6 @@
    "hamburger",
    "kfc",
    "hot dog",
-   "doi gue",
    "rujak"
   ]
  },
@@ -7606,20 +7448,6 @@
    "the patriot",
    "conspiracy theory",
    "mad max"
-  ]
- },
- {
-  "soal": "Acara Tv Disalurkan Oleh Rcti",
-  "jawaban": [
-   "box office movie",
-   "go spot",
-   "delik",
-   "disney club",
-   "film tengah malam",
-   "idola cilik",
-   "sinema anak",
-   "sinetron",
-   "seputar indonesia"
   ]
  },
  {
@@ -8148,12 +7976,6 @@
   ]
  },
  {
-  "soal": "True/False : Elu Cakep",
-  "jawaban": [
-   "ngaca please"
-  ]
- },
- {
   "soal": "Bagian tubuh yang mudah  gemuk",
   "jawaban": [
    "perut",
@@ -8316,12 +8138,6 @@
   ]
  },
  {
-  "soal": "Hacker",
-  "jawaban": [
-   "hanya bisa copy kreatif orang"
-  ]
- },
- {
   "soal": "Bandara Udara Terkenal Di Dunia",
   "jawaban": [
    "changi",
@@ -8479,15 +8295,6 @@
   ]
  },
  {
-  "soal": "Apa saja acting papah setnov?",
-  "jawaban": [
-   "kecelakaan",
-   "benjol",
-   "tidur",
-   "sakit"
-  ]
- },
- {
   "soal": "Di film horor setan, dimana setan muncul?",
   "jawaban": [
    "toilet",
@@ -8511,14 +8318,6 @@
    "jamrud",
    "permata",
    "delima"
-  ]
- },
- {
-  "soal": "Yang Bergerak Kalau Ditiup Angin",
-  "jawaban": [
-   "daun",
-   "rumput",
-   "rambut"
   ]
  },
  {
@@ -8761,7 +8560,6 @@
   "jawaban": [
    "cuek",
    "diam saja",
-   "emang gue pikirin",
    "berdoa semoga ada yang terbunuh"
   ]
  },
@@ -9126,22 +8924,6 @@
    "ki gendeng pamungkas",
    "ki romo alif",
    "ki kusumo"
-  ]
- },
- {
-  "soal": "Names Of Vegetables",
-  "jawaban": [
-   "tomato",
-   "carrot",
-   "eggplant",
-   "chickpen",
-   "spinach",
-   "shallots",
-   "garlic",
-   "chinese cabage",
-   "watercress",
-   "coleslaw",
-   "bean sprouts"
   ]
  },
  {
@@ -9594,12 +9376,6 @@
   ]
  },
  {
-  "soal": "Pemeran Sinetron Judul Si Midun",
-  "jawaban": [
-   "sandi nayoan"
-  ]
- },
- {
   "soal": "Makanan Khas Daerah Di Indonesia",
   "jawaban": [
    "rendang",
@@ -9772,16 +9548,6 @@
    "ular",
    "musang",
    "serigala"
-  ]
- },
- {
-  "soal": "Nama Makanan Ringan Yang Dibelakangnya Memakai Kata Goreng",
-  "jawaban": [
-   "tahu",
-   "tempe",
-   "pisang",
-   "ubi",
-   "singkong"
   ]
  },
  {
@@ -10002,16 +9768,6 @@
   ]
  },
  {
-  "soal": "Lagu Linkin Park",
-  "jawaban": [
-   "numb",
-   "breaking the habbit",
-   "faint",
-   "somewhere i belong",
-   "paper cut"
-  ]
- },
- {
   "soal": "Binatang Malam",
   "jawaban": [
    "tikus",
@@ -10135,7 +9891,7 @@
    "deketin adiknya",
    "diperhatiin",
    "bilang suka",
-   "edikit romantis",
+   "sedikit romantis",
    "pengertian",
    "malu malu"
   ]
@@ -10562,12 +10318,6 @@
   ]
  },
  {
-  "soal": "Jangan Kamu …. Orang Jatuh Soalnya…",
-  "jawaban": [
-   "ketawai saja"
-  ]
- },
- {
   "soal": "Bagian Tubuh Wanita Yang Peka Terhadap Rangsangan",
   "jawaban": [
    "telinga",
@@ -10801,24 +10551,6 @@
   ]
  },
  {
-  "soal": "Gaya Berenang",
-  "jawaban": [
-   "bebas",
-   "kupu-kupu",
-   "batu",
-   "dada",
-   "katak",
-   "punggung",
-   "paus"
-  ]
- },
- {
-  "soal": "Tajuk Film Yang Sinonim Anakku Sazali",
-  "jawaban": [
-   "anaknya sazali"
-  ]
- },
- {
   "soal": "Rokok Yang Beredar Di Indonesia",
   "jawaban": [
    "gudang garam",
@@ -10898,16 +10630,6 @@
    "surfing",
    "menyelam",
    "berendem"
-  ]
- },
- {
-  "soal": "Lagu Safe Band",
-  "jawaban": [
-   "sempurnakan hidup",
-   "lupakan aku",
-   "sampai kapan",
-   "lupakan kehangatan",
-   "seumur dunia"
   ]
  },
  {
@@ -11204,8 +10926,7 @@
   "soal": "Ukuran Air Kemasan",
   "jawaban": [
    "500 ml",
-   "19 ml",
-   "240ml",
+   "240 ml",
    "1.5 liter",
    "220 ml"
   ]
@@ -11258,15 +10979,6 @@
    "onta",
    "keledai",
    "kerbau"
-  ]
- },
- {
-  "soal": "Sampah Apa Yang Sering Ditemukan Di Jalan Raya",
-  "jawaban": [
-   "kertas",
-   "plastik",
-   "daun",
-   "puntung rokok"
   ]
  },
  {
@@ -12087,12 +11799,6 @@
   ]
  },
  {
-  "soal": "Tidak Bisa Menghargai Jerih …Orang",
-  "jawaban": [
-   "payah kok dihargai"
-  ]
- },
- {
   "soal": "Yang Berhubungan Dengan Cinta",
   "jawaban": [
    "cinta",
@@ -12246,17 +11952,6 @@
   ]
  },
  {
-  "soal": "Apa Yang Biasa Dipuji Ortu Kepada Anaknya",
-  "jawaban": [
-   "pintar",
-   "rajin",
-   "cantik",
-   "ganteng",
-   "manis",
-   "semok"
-  ]
- },
- {
   "soal": "Dimana oranbg menyembunyikan barang?",
   "jawaban": [
    "lemari",
@@ -12284,16 +11979,6 @@
    "oskadon",
    "paramex",
    "panadol"
-  ]
- },
- {
-  "soal": "Minuman Amerika",
-  "jawaban": [
-   "a&w",
-   "fanta",
-   "sprite",
-   "coca cola",
-   "pepsi"
   ]
  },
  {
@@ -12678,7 +12363,7 @@
  {
   "soal": "Pemimpian Perang Asal Inggris",
   "jawaban": [
-   "napoleon bona parte"
+   "napoleon bonaparte"
   ]
  },
  {
@@ -12777,9 +12462,7 @@
  {
   "soal": "Menguap",
   "jawaban": [
-   "ngantuk bokkk",
-   "airnya matang euy",
-   "beuh bau ahk mulut lu"
+   "ngantuk"
   ]
  },
  {
@@ -12938,8 +12621,7 @@
    "outlook",
    "power point",
    "frontpage",
-   "access",
-   "putlook"
+   "access"
   ]
  },
  {
@@ -13606,15 +13288,6 @@
   ]
  },
  {
-  "soal": "Tokoh Dalam Film Peterpan",
-  "jawaban": [
-   "peterpan",
-   "tinkerbell",
-   "wendy",
-   "kapten hook"
-  ]
- },
- {
   "soal": "Produk Google.Inc",
   "jawaban": [
    "youtube",
@@ -13695,12 +13368,6 @@
    "preal",
    "rolling",
    "zildjian"
-  ]
- },
- {
-  "soal": "Mobil Apa Yang Banyak Supirnya",
-  "jawaban": [
-   "mobil jemputan sopir2"
   ]
  },
  {
@@ -14048,14 +13715,6 @@
   ]
  },
  {
-  "soal": "Kebiasaan Kita Disaat Bertemu Sahabat",
-  "jawaban": [
-   "ngobrol",
-   "makan",
-   "pelukan"
-  ]
- },
- {
   "soal": "Bentuk Jimat",
   "jawaban": [
    "kalung",
@@ -14087,16 +13746,6 @@
    "gus dur",
    "soekarno alias bung karno",
    "susilo bambang yudoyono"
-  ]
- },
- {
-  "soal": "Minuman Keras Jepang",
-  "jawaban": [
-   "sake",
-   "kirin",
-   "sapporo",
-   "ichiban",
-   "orion"
   ]
  },
  {
@@ -14203,16 +13852,6 @@
   ]
  },
  {
-  "soal": "Anggota Sheila On Seven",
-  "jawaban": [
-   "eros",
-   "anton",
-   "sakti",
-   "adam",
-   "duta"
-  ]
- },
- {
   "soal": "Universitas Top Di Jakarta",
   "jawaban": [
    "bina nusantara",
@@ -14277,15 +13916,6 @@
    "dukun cabul",
    "germo tidak laku",
    "tukang gosip"
-  ]
- },
- {
-  "soal": "Intip Soal Dan Jawaban",
-  "jawaban": [
-   "hayoo nyontek ya",
-   "ngapain pakai catatan",
-   "malu-maluin saja",
-   "dasar bego lu"
   ]
  },
  {
@@ -14441,15 +14071,6 @@
    "pub",
    "bar",
    "lokasi pelacuran"
-  ]
- },
- {
-  "soal": "Lagu Peterpan",
-  "jawaban": [
-   "yang terdalam",
-   "bintang",
-   "sahabat",
-   "ada apa denganmu"
   ]
  },
  {
@@ -14678,10 +14299,7 @@
   "soal": "Apa Yang Dikatakan Pria Jika Bertemu Dengan Wanita Cantik",
   "jawaban": [
    "wow",
-   "kaga nahan",
-   "anjing tuh cewe",
-   "gula tuh cewe",
-   "buset cakep banget"
+   "kaga nahan"
   ]
  },
  {
@@ -15650,7 +15268,7 @@
    "hyatt",
    "hotel indonesia",
    "ibis",
-   "jw marriot",
+   "jw marriott",
    "mulia"
   ]
  },
@@ -15921,16 +15539,6 @@
   ]
  },
  {
-  "soal": "Nama Mobil Yang Terkenal",
-  "jawaban": [
-   "honda",
-   "jaguar",
-   "bmw",
-   "ferarri",
-   "mercy"
-  ]
- },
- {
   "soal": "Sebutkan sesuatu yang bisa orang takuti",
   "jawaban": [
    "hantu",
@@ -16090,12 +15698,6 @@
   "jawaban": [
    "ari-ari",
    "intip orang pipis"
-  ]
- },
- {
-  "soal": "Dunia Dalam Berita",
-  "jawaban": [
-   "presenter kerekam lagi ngupil"
   ]
  },
  {
@@ -16292,19 +15894,6 @@
   ]
  },
  {
-  "soal": "Binatang Yang Buas",
-  "jawaban": [
-   "singa",
-   "harimau",
-   "serigala",
-   "ular",
-   "banteng",
-   "buaya",
-   "hiu",
-   "beruang"
-  ]
- },
- {
   "soal": "Didalam Es Campur Ada Apa Saja",
   "jawaban": [
    "mutiara",
@@ -16421,7 +16010,7 @@
  {
   "soal": "Petenis Handal Putri Asal Usa",
   "jawaban": [
-   "martina hinggis"
+   "martina hingis"
   ]
  },
  {
@@ -16544,15 +16133,6 @@
   ]
  },
  {
-  "soal": "Jenis Uang",
-  "jawaban": [
-   "logam",
-   "kertas",
-   "emas",
-   "perak"
-  ]
- },
- {
   "soal": "Anggota Top Ovj Opera Van Java",
   "jawaban": [
    "sule",
@@ -16601,12 +16181,6 @@
   ]
  },
  {
-  "soal": "Permainan Sepak Bola Berasal Dari Negeri Mana",
-  "jawaban": [
-   "yunani saja deh"
-  ]
- },
- {
   "soal": "Yg Dipilihkan Ortu Untuk Anaknya Antara Lain",
   "jawaban": [
    "pekerjaan",
@@ -16640,14 +16214,6 @@
    "portugal",
    "jepang",
    "kroatia"
-  ]
- },
- {
-  "soal": "Kecil2 Suka Nyelip",
-  "jawaban": [
-   "kunci mobil",
-   "dompet",
-   "kondom"
   ]
  },
  {
@@ -16737,16 +16303,6 @@
    "big show",
    "tripel h",
    "kurt angel"
-  ]
- },
- {
-  "soal": "Kalau Lagi Hujan",
-  "jawaban": [
-   "basah",
-   "ada petir",
-   "becek",
-   "banjir",
-   "gelap"
   ]
  },
  {
@@ -17016,12 +16572,6 @@
   ]
  },
  {
-  "soal": "Apa Pertanyaan Rahasia Polisi Lalu Lintas",
-  "jawaban": [
-   "tilang atau duit"
-  ]
- },
- {
   "soal": "Hantu Yang Perutnya Terburai Dan Bercahaya",
   "jawaban": [
    "hantu penanggal"
@@ -17055,16 +16605,6 @@
    "cheetos",
    "jet z",
    "cheetoz"
-  ]
- },
- {
-  "soal": "Vperlengkapan Playstation",
-  "jawaban": [
-   "memory card",
-   "joy stick",
-   "kabel",
-   "mesin",
-   "cd game"
   ]
  },
  {
@@ -17105,15 +16645,6 @@
    "melbourne",
    "sydney",
    "adelaide"
-  ]
- },
- {
-  "soal": "Apa Untungnya Jadi Anak Sulung",
-  "jawaban": [
-   "dihormati",
-   "berkuasa",
-   "bebas",
-   "dimanja"
   ]
  },
  {
@@ -17169,24 +16700,6 @@
   ]
  },
  {
-  "soal": "Jenis Dari Jeruk",
-  "jawaban": [
-   "jeruk bali",
-   "jeruk keprok",
-   "jeruk sunkiss",
-   "jeruk limau",
-   "jeruk betik"
-  ]
- },
- {
-  "soal": "Mencintai Itu Karena Uang Dan Ketenaran",
-  "jawaban": [
-   "bisa benar",
-   "bisa salah",
-   "benar sama salah deh"
-  ]
- },
- {
   "soal": "Tokoh Saint Seiya",
   "jawaban": [
    "athena",
@@ -17207,7 +16720,7 @@
    "anggur",
    "leci",
    "apel",
-   "strawbery"
+   "strawberry"
   ]
  },
  {
@@ -17227,17 +16740,6 @@
    "ruud guulit",
    "marco van basten",
    "puskas"
-  ]
- },
- {
-  "soal": "Hewan Yang Tak Berekor",
-  "jawaban": [
-   "kodok",
-   "kepiting",
-   "kerang",
-   "semut",
-   "nyamuk",
-   "laba-laba"
   ]
  },
  {
@@ -17285,21 +16787,6 @@
    "lensa kontak",
    "kaus kaki",
    "sumpit"
-  ]
- },
- {
-  "soal": "Penyebab Seseorang Stress",
-  "jawaban": [
-   "putus cinta",
-   "pacar",
-   "teman",
-   "uang",
-   "orang tua",
-   "pekerjaan",
-   "belajar",
-   "sekolah",
-   "anak",
-   "ujian"
   ]
  },
  {
@@ -17377,16 +16864,6 @@
    "semut",
    "kecoak",
    "capung"
-  ]
- },
- {
-  "soal": "Hak Veto Dimiliki Oleh Negara",
-  "jawaban": [
-   "china",
-   "france",
-   "usa",
-   "russia",
-   "england"
   ]
  },
  {
@@ -18108,15 +17585,6 @@
    "berenang",
    "telepon",
    "nyanyi"
-  ]
- },
- {
-  "soal": "Obat apa yang harus dibawa ketika berkemah?",
-  "jawaban": [
-   "flu",
-   "merah",
-   "gosok",
-   "pusing"
   ]
  },
  {

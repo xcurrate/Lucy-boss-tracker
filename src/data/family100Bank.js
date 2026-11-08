@@ -1,7 +1,7 @@
 // Bank soal Family 100.
 //
 // Sumber: https://github.com/YangJunMing12/family100-database (lisensi Apache-2.0).
-// Data mentah 7.162 entri, dideduplikasi menjadi 1.767 soal unik dengan daftar
+// Data mentah 7.162 entri, dideduplikasi dan dikurasi menjadi 1.709 soal dengan daftar
 // jawaban yang digabung (lihat AGENTS.md). Berkas JSON-nya sengaja disimpan apa
 // adanya; modul ini yang mengubahnya jadi bentuk siap pakai (sudah dinormalisasi
 // sekali saat dimuat agar pencocokan jawaban tidak mengulang kerja yang sama).

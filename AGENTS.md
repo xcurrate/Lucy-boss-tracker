@@ -112,10 +112,16 @@
   kata depan (`yang`, `itu`, `di`, …), dan spasi/tanda hubung dibuang; salah ketik 1–2 huruf
   dimaafkan **hanya untuk jawaban satu kata** agar "goreng" tidak cocok dengan "nasi goreng".
   Pesan yang berawalan prefix (perintah) tidak pernah dihitung sebagai jawaban.
-- Bank soal: `src/data/family100.json` — 1.767 soal unik hasil deduplikasi dari
+- Bank soal: `src/data/family100.json` — 1.709 soal hasil deduplikasi dari
   [YangJunMing12/family100-database](https://github.com/YangJunMing12/family100-database)
   (Apache-2.0). Untuk memperbarui, ganti JSON-nya; `src/data/family100Bank.js` menormalkan
   ulang saat dimuat, jadi tidak ada langkah build.
+- **Bank sudah dikurasi.** Dari 1.767 soal mentah, 58 dibuang: soal kembar (judul beda, jawaban
+  identik), soal yang jawabannya murni lelucon/era-IRC (mis. "Intip Soal Dan Jawaban",
+  "Cowo Brengsek Neh"), dan soal berjawaban sampah ("doi gue", "sialan lu ngumpat gue").
+  Jawaban lelucon pada soal yang tetap dipakai juga dibersihkan, dan typo ejaan diperbaiki
+  (mis. "chinese cabage" → "chinese cabbage", "strawbery" → "strawberry"). Saat menambah soal
+  baru, pastikan tiap jawaban benar-benar bisa ditebak dari soalnya.
 - **Papan soal dikirim ulang setiap ada jawaban benar.** Papan lama dihapus dan papan baru
   dikirim sebagai pesan baru (via `reply` ke pesan penebak) supaya selalu berada di dasar channel —
   kalau hanya di-*edit* di tempat, di channel ramai pesannya tertimbun dan tidak terbaca lagi.
