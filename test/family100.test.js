@@ -158,6 +158,28 @@ describe('family 100 round engine', () => {
     assert.equal(session.revealed.size, 0);
   });
 
+  it('still counts answers that begin with the prefix letter as guesses', async () => {
+    const svc = require('../src/services/family100');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: 'd' }));
+    await svc.handleMessage(makeMessage('d f100'));
+    const session = svc.sessions.get('guild1');
+    session.question = { text: 'Hewan', answers: [{ text: 'domba', key: 'domba' }, { text: 'sapi', key: 'sapi' }] };
+    session.points = svc.pointsFor(2);
+
+    // "domba" berawalan prefix "d" tetapi bukan perintah — harus tetap dihitung.
+    assert.equal(await svc.handleMessage(makeMessage('domba')), true, 'jawaban berawalan prefix tetap tebakan');
+    assert.equal(session.revealed.size, 1);
+  });
+
+  it('accepts uppercase family 100 commands and prefix', async () => {
+    const svc = require('../src/services/family100');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: 'd' }));
+    assert.equal(await svc.handleMessage(makeMessage('D F100')), true, 'perintah f100 huruf besar diterima');
+    assert.ok(svc.sessions.get('guild1'), 'ronde dimulai');
+  });
+
   it('ends the round when every answer is revealed', async () => {
     const svc = require('../src/services/family100');
     const { updateGuildSettings } = require('../src/utils/storage');

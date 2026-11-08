@@ -279,7 +279,7 @@ function collectSettings() {
     },
     channelId: $('channel-id').value,
     roleId: $('role-id').value,
-    prefix: $('prefix').value,
+    prefix: $('prefix').value.toLowerCase(),
     autoThreadRep: {
       enabled: $('rep-enabled').checked,
       channelId: $('rep-channel-id').value,

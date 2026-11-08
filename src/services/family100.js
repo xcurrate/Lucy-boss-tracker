@@ -5,7 +5,7 @@
 // jawaban tersembunyi (lihat family100Match). Poin memakai skema total 100 per
 // soal (family100Score), tanpa bonus penutup ronde.
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
-const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX } = require('../utils/storage');
+const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX, matchPrefix } = require('../utils/storage');
 const bank = require('../data/family100Bank');
 const scores = require('../utils/family100Storage');
 const { matchAnswer } = require('./family100Match');
@@ -192,8 +192,11 @@ async function handleGuess(message) {
   if (message.channelId !== session.channelId) return false;
 
   const prefix = getGuildSettings(message.guildId).prefix || DEFAULT_PREFIX;
-  // Pesan perintah (mis. "d status") bukan tebakan.
-  if (message.content.trim().startsWith(prefix)) return false;
+  // Pesan perintah bukan tebakan. Wajib ada spasi/akhir setelah prefix supaya
+  // jawaban yang kebetulan berawalan prefix — mis. "domba" saat prefix "d" —
+  // tetap terhitung sebagai tebakan.
+  const matched = matchPrefix(message.content.trim(), prefix);
+  if (matched !== null && (matched === '' || /^\s/.test(matched))) return false;
 
   const match = matchAnswer(message.content, session.question.answers);
   if (!match) return false;
@@ -288,8 +291,9 @@ async function handleCommand(message) {
   if (!message.guildId || !message.content) return false;
   const prefix = getGuildSettings(message.guildId).prefix || DEFAULT_PREFIX;
   const text = message.content.trim();
-  if (!text.startsWith(prefix)) return false;
-  const parts = text.slice(prefix.length).trim().split(/\s+/);
+  const rest = matchPrefix(text, prefix);
+  if (rest === null) return false;
+  const parts = rest.trim().split(/\s+/);
   const command = (parts[0] || '').toLowerCase();
   if (!['f100', 'family100', 'kuis'].includes(command)) return false;
   const sub = (parts[1] || '').toLowerCase();

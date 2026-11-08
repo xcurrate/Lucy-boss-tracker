@@ -155,8 +155,9 @@ async function execute(i, tracker) {
     const current = getGuildSettings(i.guildId).prefix || DEFAULT_PREFIX;
     if (value === null) return i.reply({ content: 'Prefix server saat ini: `' + current + '`', flags: MessageFlags.Ephemeral });
     if (!validPrefix(value)) return i.reply({ content: 'Prefix harus 1–10 karakter dan tidak boleh mengandung spasi.', flags: MessageFlags.Ephemeral });
-    updateGuildSettings(i.guildId, s => ({ ...s, prefix: value }));
-    return i.reply({ content: '✅ Prefix server diubah menjadi `' + value + '`. Contoh: `' + value + ' boss status`', flags: MessageFlags.Ephemeral });
+    const normalized = normalizePrefix(value);
+    updateGuildSettings(i.guildId, s => ({ ...s, prefix: normalized }));
+    return i.reply({ content: '✅ Prefix server diubah menjadi `' + normalized + '`. Contoh: `' + normalized + ' boss status`', flags: MessageFlags.Ephemeral });
   }
 
   return i.reply({ content: 'Subcommand tidak dikenali.', flags: MessageFlags.Ephemeral });

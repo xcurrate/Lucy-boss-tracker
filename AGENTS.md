@@ -128,6 +128,10 @@
 - **Prefix bawaan = `d`** (inisial bot Dragneel), konstanta `DEFAULT_PREFIX` di
   `src/utils/storage.js`. Semua fallback `|| '!'` sudah memakai konstanta ini, jadi jangan
   menulis `'!'` langsung di kode baru.
+- **Input tidak pandang huruf besar/kecil.** Pakai `matchPrefix(content, prefix)` dari
+  `storage.js` untuk mencocokkan prefix (mengembalikan sisa teks setelah prefix, atau `null`).
+  Jangan pakai `content.startsWith(prefix)` — itu case-sensitive. Prefix juga dinormalkan ke
+  huruf kecil saat disimpan (`normalizePrefix`), jadi `D BOSS STATUS` == `d boss status`.
 - **Dua level perintah.** Fitur boss ada di bawah kategori `boss` (`d boss status`, `d boss menu`,
   `d boss setup`, `d boss admin-help`). Perintah tingkat bot langsung mengikuti prefix, tanpa
   kategori: `d help`, `d prefix`, `d ping`, `d dex`, `d f100` (Family 100 punya root sendiri).

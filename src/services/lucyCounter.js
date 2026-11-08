@@ -1,5 +1,5 @@
 const { EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX } = require('../utils/storage');
+const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX, matchPrefix } = require('../utils/storage');
 const store = require('../utils/lucyCounterStorage');
 
 const WIB = 'Asia/Jakarta';
@@ -313,9 +313,9 @@ async function handleCommand(message) {
   const config = settings.lucyCounter;
   const prefix = settings.prefix || DEFAULT_PREFIX;
   const text = message.content.trim();
-  if (!text.startsWith(prefix)) return false;
-  const lower = text.toLowerCase();
-  const commandParts = text.slice(prefix.length).trim().split(/\s+/);
+  const rest = matchPrefix(text, prefix);
+  if (rest === null) return false;
+  const commandParts = rest.trim().split(/\s+/);
   const command = (commandParts[0] || '').toLowerCase();
   const subcommand = (commandParts[1] || '').toLowerCase();
   const badDate = value => message.reply(`Tanggal tidak dikenali: **${value}**. Contoh: \`${prefix}lcount 5 nov\`.`);
@@ -353,7 +353,7 @@ async function handleCommand(message) {
   // harus dilepas agar tidak ditangani ganda oleh handler prefix boss.
   if (command !== 'lucytarget') return false;
 
-  const parts = text.slice(prefix.length).trim().split(/\s+/);
+  const parts = rest.trim().split(/\s+/);
   const sub = (parts[1] || '').toLowerCase();
   const targetSub = (parts[2] || '').toLowerCase();
   if (sub === 'status') {
@@ -397,7 +397,8 @@ async function handleMessage(message) {
   if (!message.guildId || message.author?.bot || !message.content) return;
   if (await handleCommand(message)) return;
   const prefix = getGuildSettings(message.guildId).prefix || DEFAULT_PREFIX;
-  if (message.content.startsWith(prefix) && /^\s*(?:lcountd|lcountall|lcount|lucycount|lucy\s+count|ltarget|ltargetlb|lservers|lserver|lserverlb|lucytarget)(?:\s|$)/i.test(message.content.slice(prefix.length))) return;
+  const matched = matchPrefix(message.content.trim(), prefix);
+  if (matched !== null && /^\s*(?:lcountd|lcountall|lcount|lucycount|lucy\s+count|ltarget|ltargetlb|lservers|lserver|lserverlb|lucytarget)(?:\s|$)/i.test(matched)) return;
 
   const settings = getGuildSettings(message.guildId);
   const config = settings.lucyCounter;

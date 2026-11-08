@@ -1,4 +1,4 @@
-const { getGuildSettings, updateGuildSettings, setUserMode, setUserWarnSeconds, DEFAULT_PREFIX } = require('../utils/storage');
+const { getGuildSettings, updateGuildSettings, setUserMode, setUserWarnSeconds, DEFAULT_PREFIX, matchPrefix, normalizePrefix } = require('../utils/storage');
 const { modeLabel, warnLabel, personalPanel, statusEmbed, helpEmbed } = require('../ui/panel');
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const { handlePersonalCommand } = require('./bossRewardNotify');
@@ -38,8 +38,9 @@ const KNOWN_SUBS = new Set(Object.keys(ALIAS_MAP));
 const TOP_SUBS = new Set(['help', 'prefix']);
 
 function parsePrefixInput(content, prefix) {
-  if (typeof content !== 'string' || typeof prefix !== 'string' || !content.startsWith(prefix)) return null;
-  const rest = content.slice(prefix.length).trim();
+  const matched = matchPrefix(content, prefix);
+  if (matched === null) return null;
+  const rest = matched.trim();
   const parts = rest.split(/\s+/);
   let head = (parts[0] || '').toLowerCase();
   if (head === '') head = 'help'; // `<prefix>` saja = bantuan
@@ -60,8 +61,9 @@ function parsePrefixInput(content, prefix) {
 // Perintah ping gaya bot Discord umum: `<prefix>ping`, berdiri sendiri di luar
 // root `boss`. Mendukung alias singkat `p`.
 function parsePingInput(content, prefix) {
-  if (typeof content !== 'string' || typeof prefix !== 'string' || !content.startsWith(prefix)) return null;
-  const rest = content.slice(prefix.length).trim();
+  const matched = matchPrefix(content, prefix);
+  if (matched === null) return null;
+  const rest = matched.trim();
   const parts = rest.split(/\s+/);
   if (!['ping', 'p'].includes((parts[0] || '').toLowerCase())) return null;
   return { args: parts.slice(1) };
@@ -79,8 +81,9 @@ function pingContent(tracker, message) {
 
 // Perintah dex hewan: `<prefix>dex [query]` (alias `d`), berdiri sendiri di luar root `boss`.
 function parseDexInput(content, prefix) {
-  if (typeof content !== 'string' || typeof prefix !== 'string' || !content.startsWith(prefix)) return null;
-  const rest = content.slice(prefix.length).trim();
+  const matched = matchPrefix(content, prefix);
+  if (matched === null) return null;
+  const rest = matched.trim();
   const parts = rest.split(/\s+/);
   if (!['dex', 'd'].includes((parts[0] || '').toLowerCase())) return null;
   return { args: parts.slice(1) };
@@ -166,8 +169,9 @@ async function handlePrefixCommand(message, tracker, deps = {}) {
     const value = args[0];
     if (!value) return _sendText(message, 'Prefix server saat ini: `' + prefix + '`. Ubah dengan `' + prefix + ' prefix <prefix-baru>`.');
     if (value.length > 10 || /\s/.test(value)) return _sendText(message, 'Prefix harus 1–10 karakter tanpa spasi.');
-    updateGuildSettings(message.guildId, s => ({ ...s, prefix: value }));
-    return _sendText(message, '✅ Prefix diubah menjadi `' + value + '`. Contoh: `' + value + ' boss status`');
+    const normalized = normalizePrefix(value);
+    updateGuildSettings(message.guildId, s => ({ ...s, prefix: normalized }));
+    return _sendText(message, '✅ Prefix diubah menjadi `' + normalized + '`. Contoh: `' + normalized + ' boss status`');
   }
 
   if (sub === 'admin-help') {

@@ -2,7 +2,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX } = require('../utils/storage');
+const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX, normalizePrefix } = require('../utils/storage');
 const logBuffer = require('../utils/logBuffer');
 const bossRewardStore = require('../utils/bossRewardStorage');
 const noteStorage = require('../utils/noteStorage');
@@ -89,6 +89,8 @@ function validateSettings(input) {
   if (typeof input.prefix !== 'string' || input.prefix.length < 1 || input.prefix.length > 10 || /\s/.test(input.prefix)) {
     throw new Error('Prefix harus 1–10 karakter tanpa spasi.');
   }
+  // Prefix tidak pandang huruf besar/kecil: simpan dalam huruf kecil.
+  const prefix = normalizePrefix(input.prefix);
   const rep = input.autoThreadRep || {};
   if (typeof rep.enabled !== 'boolean') throw new Error('Status Auto Thread Rep tidak valid.');
   const repChannelId = rep.channelId || null;
@@ -105,7 +107,7 @@ function validateSettings(input) {
     enabled: input.enabled,
     channelId,
     roleId,
-    prefix: input.prefix,
+    prefix,
     lucyCounter: { enabled: lucyCounter.enabled, targetEnabled: Boolean(lucyCounter.targetEnabled), targetGoal, targetMessage: targetMessage || '🎉 Target Lucy tercapai!', targetChannelId, targetStartTime, targetStopTime, blacklistedChannelIds, whitelistedChannelIds },
     family100: { enabled: family100.enabled, channelId: familyChannelId, durationSeconds: familyDuration },
     autoThreadRep: {

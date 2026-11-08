@@ -58,6 +58,21 @@ describe('lucy counter command routing', () => {
     }
   });
 
+  it('accepts uppercase Lucy commands and a differently-cased prefix', async () => {
+    const { updateGuildSettings } = require('../src/utils/storage');
+    const lucyCounter = require('../src/services/lucyCounter');
+    updateGuildSettings('guild1', s => ({ ...s, prefix: 'h', lucyCounter: { ...s.lucyCounter, enabled: true } }));
+
+    const upper = makeMessage('H LCOUNT');
+    assert.strictEqual(await lucyCounter.handleCommand(upper), true, 'H LCOUNT harus ditangani');
+    assert.strictEqual(upper.replies.length, 1);
+
+    // Prefix tersimpan huruf besar tetap cocok dengan input huruf kecil.
+    updateGuildSettings('guild1', s => ({ ...s, prefix: 'H' }));
+    const lower = makeMessage('h lcount');
+    assert.strictEqual(await lucyCounter.handleCommand(lower), true, 'prefix tidak pandang huruf besar/kecil');
+  });
+
   it('does not emit the moderator warning for non-Lucy commands', async () => {
     const { updateGuildSettings } = require('../src/utils/storage');
     const lucyCounter = require('../src/services/lucyCounter');

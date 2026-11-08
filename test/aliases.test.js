@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const { parsePrefixInput, parsePingInput, ALIASES } = require('../src/commands/prefix');
+const { parsePrefixInput, parsePingInput, parseDexInput, ALIASES } = require('../src/commands/prefix');
 
 describe('prefix aliases', () => {
   it('maps aliases to canonical subcommands', () => {
@@ -85,6 +85,38 @@ describe('prefix aliases', () => {
   it('respects custom prefix', () => {
     const out = parsePrefixInput('? boss cek', '?');
     assert.strictEqual(out.sub, 'status');
+  });
+});
+
+describe('case-insensitive input', () => {
+  it('accepts uppercase prefix and subcommands', () => {
+    assert.strictEqual(parsePrefixInput('D BOSS STATUS', 'd').sub, 'status');
+    assert.strictEqual(parsePrefixInput('d BOSS status', 'd').sub, 'status');
+    assert.strictEqual(parsePrefixInput('D Boss Menu', 'd').sub, 'menu');
+    assert.deepStrictEqual(parsePrefixInput('D BOSS WARN 60', 'd').args, ['60']);
+  });
+
+  it('accepts uppercase bot-level commands', () => {
+    assert.strictEqual(parsePrefixInput('D HELP', 'd').sub, 'help');
+    assert.strictEqual(parsePrefixInput('D PREFIX', 'd').sub, 'prefix');
+    assert.deepStrictEqual(parsePrefixInput('D PREFIX DRAGNEEL', 'd').args, ['DRAGNEEL']);
+  });
+
+  it('accepts uppercase prefix and ping/dex', () => {
+    assert.deepStrictEqual(parsePingInput('D PING', 'd'), { args: [] });
+    assert.deepStrictEqual(parseDexInput('D DEX lawliet', 'd'), { args: ['lawliet'] });
+    assert.deepStrictEqual(parsePrefixInput('D BOsS cEk', 'd').args, []);
+  });
+
+  it('matches a prefix stored with different case', () => {
+    assert.strictEqual(parsePrefixInput('d boss status', 'D').sub, 'status');
+    assert.strictEqual(parsePrefixInput('DRAGNEEL BOSS STATUS', 'dragneel').sub, 'status');
+  });
+
+  it('still ignores ordinary chat regardless of case', () => {
+    assert.strictEqual(parsePrefixInput('Duh', 'd'), null);
+    assert.strictEqual(parsePrefixInput('DAH', 'd'), null);
+    assert.strictEqual(parsePrefixInput('D', 'd').sub, 'help');
   });
 });
 
