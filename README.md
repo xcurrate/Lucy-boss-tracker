@@ -47,6 +47,13 @@ perintah tingkat bot langsung mengikuti prefix:
 - d boss menu, d boss status
 - d f100 — mulai ronde Family 100
 - d f100 reveal — tampilkan semua jawaban soal aktif selama 2 detik lalu hilang (khusus developer)
+
+## Cepat Tepat (Matematika)
+Game hitung cepat: bot mengirim satu soal aritmetika, siapa pun yang menjawab benar paling dulu dapat poin.
+Tingkat kesulitan naik tiap soal; poin = dasar per level + bonus kecepatan.
+- d math [jumlah] — mulai ronde (default 5 soal, maks 30) (alias: d mtk, d hitung)
+- d math lb [all] — leaderboard mingguan/all-time
+- d math stop — hentikan ronde (moderator/admin/developer)
 - d ping (alias d p) — cek latency bot (roundtrip & WebSocket)
 - d dex <nama...> — Animal Dex (alias d d)
 - d help (alias d) — panduan; d prefix — lihat/ubah prefix server

@@ -136,6 +136,25 @@
 - Test: `test/family100.test.js` (skor, pencocokan, mesin ronde, kirim ulang papan, clue, izin, bank) dan
   `test/dashboardFamily100.test.js` (API settings + leaderboard).
 
+## Cepat Tepat (Matematika)
+- Game hitung cepat terpisah dari Family 100: satu soal aritmetika aktif per server, siapa pun yang
+  menjawab **benar paling dulu** dapat poin, lalu soal berikutnya dikirim. Perintah `d math [jumlah]`
+  (alias `mtk`, `hitung`), `d math lb [all]`, `d math stop` (moderator/admin/developer).
+- **Penilaian eksak, bukan toleran.** `mathEngine.isCorrect` membandingkan nilai dengan epsilon 1e-9;
+  berbeda dari `family100Match` yang memaafkan typo, di sini "3" TIDAK sama dengan "8". Jangan
+  memakai `matchAnswer` untuk matematika.
+- **Tidak ada `eval()`.** `mathEngine.evaluate` adalah parser turun-rekursif untuk `+ - * / ()`;
+  jawaban pemain hanya diterima bila berbentuk angka, desimal (`,` atau `.`), atau pecahan `a/b`.
+  Input seperti `process.exit(1)` ditolak.
+- **Soal selalu berjawaban bilangan bulat** (level 1–5, pembagian dibuat dari hasil kali), jadi
+  tidak ada jawaban desimal membingungkan. Level naik seiring nomor soal.
+- **Poin** = `basePoints(level)` (40–140) + bonus kecepatan linier maks 50; bonus dihitung dari
+  durasi sesi (`session.deadline - session.askedAt`), bukan settings yang bisa berubah di tengah ronde.
+- **Jeda antar soal** `nextDelayMs` (default 2,5 dtk) bisa diubah lewat `setNextDelay` — test memakai 0.
+- Skor disimpan terpisah di `data/math-race.db` (`src/utils/mathStorage.js`), tidak bercampur
+  dengan Family 100. Kolom `best_ms` menyimpan waktu tercepat menjawab.
+- Pengaturan per server: `settings.mathRace` (`enabled`, `channelId`, `durationSeconds` default 30).
+
 ## Prefix command (`<prefix> <perintah>`)
 - **Prefix bawaan = `d`** (inisial bot Dragneel), konstanta `DEFAULT_PREFIX` di
   `src/utils/storage.js`. Semua fallback `|| '!'` sudah memakai konstanta ini, jadi jangan
