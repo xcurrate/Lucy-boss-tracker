@@ -216,4 +216,55 @@ describe('math race game', () => {
     assert.equal(await svc.handleMessage(makeMessage('D MATH 2')), true);
     assert.ok(svc.sessions.has('guild1'));
   });
+
+  it('counts only the first of two near-simultaneous correct answers', async () => {
+    const svc = require('../src/services/mathRace');
+    svc.setNextDelay(0);
+    await svc.handleMessage(makeMessage('d math 5'));
+    const session = svc.sessions.get('guild1');
+    const answer = String(session.question.answer);
+
+    // Dua pemain menjawab benar tanpa menunggu satu sama lain (balapan).
+    const a = makeMessage(answer, { userId: 'userA', name: 'Ani' });
+    const b = makeMessage(answer, { userId: 'userB', name: 'Budi' });
+    const results = await Promise.all([svc.handleMessage(a), svc.handleMessage(b)]);
+
+    assert.equal(svc.sessions.get('guild1').round, 2, 'ronde hanya maju SATU soal');
+    const winners = results.filter(Boolean).length;
+    assert.equal(winners, 1, 'hanya satu jawaban yang dihitung');
+    const players = svc.sessions.get('guild1').players;
+    assert.equal(players.size, 1, 'hanya satu pemain dapat poin');
+  });
+
+  it('ignores a stale timeout from a question that was already answered', async () => {
+    const svc = require('../src/services/mathRace');
+    svc.setNextDelay(0);
+    await svc.handleMessage(makeMessage('d math 5'));
+    const session = svc.sessions.get('guild1');
+    const staleId = session.questionId;
+    await svc.handleMessage(makeMessage(String(session.question.answer), { userId: 'userA', name: 'Ani' }));
+    const afterAnswer = svc.sessions.get('guild1').round;
+
+    // Timer lama menyala terlambat (seharusnya diabaikan).
+    await svc.timeoutQuestion(session.client || makeMessage('x').client, session, staleId);
+    assert.equal(svc.sessions.get('guild1').round, afterAnswer, 'timer basi tidak memajukan soal');
+  });
+
+  it('does not let two answers skip a question (no jump from round 1 to 3)', async () => {
+    const svc = require('../src/services/mathRace');
+    svc.setNextDelay(0);
+    await svc.handleMessage(makeMessage('d math 6'));
+    const session = svc.sessions.get('guild1');
+    const q1 = session.question.text;
+
+    await Promise.all([
+      svc.handleMessage(makeMessage(String(session.question.answer), { userId: 'userA', name: 'Ani' })),
+      svc.handleMessage(makeMessage(String(session.question.answer), { userId: 'userB', name: 'Budi' }))
+    ]);
+
+    const now = svc.sessions.get('guild1');
+    assert.equal(now.round, 2);
+    assert.notEqual(now.question.text, q1, 'soal benar-benar berganti');
+    assert.equal(now.questionId, 2, 'penanda soal hanya naik sekali');
+  });
 });

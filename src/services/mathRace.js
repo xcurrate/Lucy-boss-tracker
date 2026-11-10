@@ -166,6 +166,11 @@ function startSession(guildId, channelId, totalRounds = DEFAULT_ROUNDS) {
     totalRounds,
     players: new Map(),
     question: null,
+    questionId: 0,
+    // Dikunci begitu sebuah soal selesai (dijawab benar ATAU waktu habis).
+    // Diset sinkron sebelum await apa pun supaya dua jawaban benar yang datang
+    // hampir bersamaan tidak sama-sama dihitung dan tidak memajukan dua soal.
+    locked: false,
     messageId: null,
     askedAt: 0,
     answeredAt: null,
@@ -183,30 +188,44 @@ function startSession(guildId, channelId, totalRounds = DEFAULT_ROUNDS) {
 async function nextQuestion(client, session, { replyTo = null } = {}) {
   if (session.ended) return;
   if (session.round >= session.totalRounds) return endSession(client, session, { replyTo });
-  session.round += 1;
-  session.question = engine.makeQuestion(levelForRound(session.round));
-  session.askedAt = Date.now();
-  session.answeredAt = null;
-  session.winnerName = null;
-  const seconds = Number(guildConfig(session.guildId).durationSeconds) || DEFAULT_SECONDS;
-  session.deadline = session.askedAt + seconds * 1000;
-
-  const payload = { embeds: [roundEmbed(session)] };
-  let sent = null;
+  // Cegah dua pemanggilan nextQuestion berjalan bersamaan: keduanya akan
+  // menaikkan `round` dan mengirim papan masing-masing, sehingga soal melompat.
+  if (session.advancing) return;
+  session.advancing = true;
   try {
-    sent = replyTo
-      ? await replyTo.reply({ ...payload, allowedMentions: { parse: [] } })
-      : await (await client.channels.fetch(session.channelId)).send(payload);
-  } catch (e) {
-    console.error('[MathRace] gagal mengirim soal:', e.message);
-    return;
-  }
-  const previous = session.messageId;
-  if (sent?.id) session.messageId = sent.id;
-  if (previous && previous !== session.messageId) deleteBoard(client, session.channelId, previous);
+    // Buang timer soal sebelumnya: kalau tidak, timer lama bisa menyala di tengah
+    // soal baru dan memajukan ronde lagi (soal terlihat "ganti terlalu cepat").
+    clearTimer(session);
+    session.round += 1;
+    session.questionId += 1;
+    session.locked = false;
+    session.question = engine.makeQuestion(levelForRound(session.round));
+    session.askedAt = Date.now();
+    session.answeredAt = null;
+    session.winnerName = null;
+    const seconds = Number(guildConfig(session.guildId).durationSeconds) || DEFAULT_SECONDS;
+    session.deadline = session.askedAt + seconds * 1000;
 
-  session.timer = setTimeout(() => timeoutQuestion(client, session), seconds * 1000);
-  session.timer.unref?.();
+    const payload = { embeds: [roundEmbed(session)] };
+    let sent = null;
+    try {
+      sent = replyTo
+        ? await replyTo.reply({ ...payload, allowedMentions: { parse: [] } })
+        : await (await client.channels.fetch(session.channelId)).send(payload);
+    } catch (e) {
+      console.error('[MathRace] gagal mengirim soal:', e.message);
+      return;
+    }
+    const previous = session.messageId;
+    if (sent?.id) session.messageId = sent.id;
+    if (previous && previous !== session.messageId) deleteBoard(client, session.channelId, previous);
+
+    const questionId = session.questionId;
+    session.timer = setTimeout(() => timeoutQuestion(client, session, questionId), seconds * 1000);
+    session.timer.unref?.();
+  } finally {
+    session.advancing = false;
+  }
 }
 
 function clearTimer(session) {
@@ -224,8 +243,12 @@ function deleteBoard(client, channelId, messageId) {
     .catch(e => console.error('[MathRace] gagal menghapus soal lama:', e.message));
 }
 
-async function timeoutQuestion(client, session) {
+async function timeoutQuestion(client, session, questionId) {
   if (sessions.get(session.guildId) !== session || session.ended) return;
+  // Timer dari soal yang sudah tidak berlaku (mis. soal sudah dijawab) harus
+  // diabaikan, supaya tidak memajukan ronde dua kali.
+  if (questionId !== session.questionId || session.locked) return;
+  session.locked = true;
   session.answeredAt = Date.now();
   session.timedOut = true;
   try {
@@ -277,9 +300,11 @@ async function endSession(client, session, { replyTo = null } = {}) {
 // yang dianggap tebakan, supaya chat biasa tidak dinilai.
 async function handleGuess(message) {
   const session = sessions.get(message.guildId);
-  if (!session || session.ended || session.timedOut) return false;
+  if (!session || session.ended) return false;
   if (message.channelId !== session.channelId) return false;
   if (!session.question) return false;
+  // Soal sudah selesai (dijawab benar atau waktu habis): jangan dinilai lagi.
+  if (session.locked || session.timedOut) return false;
 
   const value = engine.parseAnswer(message.content);
   if (value === null) return false;
@@ -288,6 +313,9 @@ async function handleGuess(message) {
     return true;
   }
 
+  // Kunci soal SEKARANG, sinkron sebelum await apa pun. Kalau tidak, dua pemain
+  // yang menjawab benar hampir bersamaan sama-sama lolos dan memajukan dua soal.
+  session.locked = true;
   clearTimer(session);
   session.answeredAt = Date.now();
   const elapsed = session.answeredAt - session.askedAt;
@@ -398,5 +426,5 @@ module.exports = {
   handleMessage, handleCommand, handleNavigation, isMathNav, navRow, helpText,
   leaderboardView, roundEmbed, weekRange, dayKey, isAdmin,
   DEFAULT_SECONDS, DEFAULT_ROUNDS, MAX_ROUNDS, NEXT_DELAY_MS, SPEED_BONUS, setNextDelay,
-  sessions, startSession, endSession, pointsForAnswer
+  sessions, startSession, endSession, pointsForAnswer, timeoutQuestion, nextQuestion
 };
