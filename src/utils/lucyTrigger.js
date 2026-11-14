@@ -5,9 +5,9 @@
 // yang dipakai bot Lucy di sebuah server — bisa `lucy`, `l`, `g`, dan
 // seterusnya — sehingga bot kita tahu pesan mana yang perlu dipantau.
 //
-// Karena itu daftar prefix dikelola admin per server. Default `lucy` dengan
-// bentuk pendek `l`. Bila admin menggantinya (mis. `g`), maka hanya prefix itu
-// yang dipantau; `lucy battle` di server tersebut kembali dianggap chat biasa.
+// Karena itu daftar prefix dikelola admin per server. Prefix bawaan bot Lucy
+// (`lucy`) SELALU dipantau; admin bisa menambah prefix lain yang dipakai di
+// server mereka (mis. `l` atau `g`). Jadi `lucy battle` tidak pernah diabaikan.
 //
 // Bentuk yang dikenali untuk tiap prefix P:
 //   P + alias      -> `lb`, `lh`, `lfight`, `lcurse`
@@ -17,6 +17,11 @@
 //
 // Modul ini sengaja tanpa dependensi supaya bisa dipakai lucyReminder maupun
 // lucyCounter tanpa membuat require melingkar.
+// Default bot Lucy sendiri. `lucy` SELALU aktif dan tidak bisa dihapus, karena
+// itu prefix bawaan bot Lucy — bukan sekadar preferensi server.
+const ALWAYS_LUCY_PREFIXES = ['lucy'];
+// Default yang ikut aktif selama admin belum mengatur apa pun. `l` adalah bentuk
+// pendek yang lazim dipakai, jadi disertakan agar `lb`/`lh` langsung jalan.
 const DEFAULT_LUCY_PREFIXES = ['lucy', 'l'];
 
 const ACTION_ALIASES = {
@@ -52,12 +57,15 @@ function parsePrefixList(value) {
   return out;
 }
 
-// Prefix yang berlaku di sebuah server. Kosong -> default. Daftar yang diatur
-// admin menggantikan default sepenuhnya (bukan ditambahkan), supaya server yang
-// memakai `g` tidak ikut memantau `lucy battle` yang cuma chat biasa.
+// Prefix yang berlaku di sebuah server: prefix bawaan bot Lucy SELALU ikut, lalu
+// ditambah prefix yang diatur admin. Jadi `lucy battle` tetap dikenali walau
+// server memakai `g` — yang berubah hanya tambahannya.
+// `null`/'' berarti belum diatur -> pakai default. Daftar kosong `[]` berarti
+// admin memang hanya ingin prefix bawaan (tanpa tambahan).
 function lucyPrefixes(configured) {
+  if (configured == null || configured === '') return [...DEFAULT_LUCY_PREFIXES];
   const list = parsePrefixList(configured);
-  return list.length ? list : [...DEFAULT_LUCY_PREFIXES];
+  return [...new Set([...ALWAYS_LUCY_PREFIXES, ...list])];
 }
 
 // Mengembalikan jenis aksi ('pray'|'curse'|'battle'|'hunt') atau null.
@@ -79,5 +87,5 @@ function isActionCommand(content, configuredPrefixes) {
 
 module.exports = {
   matchAction, isActionCommand, lucyPrefixes, parsePrefixList, normalizePrefix,
-  ACTION_ALIASES, DEFAULT_LUCY_PREFIXES
+  ACTION_ALIASES, DEFAULT_LUCY_PREFIXES, ALWAYS_LUCY_PREFIXES
 };

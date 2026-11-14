@@ -147,10 +147,13 @@
 - **Penting: prefix bot Lucy BUKAN prefix bot kita.** Prefix bot kita (`d`) hanya memanggil
   perintah kita (`d lreminder`, `d llb`). Prefix bot Lucy adalah prefix yang dipakai bot
   Lucy untuk membaca perintah user (`lucy`, `l`, `g`, ...), dan bot kita memantau pesan
-  dengan prefix itu. Karena itu daftarnya dikelola admin per server lewat
+  dengan prefix itu. Daftarnya dikelola admin per server lewat
   `d lucyprefix set|add|remove|reset`, disimpan di `settings.lucyReminder.lucyPrefixes`.
-  Daftar yang diatur admin MENGGANTIKAN default (`lucy`, `l`) — bukan menambah — supaya
-  server yang memakai `g` tidak ikut memantau `lucy battle` yang cuma chat biasa.
+- `lucy` adalah prefix BAWAAN bot Lucy, jadi SELALU dipantau dan tidak bisa dihapus
+  (`ALWAYS_LUCY_PREFIXES`). Pengaturan admin bersifat MENAMBAH: `lucyPrefixes('g')` ->
+  `['lucy', 'g']`. `null`/'' berarti belum diatur -> default `['lucy', 'l']`; daftar
+  kosong `[]` berarti admin hanya ingin prefix bawaan. Jangan ubah menjadi
+  "menggantikan" — `lucy battle` harus tetap dikenali di server mana pun.
 - Preferensi reminder (on/off + cara ping) bersifat GLOBAL: tabel `lucy_reminder_prefs_global`
   tanpa `guild_id`. `getPref/setPref/getPrefs` hanya menerima userId. Jangan tambahkan
   guild_id kembali tanpa alasan kuat — ini permintaan eksplisit pemilik bot.

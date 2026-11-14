@@ -77,15 +77,17 @@ Prefix bot Lucy adalah prefix yang dipakai bot Lucy untuk membaca perintah user
 (mis. `lucy`, `l`, atau `g`). Ini berbeda dari prefix bot kita sendiri (`d`), yang
 hanya untuk perintah `d lreminder`, `d llb`, dan sejenisnya.
 
-- d lucyprefix — lihat prefix bot Lucy yang dipantau di server ini
-- d lucyprefix set g — ganti ke `g` (menggantikan default)
-- d lucyprefix add lucy — tambah prefix
-- d lucyprefix remove g — hapus satu prefix
+`lucy` adalah prefix bawaan bot Lucy, jadi **selalu dikenali** dan tidak bisa
+dihapus. Pengaturan admin hanya MENAMBAH prefix lain yang dipakai di server.
+
+- d lucyprefix — lihat prefix yang dipantau (mis. `lucy`, `l`)
+- d lucyprefix add g — tambah `g` (jadi `lucy`, `l`, dan `g`)
+- d lucyprefix remove l — hapus `l` (kalau server tidak memakainya)
+- d lucyprefix set g — hanya tambahan `g` (`lucy` tetap aktif)
 - d lucyprefix reset — kembali ke default `lucy` dan `l`
 
-Kalau admin mengganti ke `g`, maka `g battle` yang dipantau dan `lucy battle`
-dianggap chat biasa. Bentuk pendek tetap dikenali untuk tiap prefix (mis. `gb`,
-`gh`).
+Jadi `lucy battle` tetap dikenali di server mana pun. Untuk tiap prefix, bentuk
+pendek juga jalan (mis. `gb`, `gh`, `gfight`).
 - d lreminder reply <jenis> <teks> — balasan kustom (khusus premium)
 - Balasan default tersedia untuk semua; balasan kustom + embed direncanakan sebagai fitur premium
 

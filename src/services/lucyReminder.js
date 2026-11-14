@@ -407,7 +407,7 @@ function helpText(prefix) {
     '`lucy battle` / `lucy fight` / `lbattle` / `lfight` / `lb` • `lucy hunt` / `lucy catch` / `lhunt` / `lh`',
     '',
     `\`${prefix} lucyprefix\` — lihat prefix bot Lucy yang dipantau (admin)`,
-    `\`${prefix} lucyprefix set|add|remove|reset <prefix...>\` — kelola prefix bot Lucy (admin)`,
+    `\`${prefix} lucyprefix add|remove|reset <prefix...>\` — kelola prefix tambahan (admin; \`lucy\` selalu aktif)`,
     `\`${prefix} lreminder\` — kotak interaksi: on/off & cara ping (tag/reply/tanpa keduanya)`,
     `\`${prefix} lreminder reply <jenis> <teks>\` — balasan kustom (khusus premium)`,
     'Pengaturan reminder berlaku **global di semua server**.',
@@ -434,23 +434,24 @@ async function handleCommand(message) {
 }
 
 // Admin mengatur prefix bot Lucy di server mereka — yaitu prefix yang dipakai
-// bot Lucy untuk memantau pesan user (mis. `lucy`, `l`, atau `g`). Ini berbeda
-// dari prefix bot kita sendiri (`d`) yang hanya untuk perintah `d lreminder`,
-// `d llb`, dan sejenisnya.
-// Daftar yang diatur admin MENGGANTIKAN default, bukan menambah, supaya server
-// yang memakai `g` tidak ikut memantau `lucy battle` yang cuma chat biasa.
+// bot Lucy untuk membaca perintah user (mis. `l` atau `g` di samping `lucy`).
+// Ini berbeda dari prefix bot kita sendiri (`d`) yang hanya untuk perintah
+// `d lreminder`, `d llb`, dan sejenisnya.
+// Prefix bawaan bot Lucy (`lucy`) SELALU dipantau dan tidak bisa dihapus;
+// pengaturan admin hanya MENAMBAH prefix lain yang dipakai di server mereka.
 async function handleLucyPrefixCommand(message, prefix, parts) {
   const sub = (parts[1] || '').toLowerCase();
   const configured = guildConfig(message.guildId).lucyPrefixes;
+  const isDefault = configured == null || configured === '';
   const active = trigger.lucyPrefixes(configured);
-  const usingDefault = !trigger.parsePrefixList(configured).length;
+  const extras = active.filter(p => !trigger.ALWAYS_LUCY_PREFIXES.includes(p));
 
   if (!sub || sub === 'show' || sub === 'status' || sub === 'lihat') {
     await message.reply({
-      content: `Prefix bot Lucy di server ini: ${active.map(p => '**' + p + '**').join(', ')}` +
-        (usingDefault ? ' (default)' : '') + '\n' +
+      content: `Prefix bot Lucy yang dipantau di server ini: ${active.map(p => '**' + p + '**').join(', ')}\n` +
+        `\`lucy\` selalu aktif (bawaan bot Lucy)${isDefault ? '' : ` • tambahan: ${extras.length ? extras.map(p => '**' + p + '**').join(', ') : 'tidak ada'}`}\n` +
         `Contoh yang dipantau: ${active.map(p => '`' + p + ' battle`').join(', ')}\n` +
-        `Kelola: \`${prefix} lucyprefix set <prefix...>\`, \`add\`, \`remove\`, \`reset\`.`,
+        `Kelola tambahan: \`${prefix} lucyprefix add|remove <prefix...>\`, \`${prefix} lucyprefix reset\`.`,
       allowedMentions: { parse: [] }
     });
     return true;
@@ -463,7 +464,7 @@ async function handleLucyPrefixCommand(message, prefix, parts) {
 
   if (sub === 'reset' || sub === 'default') {
     updateGuildSettings(message.guildId, s => ({ ...s, lucyReminder: { ...s.lucyReminder, lucyPrefixes: null } }));
-    await message.reply(`Prefix bot Lucy dikembalikan ke default: ${trigger.DEFAULT_LUCY_PREFIXES.map(p => '**' + p + '**').join(', ')}.`);
+    await message.reply(`Prefix tambahan dihapus. Yang dipantau: ${trigger.DEFAULT_LUCY_PREFIXES.map(p => '**' + p + '**').join(', ')} (default).`);
     return true;
   }
 
@@ -476,24 +477,29 @@ async function handleLucyPrefixCommand(message, prefix, parts) {
 
   let next;
   if (sub === 'set' || sub === 'atur') {
-    if (!requested.length) { await message.reply(`Format: \`${prefix} lucyprefix set <prefix...>\`. Contoh: \`${prefix} lucyprefix set g\`.`); return true; }
+    if (!requested.length) { await message.reply(`Format: \`${prefix} lucyprefix set <prefix...>\`. Contoh: \`${prefix} lucyprefix set l g\`.`); return true; }
     next = requested;
   } else if (sub === 'add' || sub === 'tambah') {
     if (!requested.length) { await message.reply(`Format: \`${prefix} lucyprefix add <prefix...>\`.`); return true; }
-    next = [...new Set([...active, ...requested])];
+    next = [...new Set([...extras, ...requested])];
   } else if (sub === 'remove' || sub === 'del' || sub === 'hapus') {
     if (!requested.length) { await message.reply(`Format: \`${prefix} lucyprefix remove <prefix...>\`.`); return true; }
-    next = active.filter(p => !requested.includes(p));
-    if (!next.length) { await message.reply(`Tidak bisa menghapus semua prefix. Pakai \`${prefix} lucyprefix reset\` untuk kembali ke default.`); return true; }
+    next = extras.filter(p => !requested.includes(p));
   } else {
     await message.reply(helpText(prefix));
     return true;
   }
 
+  next = next.filter(p => !trigger.ALWAYS_LUCY_PREFIXES.includes(p));
   updateGuildSettings(message.guildId, s => ({ ...s, lucyReminder: { ...s.lucyReminder, lucyPrefixes: next } }));
+
+  const finalActive = trigger.lucyPrefixes(next);
+  const note = requested.includes('lucy') && trigger.ALWAYS_LUCY_PREFIXES.includes('lucy')
+    ? '\n\`lucy\` selalu aktif, jadi tidak perlu (dan tidak bisa) dihapus.'
+    : '';
   await message.reply(
-    `Prefix bot Lucy di server ini: ${next.map(p => '**' + p + '**').join(', ')}.\n` +
-    `Contoh: ${next.map(p => '`' + p + ' battle`').join(', ')}.`
+    `Prefix bot Lucy yang dipantau: ${finalActive.map(p => '**' + p + '**').join(', ')}.${note}\n` +
+    `Contoh: ${finalActive.map(p => '`' + p + ' battle`').join(', ')}.`
   );
   return true;
 }
