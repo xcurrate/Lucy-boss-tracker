@@ -1,6 +1,7 @@
 const { EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX, matchPrefix } = require('../utils/storage');
 const store = require('../utils/lucyCounterStorage');
+const trigger = require('../utils/lucyTrigger');
 
 const WIB = 'Asia/Jakarta';
 const DEFAULT_TARGET_MESSAGE = '🎉 Target Lucy tercapai!';
@@ -406,9 +407,10 @@ async function handleMessage(message, { onCounted } = {}) {
   const whitelistedChannelIds = config.whitelistedChannelIds || [];
   if (!config.enabled || blacklistedChannelIds.includes(message.channelId)) return;
   if (whitelistedChannelIds.length > 0 && !whitelistedChannelIds.includes(message.channelId)) return;
-  // `lucy pray|curse|battle|hunt` adalah perintah aksi, bukan mention Lucy biasa.
-  // Tanpa ini satu pesan bisa memicu dua pengingat (aksi + Lucy) sekaligus.
-  if (/^\s*lucy\s+(?:pray|curse|battle|hunt)\s*$/i.test(message.content)) return;
+  // Pesan aksi (mis. `lucy battle`, `lb`, `l hunt`) adalah perintah, bukan
+  // mention Lucy biasa. Tanpa ini satu pesan bisa memicu dua pengingat
+  // (aksi + Lucy) sekaligus. Prefix bot Lucy mengikuti pengaturan server.
+  if (trigger.isActionCommand(message.content, config.lucyPrefix)) return;
   if (!countLucy(message.content)) return;
 
   const currentSettings = getGuildSettings(message.guildId);
@@ -429,9 +431,14 @@ async function handleMessage(message, { onCounted } = {}) {
   }
 
   // Kabari modul reminder bahwa pesan Lucy ini terhitung, supaya pengingat
-  // kategori "Lucy" (10 detik) bisa dipasang.
-  if (typeof onCounted === 'function') {
-    try { onCounted(message, displayName); } catch (e) { console.error('[LucyCounter] onCounted:', e.message); }
+  // kategori "Lucy" (10 detik) bisa dipasang. Muat lucyReminder secara lazy
+  // sebagai cadangan bila pemanggil tidak menyediakan hook (menghindari
+  // require melingkar di tingkat modul).
+  try {
+    if (typeof onCounted === 'function') onCounted(message, displayName);
+    else require('./lucyReminder').onLucyCounted(message, displayName);
+  } catch (e) {
+    console.error('[LucyCounter] onCounted:', e.message);
   }
 
   // Target progress is tracked independently for each person and resets at the start of each cycle.

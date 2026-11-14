@@ -65,13 +65,14 @@ function getDb() {
       PRIMARY KEY (guild_id, user_id, action)
     );
     -- Preferensi reminder per orang per jenis: on/off + cara ping.
-    CREATE TABLE IF NOT EXISTS lucy_reminder_prefs (
-      guild_id TEXT NOT NULL,
+    -- TANPA guild_id: pengaturan berlaku global di semua server, sesuai
+    -- permintaan (anggota mengatur sekali, berlaku di mana pun ia bermain).
+    CREATE TABLE IF NOT EXISTS lucy_reminder_prefs_global (
       user_id TEXT NOT NULL,
       kind TEXT NOT NULL,
       enabled INTEGER NOT NULL DEFAULT 1,
       ping_mode TEXT NOT NULL DEFAULT 'tag',
-      PRIMARY KEY (guild_id, user_id, kind)
+      PRIMARY KEY (user_id, kind)
     );
   `);
   return db;
@@ -115,32 +116,32 @@ function setCooldown(guildId, userId, action, readyAt) {
     .run(String(guildId), String(userId), String(action), Number(readyAt) || 0);
 }
 
-function getPrefs(guildId, userId) {
+function getPrefs(userId) {
   const rows = getDb().prepare(
-    'SELECT kind, enabled, ping_mode FROM lucy_reminder_prefs WHERE guild_id = ? AND user_id = ?'
-  ).all(String(guildId), String(userId));
+    'SELECT kind, enabled, ping_mode FROM lucy_reminder_prefs_global WHERE user_id = ?'
+  ).all(String(userId));
   const prefs = {};
   for (const row of rows) prefs[row.kind] = { enabled: Boolean(row.enabled), pingMode: row.ping_mode };
   return prefs;
 }
 
 // Preferensi default (dipakai bila anggota belum pernah mengatur): nyala, ping tag.
-function getPref(guildId, userId, kind, fallback = { enabled: true, pingMode: 'tag' }) {
+function getPref(userId, kind, fallback = { enabled: true, pingMode: 'tag' }) {
   const row = getDb().prepare(
-    'SELECT enabled, ping_mode FROM lucy_reminder_prefs WHERE guild_id = ? AND user_id = ? AND kind = ?'
-  ).get(String(guildId), String(userId), String(kind));
+    'SELECT enabled, ping_mode FROM lucy_reminder_prefs_global WHERE user_id = ? AND kind = ?'
+  ).get(String(userId), String(kind));
   if (!row) return { ...fallback };
   return { enabled: Boolean(row.enabled), pingMode: row.ping_mode };
 }
 
-function setPref(guildId, userId, kind, { enabled, pingMode } = {}) {
-  const current = getPref(guildId, userId, kind);
+function setPref(userId, kind, { enabled, pingMode } = {}) {
+  const current = getPref(userId, kind);
   const nextEnabled = enabled === undefined ? current.enabled : Boolean(enabled);
   const nextMode = pingMode === undefined ? current.pingMode : String(pingMode);
   getDb().prepare(`
-    INSERT INTO lucy_reminder_prefs (guild_id, user_id, kind, enabled, ping_mode) VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(guild_id, user_id, kind) DO UPDATE SET enabled = excluded.enabled, ping_mode = excluded.ping_mode`)
-    .run(String(guildId), String(userId), String(kind), nextEnabled ? 1 : 0, nextMode);
+    INSERT INTO lucy_reminder_prefs_global (user_id, kind, enabled, ping_mode) VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id, kind) DO UPDATE SET enabled = excluded.enabled, ping_mode = excluded.ping_mode`)
+    .run(String(userId), String(kind), nextEnabled ? 1 : 0, nextMode);
   return { enabled: nextEnabled, pingMode: nextMode };
 }
 
@@ -178,6 +179,27 @@ function topAllTime(guildId, actions) {
     .all(String(guildId), ...actions));
 }
 
+// Peringkat lintas server, untuk leaderboard global.
+function topByRangeAll(fromDay, toDay, actions) {
+  return rowsToRanking(getDb().prepare(`
+    SELECT s.user_id, MAX(u.name) AS name, SUM(s.count) AS count
+    FROM lucy_action_daily s LEFT JOIN lucy_action_users u
+      ON u.guild_id = s.guild_id AND u.user_id = s.user_id
+    WHERE s.day BETWEEN ? AND ? AND s.action IN (${inClause(actions)})
+    GROUP BY s.user_id ORDER BY count DESC, name ASC`)
+    .all(String(fromDay), String(toDay), ...actions));
+}
+
+function topAllTimeAll(actions) {
+  return rowsToRanking(getDb().prepare(`
+    SELECT s.user_id, MAX(u.name) AS name, SUM(s.count) AS count
+    FROM lucy_action_daily s LEFT JOIN lucy_action_users u
+      ON u.guild_id = s.guild_id AND u.user_id = s.user_id
+    WHERE s.action IN (${inClause(actions)})
+    GROUP BY s.user_id ORDER BY count DESC, name ASC`)
+    .all(...actions));
+}
+
 // Total per hari untuk satu anggota (dipakai ringkasan pribadi).
 function userTotal(guildId, userId, fromDay, toDay, actions) {
   const row = getDb().prepare(`
@@ -189,12 +211,12 @@ function userTotal(guildId, userId, fromDay, toDay, actions) {
 
 function resetGuild(guildId) {
   const database = getDb();
-  for (const table of ['lucy_action_daily', 'lucy_action_cooldowns', 'lucy_reminder_prefs', 'lucy_action_users']) {
+  for (const table of ['lucy_action_daily', 'lucy_action_cooldowns', 'lucy_action_users']) {
     database.prepare(`DELETE FROM ${table} WHERE guild_id = ?`).run(String(guildId));
   }
 }
 
 module.exports = {
   getDb, recordAction, getCooldown, setCooldown, getPrefs, getPref, setPref,
-  topByDay, topByRange, topAllTime, userTotal, resetGuild, ACTIONS, GROUPS
+  topByDay, topByRange, topAllTime, topByRangeAll, topAllTimeAll, userTotal, resetGuild, ACTIONS, GROUPS
 };

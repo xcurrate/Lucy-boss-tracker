@@ -15,6 +15,7 @@ const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX, matchPrefix } = r
 const store = require('../utils/lucyActionStorage');
 const lucyStore = require('../utils/lucyCounterStorage');
 const { parseIndonesianDate } = require('./lucyCounter');
+const trigger = require('../utils/lucyTrigger');
 
 const WIB = 'Asia/Jakarta';
 const REMINDER_NAV = 'lrem';
@@ -30,10 +31,11 @@ const KINDS = {
   lucy: { action: null, label: 'Lucy', waitMs: 10 * 1000, emoji: '🐉' }
 };
 
-// Pemicu aksi: `lucy pray`, `lucy curse`, `lucy battle`, `lucy hunt`.
+// Pemicu aksi ditangani utils/lucyTrigger: `<prefix> <aksi>` dengan prefix yang
+// bisa diatur admin per server (default `lucy`), plus bentuk pendek `l` dan
+// alias (fight/war untuk battle, catch untuk hunt, dll).
 // Kategori "lucy" memakai penghitung Lucy yang sudah ada (lucyCounter) sehingga
 // tidak ada perintah baru; pengingatnya dipasang saat pesan Lucy terhitung.
-const TRIGGER_RE = /^\s*lucy\s+(pray|curse|battle|hunt)\s*$/i;
 
 // Balasan default per jenis (dipakai bila server belum mengatur balasan kustom).
 const DEFAULT_REPLIES = {
@@ -147,7 +149,7 @@ function kindRow(kind, pref) {
 }
 
 function panelEmbed(guildId, userId, name) {
-  const prefs = store.getPrefs(guildId, userId);
+  const prefs = store.getPrefs(userId);
   const lines = Object.entries(KINDS).map(([kind, info]) => {
     const pref = prefs[kind] || { enabled: true, pingMode: 'tag' };
     const mode = PING_MODES[pref.pingMode] || PING_MODES.tag;
@@ -157,11 +159,11 @@ function panelEmbed(guildId, userId, name) {
     .setColor(0x5865F2)
     .setTitle('🔔 Pengingat Aksi Lucy')
     .setDescription(lines.join('\n') + '\n\nKlik tombol kiri untuk on/off, tombol tengah untuk ganti cara ping.')
-    .setFooter({ text: `Pengaturan pribadi untuk ${name} • berlaku di server ini` });
+    .setFooter({ text: `Pengaturan pribadi untuk ${name} • berlaku di SEMUA server` });
 }
 
 function panelComponents(guildId, userId) {
-  const prefs = store.getPrefs(guildId, userId);
+  const prefs = store.getPrefs(userId);
   return Object.entries(KINDS).map(([kind]) => kindRow(kind, prefs[kind] || { enabled: true, pingMode: 'tag' }));
 }
 
@@ -182,12 +184,12 @@ async function handleComponent(i) {
   if (!KINDS[kind]) return false;
   const guildId = i.guildId;
   const userId = i.user.id;
-  const current = store.getPref(guildId, userId, kind);
+  const current = store.getPref(userId, kind);
 
   if (verb === 'toggle') {
-    store.setPref(guildId, userId, kind, { enabled: !current.enabled });
+    store.setPref(userId, kind, { enabled: !current.enabled });
   } else if (verb === 'mode') {
-    store.setPref(guildId, userId, kind, { pingMode: cyclePingMode(current.pingMode) });
+    store.setPref(userId, kind, { pingMode: cyclePingMode(current.pingMode) });
   } else {
     return false;
   }
@@ -205,7 +207,7 @@ async function handleComponent(i) {
 // - none  : pesan biasa tanpa keduanya
 async function deliverReminder(client, reminder) {
   const { guildId, channelId, userId, kind, messageId } = reminder;
-  const pref = store.getPref(guildId, userId, kind);
+  const pref = store.getPref(userId, kind);
   if (!pref.enabled) return;
   const info = KINDS[kind];
   let channel = null;
@@ -308,28 +310,63 @@ function actionRanking(guildId, actions, range) {
   return store.topByDay(guildId, day, actions);
 }
 
-function rankingFor(guildId, category, range, today = new Date()) {
-  if (category === 'lucy') return lucyRanking(guildId, range, today);
+function actionRankingGlobal(actions, range) {
+  if (range.type === 'alltime') return store.topAllTimeAll(actions);
+  if (range.type === 'range') return store.topByRangeAll(range.from, range.to, actions);
+  const day = range.type === 'date' ? range.date : range.from;
+  return store.topByRangeAll(day, day, actions);
+}
+
+function rankingFor(guildId, category, range, { global = false } = {}) {
+  if (category === 'lucy') return global ? lucyRankingGlobal(range) : lucyRanking(guildId, range);
   if (category === 'all') {
     const actions = Object.values(store.GROUPS).flat();
-    return mergeRankings(actionRanking(guildId, actions, range), lucyRanking(guildId, range, today));
+    const actionsRank = global ? actionRankingGlobal(actions, range) : actionRanking(guildId, actions, range);
+    const lucy = global ? lucyRankingGlobal(range) : lucyRanking(guildId, range);
+    return mergeRankings(actionsRank, lucy);
   }
-  return actionRanking(guildId, actionsFor(category), range);
+  const actions = actionsFor(category);
+  return global ? actionRankingGlobal(actions, range) : actionRanking(guildId, actions, range);
+}
+
+function rangeFilter(range) {
+  if (range.type === 'date') return day => day === range.date;
+  if (range.type === 'today') return day => day === range.from;
+  if (range.type === 'range') return day => day >= range.from && day <= range.to;
+  return null;
+}
+
+function sumDays(user, filter) {
+  return Object.entries(user.days || {})
+    .filter(([day]) => !filter || filter(day))
+    .reduce((sum, [, n]) => sum + Number(n || 0), 0);
 }
 
 function lucyRanking(guildId, range, today = new Date()) {
   const data = lucyStore.getGuildData(guildId);
-  const total = (user, filter) => Object.entries(user.days || {})
-    .filter(([day]) => !filter || filter(day))
-    .reduce((sum, [, n]) => sum + Number(n || 0), 0);
-  let filter = null;
-  if (range.type === 'date') filter = day => day === range.date;
-  else if (range.type === 'today') filter = day => day === range.from;
-  else if (range.type === 'range') filter = day => day >= range.from && day <= range.to;
+  const filter = rangeFilter(range);
   return Object.entries(data.users || {})
-    .map(([userId, user]) => ({ userId, name: user.name || userId, count: total(user, filter) }))
+    .map(([userId, user]) => ({ userId, name: user.name || userId, count: sumDays(user, filter) }))
     .filter(r => r.count > 0)
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+// Peringkat Lucy lintas server: jumlahkan hari yang sama dari semua guild.
+function lucyRankingGlobal(range) {
+  const all = lucyStore.getAllData();
+  const filter = rangeFilter(range);
+  const map = new Map();
+  for (const guild of Object.values(all || {})) {
+    for (const [userId, user] of Object.entries(guild?.users || {})) {
+      const n = sumDays(user, filter);
+      if (!n) continue;
+      const cur = map.get(userId) || { userId, name: user.name || userId, count: 0 };
+      cur.count += n;
+      if (user.name) cur.name = user.name;
+      map.set(userId, cur);
+    }
+  }
+  return [...map.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 function rangeLabel(range) {
@@ -339,9 +376,9 @@ function rangeLabel(range) {
   return formatIndonesianDate(day);
 }
 
-function leaderboardView(guildId, category, range, page = 1) {
+function leaderboardView(guildId, category, range, page = 1, { global = false } = {}) {
   const cat = CATEGORIES[category] || CATEGORIES.pray;
-  const rows = rankingFor(guildId, category, range);
+  const rows = rankingFor(guildId, category, range, { global });
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const current = Math.min(Math.max(1, Number(page) || 1), totalPages);
   const offset = (current - 1) * PAGE_SIZE;
@@ -353,7 +390,7 @@ function leaderboardView(guildId, category, range, page = 1) {
     .setColor(0xEB459E)
     .setTitle(`🏆 Leaderboard ${cat.label}`)
     .setDescription(desc)
-    .setFooter({ text: `Halaman ${current}/${totalPages} • ${rows.length} peserta • ${rangeLabel(range)} (WIB)` });
+    .setFooter({ text: `Halaman ${current}/${totalPages} • ${rows.length} peserta • ${rangeLabel(range)} • ${global ? 'Global (semua server)' : 'Server ini'} (WIB)` });
   return { embed, page: current, totalPages };
 }
 
@@ -364,18 +401,18 @@ function isModerator(message) {
 
 function helpText(prefix) {
   return [
-    '**Pengingat Aksi Lucy**',
-    `\`${prefix} pray\` — aksi Lucy Pray (pengingat 5 menit)`,
-    `\`${prefix} curse\` — aksi Lucy Curse (pengingat 5 menit)`,
-    `\`${prefix} battle\` — aksi Lucy Battle (pengingat 15 detik)`,
-    `\`${prefix} hunt\` — aksi Lucy Hunt (pengingat 15 detik)`,
-    `\`${prefix} lucy\` — Lucy (pengingat 10 detik)`,
+    '**Aksi Lucy** — tulis `<prefix-lucy> <aksi>`. Bentuk yang dikenali:',
+    '`lucy pray` / `lpray` • `lucy curse` / `lcurse`',
+    '`lucy battle` / `lucy fight` / `lbattle` / `lfight` / `lb` • `lucy hunt` / `lucy catch` / `lhunt` / `lh`',
+    '',
+    `\`${prefix} lucyprefix set <prefix>\` — atur prefix bot Lucy di server ini (admin)`,
     `\`${prefix} lreminder\` — kotak interaksi: on/off & cara ping (tag/reply/tanpa keduanya)`,
     `\`${prefix} lreminder reply <jenis> <teks>\` — balasan kustom (khusus premium)`,
+    'Pengaturan reminder berlaku **global di semua server**.',
     '',
     '**Leaderboard**',
-    `\`${prefix} llb <kategori> [rentang] [halaman]\` — kategori: pray, curse, battle, hunt, lucy`,
-    `  contoh: \`${prefix} llb pray\`, \`${prefix} llb battle 7d\`, \`${prefix} llb lucy all\`, \`${prefix} llb curse 5 nov\``,
+    `\`${prefix} llb <kategori> [rentang] [halaman] [global]\` — kategori: pray, curse, battle, hunt, lucy`,
+    `  contoh: \`${prefix} llb pray\`, \`${prefix} llb battle 7d\`, \`${prefix} llb lucy all global\``,
     `\`${prefix} llb all [rentang]\` — gabungan semua kategori`
   ].join('\n');
 }
@@ -390,10 +427,51 @@ async function handleCommand(message) {
 
   if (['lreminder', 'lrem', 'reminder'].includes(command)) return handleReminderCommand(message, prefix, parts);
   if (['llb', 'llbboard', 'lboard'].includes(command)) return handleLeaderboardCommand(message, prefix, parts);
+  if (['lucyprefix', 'lprefix', 'lucyconfig', 'lconfig'].includes(command)) return handleLucyPrefixCommand(message, prefix, parts);
+  return false;
+}
 
-  const kind = command;
-  if (!KINDS[kind] || kind === 'lucy') return false;
-  return handleAction(message, kind, prefix);
+// Admin mengatur prefix bot Lucy di server mereka. Default `lucy`; bentuk
+// pendek `l` selalu ikut dikenali di samping prefix yang diatur.
+async function handleLucyPrefixCommand(message, prefix, parts) {
+  const sub = (parts[1] || '').toLowerCase();
+  const current = guildConfig(message.guildId).lucyPrefix || trigger.DEFAULT_LUCY_PREFIX;
+
+  if (!sub || sub === 'show' || sub === 'status' || sub === 'lihat') {
+    const list = trigger.lucyPrefixes(current);
+    await message.reply({
+      content: `Prefix bot Lucy di server ini: **${current}**\n` +
+        `Bentuk yang dikenali: ${list.map(p => '`' + p + ' <aksi>`').join(', ')}\n` +
+        `Ubah dengan \`${prefix} lucyprefix set <prefix>\` (huruf/angka, maks 16).`,
+      allowedMentions: { parse: [] }
+    });
+    return true;
+  }
+
+  if (!isModerator(message)) {
+    await message.reply('Hanya moderator/admin yang bisa mengubah prefix bot Lucy.');
+    return true;
+  }
+
+  if (sub === 'set' || sub === 'atur') {
+    const value = (parts[2] || '').toLowerCase();
+    if (value === 'reset' || value === 'default') {
+      updateGuildSettings(message.guildId, s => ({ ...s, lucyReminder: { ...s.lucyReminder, lucyPrefix: null } }));
+      await message.reply(`Prefix bot Lucy dikembalikan ke default: **${trigger.DEFAULT_LUCY_PREFIX}**.`);
+      return true;
+    }
+    const normalized = trigger.normalizePrefix(value);
+    if (!normalized) {
+      await message.reply(`Prefix tidak valid. Gunakan huruf/angka tanpa spasi, maks 16 karakter. Contoh: \`${prefix} lucyprefix set lucy\`.`);
+      return true;
+    }
+    updateGuildSettings(message.guildId, s => ({ ...s, lucyReminder: { ...s.lucyReminder, lucyPrefix: normalized } }));
+    await message.reply(`Prefix bot Lucy disetel ke **${normalized}**. Contoh: \`${normalized} battle\`, \`${normalized} hunt\`. Bentuk pendek \`l <aksi>\` tetap jalan.`);
+    return true;
+  }
+
+  await message.reply(helpText(prefix));
+  return true;
 }
 
 async function handleAction(message, kind, prefix) {
@@ -459,7 +537,7 @@ async function handleReminderCommand(message, prefix, parts) {
   }
 
   if (sub === 'status') {
-    const prefs = store.getPrefs(message.guildId, message.author.id);
+    const prefs = store.getPrefs(message.author.id);
     const lines = Object.entries(KINDS).map(([kind, info]) => {
       const pref = prefs[kind] || { enabled: true, pingMode: 'tag' };
       return `${info.emoji} ${info.label}: ${pref.enabled ? 'ON' : 'OFF'} • ping ${PING_MODES[pref.pingMode] || pref.pingMode}`;
@@ -504,11 +582,14 @@ async function handleReminderCommand(message, prefix, parts) {
 async function handleLeaderboardCommand(message, prefix, parts) {
   const args = parts.slice(1);
   const categoryToken = (args[0] || '').toLowerCase();
+  // Token `global` di posisi mana pun menandai leaderboard lintas server.
+  const global = args.some(a => ['global', 'semua', 'allserver'].includes(String(a).toLowerCase()));
+  const positional = args.filter(a => !['global', 'semua', 'allserver'].includes(String(a).toLowerCase()));
 
   if (categoryToken === 'all' || categoryToken === 'gabungan') {
-    const range = parseRange(args[1]);
+    const range = parseRange(positional[1]);
     if (range.type === 'invalid') return badRange(message, prefix, range.value);
-    return sendLeaderboard(message, 'all', range, args[2]);
+    return sendLeaderboard(message, 'all', range, positional[2], global);
   }
 
   const category = CATEGORY_ALIASES[categoryToken];
@@ -516,9 +597,9 @@ async function handleLeaderboardCommand(message, prefix, parts) {
     await message.reply(helpText(prefix));
     return true;
   }
-  const range = parseRange(args[1]);
+  const range = parseRange(positional[1]);
   if (range.type === 'invalid') return badRange(message, prefix, range.value);
-  return sendLeaderboard(message, category, range, args[2]);
+  return sendLeaderboard(message, category, range, positional[2], global);
 }
 
 async function badRange(message, prefix, value) {
@@ -526,9 +607,9 @@ async function badRange(message, prefix, value) {
   return true;
 }
 
-async function sendLeaderboard(message, category, range, pageArg) {
+async function sendLeaderboard(message, category, range, pageArg, global = false) {
   const page = Number(pageArg) > 0 ? Math.floor(Number(pageArg)) : 1;
-  const view = leaderboardView(message.guildId, category, range, page);
+  const view = leaderboardView(message.guildId, category, range, page, { global });
   await message.reply({ embeds: [view.embed], allowedMentions: { parse: [] } });
   return true;
 }
@@ -550,9 +631,10 @@ function onLucyCounted(message, name) {
 async function handleMessage(message) {
   if (!message.guildId || message.author?.bot || !message.content) return false;
   if (await handleCommand(message)) return true;
-  // Pemicu `lucy pray|curse|battle|hunt`. Kategori "lucy" ditangani lucyCounter.
-  const hit = TRIGGER_RE.exec(message.content);
-  if (hit) return handleAction(message, hit[1].toLowerCase(), getGuildSettings(message.guildId).prefix || DEFAULT_PREFIX);
+  // Pemicu aksi (mis. `lucy battle`, `lb`, `l hunt`, `lucy catch`). Prefix bot
+  // Lucy diambil dari pengaturan server; kategori "lucy" ditangani lucyCounter.
+  const kind = trigger.matchAction(message.content, guildConfig(message.guildId).lucyPrefix);
+  if (kind) return handleAction(message, kind, getGuildSettings(message.guildId).prefix || DEFAULT_PREFIX);
   return false;
 }
 
@@ -561,5 +643,6 @@ module.exports = {
   panelEmbed, panelComponents, leaderboardView, parseRange, rangeLabel,
   scheduleReminder, deliverReminder, scheduledCount, renderTemplate, replyTemplate,
   dayKey, shiftDay, humanDuration, KINDS, PING_MODES, CATEGORIES, DEFAULT_REPLIES,
+  handleLucyPrefixCommand, lucyRankingGlobal, rankingFor,
   onLucyCounted, timers
 };

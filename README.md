@@ -56,24 +56,30 @@ Tingkat kesulitan naik tiap soal; poin = dasar per level + bonus kecepatan.
 - d math stop — hentikan ronde (moderator/admin/developer)
 
 ## Pengingat Aksi Lucy
-Tiap aksi Lucy punya perintah prefix sendiri, dengan pengingat otomatis setelah durasi tunggu:
+Aksi Lucy ditulis `<prefix-lucy> <aksi>`, dengan pengingat otomatis setelah durasi tunggu:
 
-| Perintah | Jenis | Pengingat |
+| Jenis | Bentuk yang dikenali | Pengingat |
 |---|---|---|
-| d pray | Lucy Pray | 5 menit |
-| d curse | Lucy Curse | 5 menit |
-| d battle | Lucy Battle | 15 detik |
-| d hunt | Lucy Hunt | 15 detik |
-| d lucy (kata "lucy") | Lucy | 10 detik |
+| Lucy Pray | `lucy pray`, `lpray` | 5 menit |
+| Lucy Curse | `lucy curse`, `lcurse` | 5 menit |
+| Lucy Battle | `lucy battle`, `lucy fight`, `lucy war`, `lbattle`, `lfight`, `lb` | 15 detik |
+| Lucy Hunt | `lucy hunt`, `lucy catch`, `lhunt`, `lh` | 15 detik |
+| Lucy | pesan yang memuat kata "lucy" | 10 detik |
 
-- d lreminder — kotak interaksi: tombol on/off dan tombol cara ping per jenis, untuk setiap orang
+Bentuk berspasi juga jalan: `l fight`, `l hunt`.
+
+- d lreminder — kotak interaksi: tombol on/off dan tombol cara ping per jenis
 - Cara ping: Tag, Reply, Tag + Reply, atau Tanpa keduanya
+- Pengaturan reminder berlaku GLOBAL di semua server — atur sekali, berlaku di mana pun
+- d lucyprefix set <prefix> — admin mengatur prefix bot Lucy di server (default `lucy`); bentuk pendek `l` selalu ikut jalan
+- d lucyprefix set reset — kembalikan ke default
 - d lreminder reply <jenis> <teks> — balasan kustom (khusus premium)
 - Balasan default tersedia untuk semua; balasan kustom + embed direncanakan sebagai fitur premium
 
 ### Leaderboard Aksi Lucy
-- d llb <pray|curse|battle|hunt|lucy> [rentang] [halaman]
+- d llb <pray|curse|battle|hunt|lucy> [rentang] [halaman] [global]
 - d llb all [rentang] — gabungan semua kategori
+- Tambahkan `global` untuk menggabungkan seluruh server (mis. `d llb pray 7d global`)
 - Rentang: kosong/harian (hari ini), 7d (7 hari terakhir), all (semua waktu), atau tanggal (5 nov)
 - battle dan hunt digabung jadi satu kategori; lucy memakai penghitung Lucy yang sudah ada
 - d ping (alias d p) — cek latency bot (roundtrip & WebSocket)

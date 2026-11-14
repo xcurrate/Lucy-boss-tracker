@@ -71,12 +71,12 @@ describe('lucy action storage', () => {
 
   it('stores per-user reminder preferences with defaults', () => {
     const store = require('../src/utils/lucyActionStorage');
-    assert.deepEqual(store.getPref('g', 'u1', 'pray'), { enabled: true, pingMode: 'tag' });
-    store.setPref('g', 'u1', 'pray', { enabled: false });
-    assert.deepEqual(store.getPref('g', 'u1', 'pray'), { enabled: false, pingMode: 'tag' });
-    store.setPref('g', 'u1', 'pray', { pingMode: 'none' });
-    assert.deepEqual(store.getPref('g', 'u1', 'pray'), { enabled: false, pingMode: 'none' });
-    assert.equal(store.getPref('g', 'u2', 'pray').enabled, true, 'orang lain tidak terpengaruh');
+    assert.deepEqual(store.getPref('u1', 'pray'), { enabled: true, pingMode: 'tag' });
+    store.setPref('u1', 'pray', { enabled: false });
+    assert.deepEqual(store.getPref('u1', 'pray'), { enabled: false, pingMode: 'tag' });
+    store.setPref('u1', 'pray', { pingMode: 'none' });
+    assert.deepEqual(store.getPref('u1', 'pray'), { enabled: false, pingMode: 'none' });
+    assert.equal(store.getPref('u2', 'pray').enabled, true, 'orang lain tidak terpengaruh');
   });
 
   it('tracks cooldowns per user and action', () => {
@@ -105,7 +105,7 @@ describe('lucy reminder engine', () => {
 
   it('responds to each action with its own prefix command and schedules a reminder', async () => {
     const svc = require('../src/services/lucyReminder');
-    for (const [command, kind] of [['d pray', 'pray'], ['d curse', 'curse'], ['d battle', 'battle'], ['d hunt', 'hunt']]) {
+    for (const command of ['lucy pray', 'lcurse', 'lbattle', 'lhunt']) {
       const msg = makeMessage(command);
       assert.equal(await svc.handleMessage(msg), true, command);
       assert.equal(msg.replies.length, 1, command);
@@ -125,7 +125,7 @@ describe('lucy reminder engine', () => {
   it('records the action in the counter', async () => {
     const svc = require('../src/services/lucyReminder');
     const store = require('../src/utils/lucyActionStorage');
-    await svc.handleMessage(makeMessage('d pray'));
+    await svc.handleMessage(makeMessage('lucy pray'));
     const rows = store.topByDay('guild1', svc.dayKey(), ['pray']);
     assert.equal(rows[0].count, 1);
     for (const t of svc.timers.values()) clearTimeout(t);
@@ -164,22 +164,22 @@ describe('lucy reminder engine', () => {
     const client = { channels: { fetch: async () => ({ isTextBased: () => true, send: async p => { sent.push(p); } }) } };
     const base = { guildId: 'g', channelId: 'c', userId: 'u1', name: 'Ani', kind: 'pray', messageId: 'm1' };
 
-    store.setPref('g', 'u1', 'pray', { pingMode: 'tag' });
+    store.setPref('u1', 'pray', { pingMode: 'tag' });
     await svc.deliverReminder(client, { ...base });
     assert.match(sent[0].content, /^<@u1> /);
     assert.equal(sent[0].reply, undefined);
 
-    store.setPref('g', 'u1', 'pray', { pingMode: 'reply' });
+    store.setPref('u1', 'pray', { pingMode: 'reply' });
     await svc.deliverReminder(client, { ...base });
     assert.doesNotMatch(sent[1].content, /^<@u1>/);
     assert.equal(sent[1].reply.messageReference, 'm1');
 
-    store.setPref('g', 'u1', 'pray', { pingMode: 'both' });
+    store.setPref('u1', 'pray', { pingMode: 'both' });
     await svc.deliverReminder(client, { ...base });
     assert.match(sent[2].content, /^<@u1> /);
     assert.ok(sent[2].reply);
 
-    store.setPref('g', 'u1', 'pray', { pingMode: 'none' });
+    store.setPref('u1', 'pray', { pingMode: 'none' });
     await svc.deliverReminder(client, { ...base });
     assert.doesNotMatch(sent[3].content, /<@u1>/);
     assert.equal(sent[3].reply, undefined);
@@ -190,7 +190,7 @@ describe('lucy reminder engine', () => {
     const store = require('../src/utils/lucyActionStorage');
     const sent = [];
     const client = { channels: { fetch: async () => ({ isTextBased: () => true, send: async p => { sent.push(p); } }) } };
-    store.setPref('g', 'u1', 'pray', { enabled: false });
+    store.setPref('u1', 'pray', { enabled: false });
     await svc.deliverReminder(client, { guildId: 'g', channelId: 'c', userId: 'u1', name: 'Ani', kind: 'pray', messageId: 'm1' });
     assert.equal(sent.length, 0);
   });
@@ -243,10 +243,10 @@ describe('lucy reminder panel', () => {
     const store = require('../src/utils/lucyActionStorage');
     const i = makeButton('lrem:toggle:pray');
     assert.equal(await svc.handleComponent(i), true);
-    assert.equal(store.getPref('guild1', 'user1', 'pray').enabled, false);
+    assert.equal(store.getPref('user1', 'pray').enabled, false);
     assert.equal(i.updates.length, 1);
     await svc.handleComponent(i);
-    assert.equal(store.getPref('guild1', 'user1', 'pray').enabled, true);
+    assert.equal(store.getPref('user1', 'pray').enabled, true);
   });
 
   it('cycles the ping mode through all four options', async () => {
@@ -255,7 +255,7 @@ describe('lucy reminder panel', () => {
     const seen = [];
     for (let n = 0; n < 4; n++) {
       await svc.handleComponent(makeButton('lrem:mode:battle'));
-      seen.push(store.getPref('guild1', 'user1', 'battle').pingMode);
+      seen.push(store.getPref('user1', 'battle').pingMode);
     }
     assert.deepEqual(seen, ['reply', 'both', 'none', 'tag']);
   });
@@ -336,6 +336,141 @@ describe('lucy leaderboard ranges', () => {
     const msg = makeMessage('d llb pray 99xyz');
     assert.equal(await svc.handleMessage(msg), true);
     assert.match(msg.replies[0], /Rentang tidak dikenali/);
+  });
+});
+
+describe('lucy action triggers (alias + prefix)', () => {
+  it('accepts every alias the users type', () => {
+    const t = require('../src/utils/lucyTrigger');
+    const expected = {
+      battle: ['lucy battle', 'lbattle', 'lb', 'lucy fight', 'lfight', 'l fight', 'lucy war'],
+      hunt: ['lucy hunt', 'lucy catch', 'lh', 'lhunt', 'l hunt', 'lcatch'],
+      pray: ['lucy pray', 'lpray'],
+      curse: ['lucy curse', 'lcurse']
+    };
+    for (const [kind, samples] of Object.entries(expected)) {
+      for (const sample of samples) assert.equal(t.matchAction(sample), kind, sample);
+    }
+  });
+
+  it('is case-insensitive and tolerant of extra spaces', () => {
+    const t = require('../src/utils/lucyTrigger');
+    assert.equal(t.matchAction('LUCY BATTLE'), 'battle');
+    assert.equal(t.matchAction('  L  HUNT  '), 'hunt');
+    assert.equal(t.matchAction('Lucy Fight'), 'battle');
+  });
+
+  it('does not fire on ordinary chat that merely starts with l', () => {
+    const t = require('../src/utils/lucyTrigger');
+    for (const text of ['lucy lucu', 'lbener', 'l b', 'lucy battle ya', 'halo', 'l']) {
+      assert.equal(t.matchAction(text), null, text);
+    }
+  });
+
+  it('honours a server prefix set by the admin', () => {
+    const t = require('../src/utils/lucyTrigger');
+    assert.equal(t.matchAction('bosbattle', 'bos'), 'battle');
+    assert.equal(t.matchAction('bos hunt', 'bos'), 'hunt');
+    assert.equal(t.matchAction('bosfight', 'bos'), 'battle');
+    // Bentuk kanonik dan pendek tetap jalan meski prefix diubah.
+    assert.equal(t.matchAction('lucy battle', 'bos'), 'battle');
+    assert.equal(t.matchAction('lh', 'bos'), 'hunt');
+    assert.equal(t.matchAction('lucy battle', 'bos'), 'battle');
+  });
+
+  it('validates prefix input', () => {
+    const t = require('../src/utils/lucyTrigger');
+    assert.equal(t.normalizePrefix('Lucy'), 'lucy');
+    assert.equal(t.normalizePrefix(''), '');
+    assert.equal(t.normalizePrefix('l x'), '', 'spasi tidak boleh');
+    assert.equal(t.normalizePrefix('a'.repeat(17)), '', 'terlalu panjang');
+    assert.equal(t.normalizePrefix('bos2'), 'bos2');
+  });
+});
+
+describe('global reminder preferences', () => {
+  it('applies one preference across every server', () => {
+    const store = require('../src/utils/lucyActionStorage');
+    // Diatur saat berada di guild A (tidak ada parameter guild sama sekali).
+    store.setPref('u1', 'battle', { pingMode: 'none', enabled: false });
+    // Dibaca kembali tanpa menyebut guild apa pun.
+    assert.deepEqual(store.getPref('u1', 'battle'), { enabled: false, pingMode: 'none' });
+    assert.equal(store.getPrefs('u1').battle.pingMode, 'none');
+  });
+});
+
+describe('lucy prefix admin command', () => {
+  it('shows the current prefix and lets a moderator change it', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const show = makeMessage('d lucyprefix');
+    assert.equal(await svc.handleMessage(show), true);
+    assert.match(show.replies[0].content, /\*\*lucy\*\*/);
+
+    const denied = makeMessage('d lucyprefix set bos', { admin: false });
+    await svc.handleMessage(denied);
+    assert.match(denied.replies[0], /Hanya moderator/);
+
+    const ok = makeMessage('d lucyprefix set bos', { admin: true });
+    await svc.handleMessage(ok);
+    assert.match(ok.replies[0], /\*\*bos\*\*/);
+
+    // Pemicu baru langsung berlaku di server itu.
+    const hit = makeMessage('bosbattle');
+    assert.equal(await svc.handleMessage(hit), true);
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('rejects an invalid prefix and can reset to default', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const bad = makeMessage('d lucyprefix set ab!', { admin: true });
+    await svc.handleMessage(bad);
+    assert.match(bad.replies[0], /tidak valid/);
+
+    await svc.handleMessage(makeMessage('d lucyprefix set bos', { admin: true }));
+    const reset = makeMessage('d lucyprefix set reset', { admin: true });
+    await svc.handleMessage(reset);
+    assert.match(reset.replies[0], /default/);
+  });
+});
+
+describe('global leaderboard', () => {
+  it('sums a player across servers when global is requested', () => {
+    const svc = require('../src/services/lucyReminder');
+    const store = require('../src/utils/lucyActionStorage');
+    const day = svc.dayKey();
+    store.recordAction({ guildId: 'serverA', userId: 'u1', name: 'Ani', day, action: 'pray' });
+    store.recordAction({ guildId: 'serverB', userId: 'u1', name: 'Ani', day, action: 'pray' });
+    store.recordAction({ guildId: 'serverA', userId: 'u2', name: 'Budi', day, action: 'pray' });
+
+    const local = svc.leaderboardView('serverA', 'pray', svc.parseRange('', new Date()));
+    assert.match(local.embed.data.description, /\*\*1\*\* — Ani/, 'lokal: hanya server A');
+    assert.match(local.embed.data.footer.text, /Server ini/);
+
+    const global = svc.leaderboardView('serverA', 'pray', svc.parseRange('', new Date()), 1, { global: true });
+    assert.match(global.embed.data.description, /\*\*2\*\* — Ani/, 'global: digabung dua server');
+    assert.match(global.embed.data.footer.text, /Global/);
+  });
+
+  it('accepts the `global` token on the prefix command', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const store = require('../src/utils/lucyActionStorage');
+    const day = svc.dayKey();
+    store.recordAction({ guildId: 'guild1', userId: 'u1', name: 'Ani', day, action: 'curse' });
+    store.recordAction({ guildId: 'lain', userId: 'u1', name: 'Ani', day, action: 'curse' });
+    const msg = makeMessage('d llb curse global');
+    assert.equal(await svc.handleMessage(msg), true);
+    assert.match(msg.replies[0].embeds[0].data.description, /\*\*2\*\* — Ani/);
+    assert.match(msg.replies[0].embeds[0].data.footer.text, /Global/);
+  });
+
+  it('reads the lucy category globally from the lucy counter', () => {
+    const svc = require('../src/services/lucyReminder');
+    const lucyStore = require('../src/utils/lucyCounterStorage');
+    const day = svc.dayKey();
+    lucyStore.recordLucy({ guildId: 'serverA', userId: 'u1', name: 'Ani', day, cycleKey: day, targetActive: false, goal: 0 });
+    lucyStore.recordLucy({ guildId: 'serverB', userId: 'u1', name: 'Ani', day, cycleKey: day, targetActive: false, goal: 0 });
+    const view = svc.leaderboardView('serverA', 'lucy', svc.parseRange('', new Date()), 1, { global: true });
+    assert.match(view.embed.data.description, /\*\*2\*\* — Ani/);
   });
 });
 

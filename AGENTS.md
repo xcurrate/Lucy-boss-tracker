@@ -139,6 +139,17 @@
 ## Pengingat Aksi Lucy (`src/services/lucyReminder.js`)
 - Tiga jenis pengingat, masing-masing dengan perintah prefix dan durasi tunggu sendiri:
   pray/curse = 5 menit, battle/hunt = 15 detik, lucy = 10 detik. Definisi ada di `KINDS`.
+- Pemicu aksi ada di `src/utils/lucyTrigger.js` (TANPA dependensi, supaya bisa dipakai
+  lucyReminder dan lucyCounter tanpa require melingkar). Menerima `<prefix><alias>` dan
+  `<prefix> <alias>`; alias: pray/doa/p, curse/kutuk/c, battle/fight/war/b, hunt/catch/h.
+  Alias satu huruf HANYA berlaku bentuk bersambung (`lb`), bukan `l b`, supaya chat biasa
+  tidak ikut terpicu. Prefix server diatur admin lewat `d lucyprefix set`; `lucy` dan `l`
+  selalu ikut dikenali di samping prefix itu.
+- Preferensi reminder (on/off + cara ping) bersifat GLOBAL: tabel `lucy_reminder_prefs_global`
+  tanpa `guild_id`. `getPref/setPref/getPrefs` hanya menerima userId. Jangan tambahkan
+  guild_id kembali tanpa alasan kuat — ini permintaan eksplisit pemilik bot.
+- Leaderboard punya scope: lokal (default) atau global lewat token `global`
+  (`store.topByRangeAll`/`topAllTimeAll` untuk aksi, `lucyRankingGlobal` untuk Lucy).
 - **Kategori "lucy" TIDAK punya penghitung baru.** Ia memakai `lucyCounterStorage` (tabel
   `lucy_daily`) yang sudah ada, lewat hook `onCounted` yang dipanggil `lucyCounter.handleMessage`.
   Jangan menambahkan penghitung kedua untuk hal yang sama.
