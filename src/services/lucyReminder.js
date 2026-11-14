@@ -478,6 +478,8 @@ function helpText(prefix) {
     `  tanpa kategori = leaderboard jumlah LUCY (penghitung yang sama dengan \`${prefix} lcount\`)`,
     `  kategori: lucy, pray, curse, battle (mencakup hunt), all`,
     `  contoh: \`${prefix} top\`, \`${prefix} top pray\`, \`${prefix} top battle 7d\`, \`${prefix} top lucy all global\``,
+    `\`${prefix} global\` (alias \`${prefix} g\`) — leaderboard lintas server, default jumlah LUCY`,
+    `  contoh: \`${prefix} g\`, \`${prefix} g pray\`, \`${prefix} g battle 7d\`,`
     `\`${prefix} lcount\` / \`${prefix} lcountall\` — leaderboard Lucy harian / all-time (dengan tombol)`
   ].join('\n');
 }
@@ -491,7 +493,11 @@ async function handleCommand(message) {
   const command = (parts[0] || '').toLowerCase();
 
   if (['lreminder', 'lrem', 'reminder'].includes(command)) return handleReminderCommand(message, prefix, parts);
-  if (['top', 't', 'llb', 'llbboard', 'lboard'].includes(command)) return handleLeaderboardCommand(message, prefix, parts);
+  // `global`/`g` berdiri sendiri = leaderboard lintas server (default Lucy).
+  if (['global', 'g'].includes(command)) return handleLeaderboardCommand(message, prefix, parts, { forceGlobal: true });
+  if (['top', 't', 'tglobal', 'tall', 'llb', 'llbboard', 'lboard'].includes(command)) {
+    return handleLeaderboardCommand(message, prefix, parts, { forceGlobal: command === 'tglobal' || command === 'tall' });
+  }
   if (['lucyprefix', 'lprefix', 'lucyconfig', 'lconfig'].includes(command)) return handleLucyPrefixCommand(message, prefix, parts);
   return false;
 }
@@ -685,12 +691,14 @@ function parseRangeAndPage(tokens) {
   return { range: parseRange(''), page: tokens[0] };
 }
 
-const GLOBAL_TOKENS = ['global', 'semua', 'allserver'];
+// Penanda lintas server. `semua` TIDAK dipakai di sini karena sudah berarti
+// rentang "semua waktu" di parseRange; pengguna cukup memakai `global`/`g`.
+const GLOBAL_TOKENS = ['global', 'allserver'];
 
-async function handleLeaderboardCommand(message, prefix, parts) {
+async function handleLeaderboardCommand(message, prefix, parts, { forceGlobal = false } = {}) {
   const args = parts.slice(1);
   // Token `global` di posisi mana pun menandai leaderboard lintas server.
-  const global = args.some(a => GLOBAL_TOKENS.includes(String(a).toLowerCase()));
+  const global = forceGlobal || args.some(a => GLOBAL_TOKENS.includes(String(a).toLowerCase()));
   const positional = args.filter(a => !GLOBAL_TOKENS.includes(String(a).toLowerCase()));
 
   // Tanpa kategori, `top`/`t` menampilkan leaderboard jumlah LUCY — memakai

@@ -892,6 +892,80 @@ describe('`top` command', () => {
   });
 });
 
+describe('`global` command', () => {
+  const seedTwoServers = () => {
+    const svc = require('../src/services/lucyReminder');
+    const store = require('../src/utils/lucyActionStorage');
+    const day = svc.dayKey();
+    // Ani: 1 di server ini + 2 di server lain = 3 secara global, 1 secara lokal.
+    store.recordAction({ guildId: 'guild1', userId: 'u1', name: 'Ani', day, action: 'pray' });
+    store.recordAction({ guildId: 'guild9', userId: 'u1', name: 'Ani', day, action: 'pray' });
+    store.recordAction({ guildId: 'guild9', userId: 'u1', name: 'Ani', day, action: 'pray' });
+    // Budi hanya ada di server lain.
+    store.recordAction({ guildId: 'guild9', userId: 'u2', name: 'Budi', day, action: 'pray' });
+    return day;
+  };
+
+  it('`g` and `global` both default to the LUCY board across servers', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const lucyStore = require('../src/utils/lucyCounterStorage');
+    const day = svc.dayKey();
+    lucyStore.recordLucy({ guildId: 'guild1', userId: 'u1', name: 'Ani', day, cycleKey: day, targetActive: false, goal: 0 });
+    lucyStore.recordLucy({ guildId: 'guild9', userId: 'u1', name: 'Ani', day, cycleKey: day, targetActive: false, goal: 0 });
+    for (const command of ['d g', 'd global']) {
+      const msg = makeMessage(command);
+      assert.equal(await svc.handleMessage(msg), true, command);
+      assert.match(msg.replies[0].embeds[0].data.title, /Leaderboard Lucy/, command);
+      assert.match(msg.replies[0].embeds[0].data.description, /\*\*2\*\* — Ani/, command);
+      assert.match(msg.replies[0].embeds[0].data.footer.text, /Global/, command);
+    }
+  });
+
+  it('sums an action across servers while `top` stays local', async () => {
+    const svc = require('../src/services/lucyReminder');
+    seedTwoServers();
+    const global = makeMessage('d g pray');
+    await svc.handleMessage(global);
+    assert.match(global.replies[0].embeds[0].data.description, /\*\*3\*\* — Ani/, 'global: 1+2');
+    assert.match(global.replies[0].embeds[0].data.description, /Budi/, 'pemain server lain ikut tampil');
+    assert.match(global.replies[0].embeds[0].data.footer.text, /Global/);
+
+    const local = makeMessage('d top pray');
+    await svc.handleMessage(local);
+    assert.match(local.replies[0].embeds[0].data.description, /\*\*1\*\* — Ani/, 'lokal: hanya server ini');
+    assert.doesNotMatch(local.replies[0].embeds[0].data.description, /Budi/);
+    assert.match(local.replies[0].embeds[0].data.footer.text, /Server ini/);
+  });
+
+  it('accepts categories, ranges and the old global token', async () => {
+    const svc = require('../src/services/lucyReminder');
+    seedTwoServers();
+    const all = makeMessage('d g all');
+    await svc.handleMessage(all);
+    assert.match(all.replies[0].embeds[0].data.title, /Semua Aksi/);
+    assert.match(all.replies[0].embeds[0].data.footer.text, /Global/);
+
+    const range = makeMessage('d g battle 7d');
+    await svc.handleMessage(range);
+    assert.match(range.replies[0].embeds[0].data.title, /7 Hari Terakhir/);
+    assert.match(range.replies[0].embeds[0].data.footer.text, /Global/);
+
+    // Bentuk lama tetap jalan.
+    const legacy = makeMessage('d top pray global');
+    await svc.handleMessage(legacy);
+    assert.match(legacy.replies[0].embeds[0].data.footer.text, /Global/);
+  });
+
+  it('treats `semua` as the all-time range, never as the global flag', async () => {
+    const svc = require('../src/services/lucyReminder');
+    seedTwoServers();
+    const msg = makeMessage('d top pray semua');
+    await svc.handleMessage(msg);
+    assert.match(msg.replies[0].embeds[0].data.title, /All-Time/);
+    assert.match(msg.replies[0].embeds[0].data.footer.text, /Server ini/, 'tetap per server');
+  });
+});
+
 describe('leaderboard title matches its content', () => {
   it('labels daily, range, single date and all-time differently', () => {
     const svc = require('../src/services/lucyReminder');

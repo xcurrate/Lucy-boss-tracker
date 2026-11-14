@@ -118,6 +118,8 @@ pendek juga jalan (mis. `gb`, `gh`, `gfight`).
 ### Leaderboard Aksi Lucy
 - d llb <pray|curse|battle|hunt|lucy> [rentang] [halaman] [global]
 - d llb all [rentang] — gabungan semua kategori
+- d global (alias d g) — leaderboard lintas server; tanpa kategori = jumlah LUCY
+  contoh: d g, d g pray, d g battle 7d
 - Tambahkan `global` untuk menggabungkan seluruh server (mis. `d llb pray 7d global`)
 - Rentang: kosong/harian (hari ini), 7d (7 hari terakhir), all (semua waktu), atau tanggal (5 nov)
 - battle dan hunt digabung jadi satu kategori; lucy memakai penghitung Lucy yang sudah ada

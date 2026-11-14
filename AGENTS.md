@@ -166,7 +166,10 @@
   jangan pakai `actionsFor('lucy')` karena hasilnya selalu kosong.
 - **Aksi user TIDAK dibalas sama sekali**, termasuk info "pengingat OFF" untuk anggota
   yang belum mengatur. Jangan menambahkan pesan ajakan di `handleAction`.
-- Perintah leaderboard: `top`/`t` (utama) dengan alias lama `llb`/`llbboard`/`lboard`.
+- Perintah leaderboard: `top`/`t` (per server) dan `global`/`g` (lintas server), dengan
+  alias lama `llb`/`llbboard`/`lboard`. `global`/`g` = `top` dengan flag global dipaksa,
+  jadi tidak ada penghitung baru. `tglobal`/`tall` juga memaksa global. Token `semua`
+  adalah RENTANG all-time di parseRange, bukan flag global — jangan masukkan ke GLOBAL_TOKENS.
   Tanpa kategori, `top` menampilkan leaderboard jumlah LUCY memakai penghitung Lucy
   yang sudah ada (`lucyCounterStorage`) — jangan bikin penghitung baru. Judul embed
   mengikuti rentang lewat `rangeTitle` (Harian / N Hari Terakhir / tanggal / All-Time).
