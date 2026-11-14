@@ -367,15 +367,30 @@ describe('lucy action triggers (alias + prefix)', () => {
     }
   });
 
-  it('honours a server prefix set by the admin', () => {
+  it('watches only the prefixes configured by the admin', () => {
     const t = require('../src/utils/lucyTrigger');
-    assert.equal(t.matchAction('bosbattle', 'bos'), 'battle');
-    assert.equal(t.matchAction('bos hunt', 'bos'), 'hunt');
-    assert.equal(t.matchAction('bosfight', 'bos'), 'battle');
-    // Bentuk kanonik dan pendek tetap jalan meski prefix diubah.
-    assert.equal(t.matchAction('lucy battle', 'bos'), 'battle');
-    assert.equal(t.matchAction('lh', 'bos'), 'hunt');
-    assert.equal(t.matchAction('lucy battle', 'bos'), 'battle');
+    // Server memakai `g` untuk bot Lucy: `g battle` dipantau, `lucy battle`
+    // bukan lagi perintah (cuma chat biasa di server itu).
+    assert.equal(t.matchAction('g battle', 'g'), 'battle');
+    assert.equal(t.matchAction('gbattle', 'g'), 'battle');
+    assert.equal(t.matchAction('gh', 'g'), 'hunt');
+    assert.equal(t.matchAction('g hunt', 'g'), 'hunt');
+    assert.equal(t.matchAction('lucy battle', 'g'), null, 'default tidak ikut lagi');
+    assert.equal(t.matchAction('lb', 'g'), null, 'default tidak ikut lagi');
+  });
+
+  it('accepts several prefixes at once', () => {
+    const t = require('../src/utils/lucyTrigger');
+    assert.equal(t.matchAction('lucy battle', ['lucy', 'l']), 'battle');
+    assert.equal(t.matchAction('lb', 'lucy l'), 'battle', 'boleh dipisah spasi');
+    assert.equal(t.matchAction('g hunt', 'g, gl'), 'hunt', 'boleh dipisah koma');
+  });
+
+  it('falls back to the default prefixes when nothing is configured', () => {
+    const t = require('../src/utils/lucyTrigger');
+    assert.deepEqual(t.lucyPrefixes(null), ['lucy', 'l']);
+    assert.deepEqual(t.lucyPrefixes(''), ['lucy', 'l']);
+    assert.deepEqual(t.lucyPrefixes('g'), ['g']);
   });
 
   it('validates prefix input', () => {
@@ -385,6 +400,8 @@ describe('lucy action triggers (alias + prefix)', () => {
     assert.equal(t.normalizePrefix('l x'), '', 'spasi tidak boleh');
     assert.equal(t.normalizePrefix('a'.repeat(17)), '', 'terlalu panjang');
     assert.equal(t.normalizePrefix('bos2'), 'bos2');
+    assert.deepEqual(t.parsePrefixList('g bos gl'), ['g', 'bos', 'gl']);
+    assert.deepEqual(t.parsePrefixList('g g'), ['g'], 'duplikat dibuang');
   });
 });
 
@@ -400,36 +417,70 @@ describe('global reminder preferences', () => {
 });
 
 describe('lucy prefix admin command', () => {
-  it('shows the current prefix and lets a moderator change it', async () => {
+  it('shows the default prefixes first', async () => {
     const svc = require('../src/services/lucyReminder');
     const show = makeMessage('d lucyprefix');
     assert.equal(await svc.handleMessage(show), true);
     assert.match(show.replies[0].content, /\*\*lucy\*\*/);
+    assert.match(show.replies[0].content, /\*\*l\*\*/);
+    assert.match(show.replies[0].content, /default/);
+  });
 
-    const denied = makeMessage('d lucyprefix set bos', { admin: false });
+  it('requires a moderator to change it', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const denied = makeMessage('d lucyprefix set g', { admin: false });
     await svc.handleMessage(denied);
     assert.match(denied.replies[0], /Hanya moderator/);
+  });
 
-    const ok = makeMessage('d lucyprefix set bos', { admin: true });
-    await svc.handleMessage(ok);
-    assert.match(ok.replies[0], /\*\*bos\*\*/);
+  it('replaces the watched prefixes with the configured one', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const ok = makeMessage('d lucyprefix set g', { admin: true });
+    assert.equal(await svc.handleMessage(ok), true);
+    assert.match(ok.replies[0], /\*\*g\*\*/);
 
-    // Pemicu baru langsung berlaku di server itu.
-    const hit = makeMessage('bosbattle');
+    // `g battle` sekarang dipantau...
+    const hit = makeMessage('g battle');
     assert.equal(await svc.handleMessage(hit), true);
+    // ...sementara `lucy battle` bukan lagi perintah di server ini.
+    const ignored = makeMessage('lucy battle');
+    assert.equal(await svc.handleMessage(ignored), false);
     for (const t of svc.timers.values()) clearTimeout(t);
   });
 
-  it('rejects an invalid prefix and can reset to default', async () => {
+  it('supports add, remove and reset', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const { getGuildSettings } = require('../src/utils/storage');
+    await svc.handleMessage(makeMessage('d lucyprefix set g', { admin: true }));
+    await svc.handleMessage(makeMessage('d lucyprefix add lucy', { admin: true }));
+    assert.deepEqual(getGuildSettings('guild1').lucyReminder.lucyPrefixes, ['g', 'lucy']);
+    // Keduanya kini jalan.
+    assert.equal(await svc.handleMessage(makeMessage('gbattle')), true);
+    assert.equal(await svc.handleMessage(makeMessage('lucy battle')), true);
+
+    await svc.handleMessage(makeMessage('d lucyprefix remove g', { admin: true }));
+    assert.deepEqual(getGuildSettings('guild1').lucyReminder.lucyPrefixes, ['lucy']);
+
+    const reset = makeMessage('d lucyprefix reset', { admin: true });
+    await svc.handleMessage(reset);
+    assert.match(reset.replies[0], /default/);
+    assert.equal(getGuildSettings('guild1').lucyReminder.lucyPrefixes, null);
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('rejects an invalid prefix', async () => {
     const svc = require('../src/services/lucyReminder');
     const bad = makeMessage('d lucyprefix set ab!', { admin: true });
     await svc.handleMessage(bad);
     assert.match(bad.replies[0], /tidak valid/);
+  });
 
-    await svc.handleMessage(makeMessage('d lucyprefix set bos', { admin: true }));
-    const reset = makeMessage('d lucyprefix set reset', { admin: true });
-    await svc.handleMessage(reset);
-    assert.match(reset.replies[0], /default/);
+  it('refuses to remove every prefix', async () => {
+    const svc = require('../src/services/lucyReminder');
+    await svc.handleMessage(makeMessage('d lucyprefix set g', { admin: true }));
+    const empty = makeMessage('d lucyprefix remove g', { admin: true });
+    await svc.handleMessage(empty);
+    assert.match(empty.replies[0], /Tidak bisa menghapus semua prefix/);
   });
 });
 

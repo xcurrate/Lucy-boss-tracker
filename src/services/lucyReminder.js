@@ -401,11 +401,13 @@ function isModerator(message) {
 
 function helpText(prefix) {
   return [
-    '**Aksi Lucy** — tulis `<prefix-lucy> <aksi>`. Bentuk yang dikenali:',
+    '**Aksi Lucy** — bot memantau pesan yang memakai prefix bot Lucy.',
+    'Bentuk yang dikenali:',
     '`lucy pray` / `lpray` • `lucy curse` / `lcurse`',
     '`lucy battle` / `lucy fight` / `lbattle` / `lfight` / `lb` • `lucy hunt` / `lucy catch` / `lhunt` / `lh`',
     '',
-    `\`${prefix} lucyprefix set <prefix>\` — atur prefix bot Lucy di server ini (admin)`,
+    `\`${prefix} lucyprefix\` — lihat prefix bot Lucy yang dipantau (admin)`,
+    `\`${prefix} lucyprefix set|add|remove|reset <prefix...>\` — kelola prefix bot Lucy (admin)`,
     `\`${prefix} lreminder\` — kotak interaksi: on/off & cara ping (tag/reply/tanpa keduanya)`,
     `\`${prefix} lreminder reply <jenis> <teks>\` — balasan kustom (khusus premium)`,
     'Pengaturan reminder berlaku **global di semua server**.',
@@ -431,18 +433,24 @@ async function handleCommand(message) {
   return false;
 }
 
-// Admin mengatur prefix bot Lucy di server mereka. Default `lucy`; bentuk
-// pendek `l` selalu ikut dikenali di samping prefix yang diatur.
+// Admin mengatur prefix bot Lucy di server mereka — yaitu prefix yang dipakai
+// bot Lucy untuk memantau pesan user (mis. `lucy`, `l`, atau `g`). Ini berbeda
+// dari prefix bot kita sendiri (`d`) yang hanya untuk perintah `d lreminder`,
+// `d llb`, dan sejenisnya.
+// Daftar yang diatur admin MENGGANTIKAN default, bukan menambah, supaya server
+// yang memakai `g` tidak ikut memantau `lucy battle` yang cuma chat biasa.
 async function handleLucyPrefixCommand(message, prefix, parts) {
   const sub = (parts[1] || '').toLowerCase();
-  const current = guildConfig(message.guildId).lucyPrefix || trigger.DEFAULT_LUCY_PREFIX;
+  const configured = guildConfig(message.guildId).lucyPrefixes;
+  const active = trigger.lucyPrefixes(configured);
+  const usingDefault = !trigger.parsePrefixList(configured).length;
 
   if (!sub || sub === 'show' || sub === 'status' || sub === 'lihat') {
-    const list = trigger.lucyPrefixes(current);
     await message.reply({
-      content: `Prefix bot Lucy di server ini: **${current}**\n` +
-        `Bentuk yang dikenali: ${list.map(p => '`' + p + ' <aksi>`').join(', ')}\n` +
-        `Ubah dengan \`${prefix} lucyprefix set <prefix>\` (huruf/angka, maks 16).`,
+      content: `Prefix bot Lucy di server ini: ${active.map(p => '**' + p + '**').join(', ')}` +
+        (usingDefault ? ' (default)' : '') + '\n' +
+        `Contoh yang dipantau: ${active.map(p => '`' + p + ' battle`').join(', ')}\n` +
+        `Kelola: \`${prefix} lucyprefix set <prefix...>\`, \`add\`, \`remove\`, \`reset\`.`,
       allowedMentions: { parse: [] }
     });
     return true;
@@ -453,24 +461,40 @@ async function handleLucyPrefixCommand(message, prefix, parts) {
     return true;
   }
 
-  if (sub === 'set' || sub === 'atur') {
-    const value = (parts[2] || '').toLowerCase();
-    if (value === 'reset' || value === 'default') {
-      updateGuildSettings(message.guildId, s => ({ ...s, lucyReminder: { ...s.lucyReminder, lucyPrefix: null } }));
-      await message.reply(`Prefix bot Lucy dikembalikan ke default: **${trigger.DEFAULT_LUCY_PREFIX}**.`);
-      return true;
-    }
-    const normalized = trigger.normalizePrefix(value);
-    if (!normalized) {
-      await message.reply(`Prefix tidak valid. Gunakan huruf/angka tanpa spasi, maks 16 karakter. Contoh: \`${prefix} lucyprefix set lucy\`.`);
-      return true;
-    }
-    updateGuildSettings(message.guildId, s => ({ ...s, lucyReminder: { ...s.lucyReminder, lucyPrefix: normalized } }));
-    await message.reply(`Prefix bot Lucy disetel ke **${normalized}**. Contoh: \`${normalized} battle\`, \`${normalized} hunt\`. Bentuk pendek \`l <aksi>\` tetap jalan.`);
+  if (sub === 'reset' || sub === 'default') {
+    updateGuildSettings(message.guildId, s => ({ ...s, lucyReminder: { ...s.lucyReminder, lucyPrefixes: null } }));
+    await message.reply(`Prefix bot Lucy dikembalikan ke default: ${trigger.DEFAULT_LUCY_PREFIXES.map(p => '**' + p + '**').join(', ')}.`);
     return true;
   }
 
-  await message.reply(helpText(prefix));
+  const requested = trigger.parsePrefixList(parts.slice(2));
+  const invalid = parts.slice(2).filter(a => !trigger.normalizePrefix(a));
+  if (invalid.length) {
+    await message.reply(`Prefix tidak valid: ${invalid.map(v => '`' + v + '`').join(', ')}. Gunakan huruf/angka tanpa spasi, maks 16 karakter.`);
+    return true;
+  }
+
+  let next;
+  if (sub === 'set' || sub === 'atur') {
+    if (!requested.length) { await message.reply(`Format: \`${prefix} lucyprefix set <prefix...>\`. Contoh: \`${prefix} lucyprefix set g\`.`); return true; }
+    next = requested;
+  } else if (sub === 'add' || sub === 'tambah') {
+    if (!requested.length) { await message.reply(`Format: \`${prefix} lucyprefix add <prefix...>\`.`); return true; }
+    next = [...new Set([...active, ...requested])];
+  } else if (sub === 'remove' || sub === 'del' || sub === 'hapus') {
+    if (!requested.length) { await message.reply(`Format: \`${prefix} lucyprefix remove <prefix...>\`.`); return true; }
+    next = active.filter(p => !requested.includes(p));
+    if (!next.length) { await message.reply(`Tidak bisa menghapus semua prefix. Pakai \`${prefix} lucyprefix reset\` untuk kembali ke default.`); return true; }
+  } else {
+    await message.reply(helpText(prefix));
+    return true;
+  }
+
+  updateGuildSettings(message.guildId, s => ({ ...s, lucyReminder: { ...s.lucyReminder, lucyPrefixes: next } }));
+  await message.reply(
+    `Prefix bot Lucy di server ini: ${next.map(p => '**' + p + '**').join(', ')}.\n` +
+    `Contoh: ${next.map(p => '`' + p + ' battle`').join(', ')}.`
+  );
   return true;
 }
 
@@ -633,7 +657,7 @@ async function handleMessage(message) {
   if (await handleCommand(message)) return true;
   // Pemicu aksi (mis. `lucy battle`, `lb`, `l hunt`, `lucy catch`). Prefix bot
   // Lucy diambil dari pengaturan server; kategori "lucy" ditangani lucyCounter.
-  const kind = trigger.matchAction(message.content, guildConfig(message.guildId).lucyPrefix);
+  const kind = trigger.matchAction(message.content, guildConfig(message.guildId).lucyPrefixes);
   if (kind) return handleAction(message, kind, getGuildSettings(message.guildId).prefix || DEFAULT_PREFIX);
   return false;
 }

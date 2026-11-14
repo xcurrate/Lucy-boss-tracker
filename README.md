@@ -71,8 +71,21 @@ Bentuk berspasi juga jalan: `l fight`, `l hunt`.
 - d lreminder — kotak interaksi: tombol on/off dan tombol cara ping per jenis
 - Cara ping: Tag, Reply, Tag + Reply, atau Tanpa keduanya
 - Pengaturan reminder berlaku GLOBAL di semua server — atur sekali, berlaku di mana pun
-- d lucyprefix set <prefix> — admin mengatur prefix bot Lucy di server (default `lucy`); bentuk pendek `l` selalu ikut jalan
-- d lucyprefix set reset — kembalikan ke default
+
+### Prefix bot Lucy
+Prefix bot Lucy adalah prefix yang dipakai bot Lucy untuk membaca perintah user
+(mis. `lucy`, `l`, atau `g`). Ini berbeda dari prefix bot kita sendiri (`d`), yang
+hanya untuk perintah `d lreminder`, `d llb`, dan sejenisnya.
+
+- d lucyprefix — lihat prefix bot Lucy yang dipantau di server ini
+- d lucyprefix set g — ganti ke `g` (menggantikan default)
+- d lucyprefix add lucy — tambah prefix
+- d lucyprefix remove g — hapus satu prefix
+- d lucyprefix reset — kembali ke default `lucy` dan `l`
+
+Kalau admin mengganti ke `g`, maka `g battle` yang dipantau dan `lucy battle`
+dianggap chat biasa. Bentuk pendek tetap dikenali untuk tiap prefix (mis. `gb`,
+`gh`).
 - d lreminder reply <jenis> <teks> — balasan kustom (khusus premium)
 - Balasan default tersedia untuk semua; balasan kustom + embed direncanakan sebagai fitur premium
 

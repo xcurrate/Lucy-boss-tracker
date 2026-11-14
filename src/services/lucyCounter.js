@@ -410,7 +410,7 @@ async function handleMessage(message, { onCounted } = {}) {
   // Pesan aksi (mis. `lucy battle`, `lb`, `l hunt`) adalah perintah, bukan
   // mention Lucy biasa. Tanpa ini satu pesan bisa memicu dua pengingat
   // (aksi + Lucy) sekaligus. Prefix bot Lucy mengikuti pengaturan server.
-  if (trigger.isActionCommand(message.content, config.lucyPrefix)) return;
+  if (trigger.isActionCommand(message.content, config.lucyPrefixes)) return;
   if (!countLucy(message.content)) return;
 
   const currentSettings = getGuildSettings(message.guildId);

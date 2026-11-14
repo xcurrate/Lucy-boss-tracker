@@ -141,10 +141,16 @@
   pray/curse = 5 menit, battle/hunt = 15 detik, lucy = 10 detik. Definisi ada di `KINDS`.
 - Pemicu aksi ada di `src/utils/lucyTrigger.js` (TANPA dependensi, supaya bisa dipakai
   lucyReminder dan lucyCounter tanpa require melingkar). Menerima `<prefix><alias>` dan
-  `<prefix> <alias>`; alias: pray/doa/p, curse/kutuk/c, battle/fight/war/b, hunt/catch/h.
-  Alias satu huruf HANYA berlaku bentuk bersambung (`lb`), bukan `l b`, supaya chat biasa
-  tidak ikut terpicu. Prefix server diatur admin lewat `d lucyprefix set`; `lucy` dan `l`
-  selalu ikut dikenali di samping prefix itu.
+  `<prefix> <alias>`; alias: pray/doa, curse/kutuk, battle/fight/war/b, hunt/catch/h.
+  Alias satu huruf (`b`, `h`) HANYA berlaku bentuk bersambung (`lb`), bukan `l b`, supaya
+  chat biasa tidak ikut terpicu.
+- **Penting: prefix bot Lucy BUKAN prefix bot kita.** Prefix bot kita (`d`) hanya memanggil
+  perintah kita (`d lreminder`, `d llb`). Prefix bot Lucy adalah prefix yang dipakai bot
+  Lucy untuk membaca perintah user (`lucy`, `l`, `g`, ...), dan bot kita memantau pesan
+  dengan prefix itu. Karena itu daftarnya dikelola admin per server lewat
+  `d lucyprefix set|add|remove|reset`, disimpan di `settings.lucyReminder.lucyPrefixes`.
+  Daftar yang diatur admin MENGGANTIKAN default (`lucy`, `l`) — bukan menambah — supaya
+  server yang memakai `g` tidak ikut memantau `lucy battle` yang cuma chat biasa.
 - Preferensi reminder (on/off + cara ping) bersifat GLOBAL: tabel `lucy_reminder_prefs_global`
   tanpa `guild_id`. `getPref/setPref/getPrefs` hanya menerima userId. Jangan tambahkan
   guild_id kembali tanpa alasan kuat — ini permintaan eksplisit pemilik bot.
