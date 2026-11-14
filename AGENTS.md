@@ -155,6 +155,10 @@
 - `ACTION_LABELS` memetakan AKSI -> nama tampilan, dipakai untuk `{kind}` di teks
   pengingat, supaya `lh` tampil "Lucy Hunt" dan `lcurse` tampil "Lucy Curse" walau
   jenis reminder-nya `battle`/`pray`.
+- Rentang leaderboard diparsing lewat `parseRangeAndPage`: token setelah kategori dicoba
+  dari yang terpanjang supaya `5 nov` (dua kata) terbaca sebagai satu rentang, dan sisa
+  token jadi nomor halaman. Jangan kembali membaca `positional[1]` saja — itu membuat
+  `d llb curse 5 nov` dan `d llb all 2` gagal.
 - Balasan kustom dicari per AKSI dulu (`replies.curse`), baru per JENIS
   (`replies.pray`). Lihat `replyKindFor`. `{count}` diisi `actionCount(...)` = jumlah
   AKSI pemicu hari itu (bukan seluruh jenis). Reminder `lucy` membacanya dari

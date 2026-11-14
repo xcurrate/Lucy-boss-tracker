@@ -798,6 +798,61 @@ describe('lucy prefix admin command', () => {
   });
 });
 
+describe('leaderboard range and page parsing', () => {
+  it('reads a multi-word range like `5 nov`', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const msg = makeMessage('d llb curse 5 nov');
+    assert.equal(await svc.handleMessage(msg), true);
+    assert.match(msg.replies[0].embeds[0].data.footer.text, /5 nov 2026/);
+  });
+
+  it('reads `all` as the range even when it is the second token', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const msg = makeMessage('d llb all all');
+    assert.equal(await svc.handleMessage(msg), true);
+    assert.match(msg.replies[0].embeds[0].data.footer.text, /semua tanggal/);
+  });
+
+  it('treats a trailing number as the page, not the range', async () => {
+    const svc = require('../src/services/lucyReminder');
+    // `d llb all 2` dulu salah dibaca: `2` dianggap rentang -> pesan error.
+    const msg = makeMessage('d llb all 2');
+    assert.equal(await svc.handleMessage(msg), true);
+    assert.ok(msg.replies[0].embeds, 'harus mengirim embed, bukan pesan error');
+    assert.match(msg.replies[0].embeds[0].data.footer.text, /Halaman 1\/1/);
+  });
+
+  it('accepts several date formats', async () => {
+    const svc = require('../src/services/lucyReminder');
+    for (const [input, expect] of [
+      ['5 nov', /5 nov 2026/],
+      ['5 november', /5 nov 2026/],
+      ['5/11', /5 nov 2026/],
+      ['2026-11-05', /5 nov 2026/],
+      ['7d', /7 hari/],
+      ['all', /semua tanggal/]
+    ]) {
+      const msg = makeMessage('d llb pray ' + input);
+      assert.equal(await svc.handleMessage(msg), true, input);
+      assert.match(msg.replies[0].embeds[0].data.footer.text, expect, input);
+    }
+  });
+
+  it('still reports an unknown range instead of silently showing today', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const msg = makeMessage('d llb pray kemarin');
+    await svc.handleMessage(msg);
+    assert.match(msg.replies[0], /Rentang tidak dikenali/);
+  });
+
+  it('falls back to today when only a page number is given', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const msg = makeMessage('d llb pray 2');
+    assert.equal(await svc.handleMessage(msg), true);
+    assert.ok(msg.replies[0].embeds, 'nomor halaman saja tetap menampilkan board');
+  });
+});
+
 describe('global leaderboard', () => {
   it('sums a player across servers when global is requested', () => {
     const svc = require('../src/services/lucyReminder');

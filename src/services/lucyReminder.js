@@ -673,6 +673,22 @@ async function handleReminderCommand(message, prefix, parts) {
   return true;
 }
 
+// Rentang bisa terdiri dari beberapa kata (`5 nov`, `5 november 2026`), jadi
+// token setelah kategori dicoba dari yang terpanjang. Sisa token berikutnya
+// dianggap nomor halaman. Tanpa token sama sekali -> hari ini.
+function parseRangeAndPage(tokens) {
+  for (let take = tokens.length; take >= 1; take--) {
+    const range = parseRange(tokens.slice(0, take).join(' '));
+    if (range.type !== 'invalid') return { range, page: tokens[take] };
+  }
+  // Tidak ada yang cocok: angka murni dianggap nomor halaman, sisanya rentang
+  // yang salah supaya pengguna dapat pesan kesalahan, bukan board hari ini.
+  if (tokens.length && !/^\d+$/.test(tokens[0])) {
+    return { range: { type: 'invalid', value: tokens.join(' ') } };
+  }
+  return { range: parseRange(''), page: tokens[0] };
+}
+
 async function handleLeaderboardCommand(message, prefix, parts) {
   const args = parts.slice(1);
   const categoryToken = (args[0] || '').toLowerCase();
@@ -680,20 +696,17 @@ async function handleLeaderboardCommand(message, prefix, parts) {
   const global = args.some(a => ['global', 'semua', 'allserver'].includes(String(a).toLowerCase()));
   const positional = args.filter(a => !['global', 'semua', 'allserver'].includes(String(a).toLowerCase()));
 
-  if (categoryToken === 'all' || categoryToken === 'gabungan') {
-    const range = parseRange(positional[1]);
-    if (range.type === 'invalid') return badRange(message, prefix, range.value);
-    return sendLeaderboard(message, 'all', range, positional[2], global);
-  }
-
-  const category = CATEGORY_ALIASES[categoryToken];
+  const category = categoryToken === 'all' || categoryToken === 'gabungan'
+    ? 'all'
+    : CATEGORY_ALIASES[categoryToken];
   if (!category) {
     await message.reply(helpText(prefix));
     return true;
   }
-  const range = parseRange(positional[1]);
+
+  const { range, page } = parseRangeAndPage(positional.slice(1));
   if (range.type === 'invalid') return badRange(message, prefix, range.value);
-  return sendLeaderboard(message, category, range, positional[2], global);
+  return sendLeaderboard(message, category, range, page, global);
 }
 
 async function badRange(message, prefix, value) {
