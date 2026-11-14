@@ -136,6 +136,30 @@
 - Test: `test/family100.test.js` (skor, pencocokan, mesin ronde, kirim ulang papan, clue, izin, bank) dan
   `test/dashboardFamily100.test.js` (API settings + leaderboard).
 
+## Pengingat Aksi Lucy (`src/services/lucyReminder.js`)
+- Tiga jenis pengingat, masing-masing dengan perintah prefix dan durasi tunggu sendiri:
+  pray/curse = 5 menit, battle/hunt = 15 detik, lucy = 10 detik. Definisi ada di `KINDS`.
+- **Kategori "lucy" TIDAK punya penghitung baru.** Ia memakai `lucyCounterStorage` (tabel
+  `lucy_daily`) yang sudah ada, lewat hook `onCounted` yang dipanggil `lucyCounter.handleMessage`.
+  Jangan menambahkan penghitung kedua untuk hal yang sama.
+- Aksi pray/curse/battle/hunt dicatat di `data/lucy-actions.db` (`src/utils/lucyActionStorage.js`).
+  `battle` dan `hunt` digabung jadi satu kategori leaderboard lewat `GROUPS`.
+- **Satu pesan hanya boleh memicu satu pengingat.** `lucy pray` adalah perintah aksi, jadi
+  `lucyCounter` melewatkannya (guard regex di `handleMessage`); tanpa guard itu satu pesan
+  memicu pengingat aksi DAN pengingat Lucy sekaligus.
+- Cara ping disimpan per orang per jenis di `lucy_reminder_prefs`: `tag`, `reply`, `both`, `none`.
+  Panel tombol (`lrem:toggle:<kind>` / `lrem:mode:<kind>`) mengubahnya; `handleComponent` selalu
+  membaca ulang SQLite agar tampilan sinkron.
+- Timer pengingat HANYA di memori (`timers` Map). Restart bot membatalkan timer — ini disengaja.
+  Cooldown tetap akurat karena `ready_at` disimpan di SQLite; aksi ulang dalam jendela tunggu
+  mengganti timer lama, bukan menambah.
+- `scheduleReminder` menerima `waitMs` opsional (dipakai test; durasi kustom per server nanti).
+- Leaderboard: `llb <kategori> [rentang] [halaman]`. Rentang lewat `parseRange`: hari ini,
+  `Nd` (N hari terakhir), `all`, atau tanggal — parser tanggal dipinjam dari `lucyCounter`
+  supaya formatnya konsisten (`5 nov`, `5/11/2026`, `2026-11-05`).
+- Balasan kustom digerbangi `settings.lucyReminder.premium`; balasan default ada di `DEFAULT_REPLIES`
+  dengan placeholder `{user}`, `{mention}`, `{kind}`, `{durasi}`.
+
 ## Cepat Tepat (Matematika)
 - Game hitung cepat terpisah dari Family 100: satu soal aritmetika aktif per server, siapa pun yang
   menjawab **benar paling dulu** dapat poin, lalu soal berikutnya dikirim. Perintah `d math [jumlah]`

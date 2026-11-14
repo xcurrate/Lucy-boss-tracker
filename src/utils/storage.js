@@ -19,6 +19,7 @@ const defaults = () => ({
   lucyCounter: { enabled: false, targetEnabled: false, targetGoal: 0, targetMessage: '🎉 Target Lucy tercapai!', targetChannelId: null, targetStartTime: '12:00', targetStopTime: '10:00', blacklistedChannelIds: [], whitelistedChannelIds: [] },
   family100: { enabled: true, channelId: null, durationSeconds: 0 },
   mathRace: { enabled: true, channelId: null, durationSeconds: 30 },
+  lucyReminder: { enabled: true, premium: false, replies: {} },
   autoThreadRep: { enabled: true, channelId: null, targetUserId: '1515658233174294569', amount: '50k', threadNamePrefix: 'Rep', autoArchiveDuration: 1440 }
 });
 function readAll() {
@@ -39,6 +40,7 @@ function mergeSettings(saved = {}) {
     lucyCounter: { ...base.lucyCounter, ...(saved.lucyCounter || {}) },
     family100: { ...base.family100, ...(saved.family100 || {}) },
     mathRace: { ...base.mathRace, ...(saved.mathRace || {}) },
+    lucyReminder: { ...base.lucyReminder, ...(saved.lucyReminder || {}), replies: { ...(saved.lucyReminder?.replies || {}) } },
     autoThreadRep: { ...base.autoThreadRep, ...(saved.autoThreadRep || {}) },
     userModes: { ...(saved.userModes || {}) },
     userWarnSeconds: { ...(saved.userWarnSeconds || {}) },

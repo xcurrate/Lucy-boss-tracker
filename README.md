@@ -54,6 +54,28 @@ Tingkat kesulitan naik tiap soal; poin = dasar per level + bonus kecepatan.
 - d math [jumlah] — mulai ronde (default 5 soal, maks 30) (alias: d mtk, d hitung)
 - d math lb [all] — leaderboard mingguan/all-time
 - d math stop — hentikan ronde (moderator/admin/developer)
+
+## Pengingat Aksi Lucy
+Tiap aksi Lucy punya perintah prefix sendiri, dengan pengingat otomatis setelah durasi tunggu:
+
+| Perintah | Jenis | Pengingat |
+|---|---|---|
+| d pray | Lucy Pray | 5 menit |
+| d curse | Lucy Curse | 5 menit |
+| d battle | Lucy Battle | 15 detik |
+| d hunt | Lucy Hunt | 15 detik |
+| d lucy (kata "lucy") | Lucy | 10 detik |
+
+- d lreminder — kotak interaksi: tombol on/off dan tombol cara ping per jenis, untuk setiap orang
+- Cara ping: Tag, Reply, Tag + Reply, atau Tanpa keduanya
+- d lreminder reply <jenis> <teks> — balasan kustom (khusus premium)
+- Balasan default tersedia untuk semua; balasan kustom + embed direncanakan sebagai fitur premium
+
+### Leaderboard Aksi Lucy
+- d llb <pray|curse|battle|hunt|lucy> [rentang] [halaman]
+- d llb all [rentang] — gabungan semua kategori
+- Rentang: kosong/harian (hari ini), 7d (7 hari terakhir), all (semua waktu), atau tanggal (5 nov)
+- battle dan hunt digabung jadi satu kategori; lucy memakai penghitung Lucy yang sudah ada
 - d ping (alias d p) — cek latency bot (roundtrip & WebSocket)
 - d dex <nama...> — Animal Dex (alias d d)
 - d help (alias d) — panduan; d prefix — lihat/ubah prefix server

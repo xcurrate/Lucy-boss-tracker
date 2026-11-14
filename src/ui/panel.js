@@ -168,7 +168,10 @@ function helpEmbed(prefix, { isAdmin = false } = {}) {
       '`' + prefix + ' ping` — cek latency bot (alias: `' + prefix + ' p`)',
       '`' + prefix + ' dex <nama...> [-c]` — lihat Animal Dex; `-c` = tabel stat ringkas (alias: `' + prefix + ' d`)',
       '`' + prefix + ' f100` — game Family 100 (tebak jawaban survei)',
-      '`' + prefix + ' math [jumlah]` — game Cepat Tepat matematika (alias: `' + prefix + ' mtk`)'
+      '`' + prefix + ' math [jumlah]` — game Cepat Tepat matematika (alias: `' + prefix + ' mtk`)',
+      '`' + prefix + ' pray|curse|battle|hunt` — aksi Lucy + pengingat otomatis',
+      '`' + prefix + ' lreminder` — kotak interaksi pengingat (on/off + cara ping)',
+      '`' + prefix + ' llb <pray|curse|battle|hunt|lucy|all> [rentang]` — leaderboard aksi Lucy'
     ].join('\n'), inline: false },
 
     // ⚙️ Admin — daftar perintah slash admin, hanya tampil jika isAdmin.

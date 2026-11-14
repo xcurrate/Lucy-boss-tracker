@@ -393,12 +393,12 @@ async function handleCommand(message) {
   }
   return message.reply('Perintah Target: ' + prefix + ' lucytarget on|off|target on|off|set <jumlah>|message <pesan>|status|leaderboard [tanggal] [halaman]\nLeaderboard: ' + prefix + ' lcount [tanggal] [halaman] (harian), ' + prefix + ' lcountall [halaman] (all-time), ' + prefix + ' ltarget [tanggal] [halaman] (alias: ' + prefix + ' ltargetlb / ' + prefix + ' lucytarget leaderboard), ' + prefix + ' lservers [tanggal] [halaman] (alias: ' + prefix + ' lserver).\nTanggal: `5 nov`, `5 november 2026`, `5/11/2026`, atau `2026-11-05` — contoh: `' + prefix + ' lcount 5 nov`.');
 }
-async function handleMessage(message) {
+async function handleMessage(message, { onCounted } = {}) {
   if (!message.guildId || message.author?.bot || !message.content) return;
   if (await handleCommand(message)) return;
   const prefix = getGuildSettings(message.guildId).prefix || DEFAULT_PREFIX;
   const matched = matchPrefix(message.content.trim(), prefix);
-  if (matched !== null && /^\s*(?:lcountd|lcountall|lcount|lucycount|lucy\s+count|ltarget|ltargetlb|lservers|lserver|lserverlb|lucytarget)(?:\s|$)/i.test(matched)) return;
+  if (matched !== null && /^\s*(?:lcountd|lcountall|lcount|lucycount|lucy\s+count|ltarget|ltargetlb|lservers|lserver|lserverlb|lucytarget|lreminder|lrem|reminder|llb|llbboard|lboard|pray|curse|battle|hunt)(?:\s|$)/i.test(matched)) return;
 
   const settings = getGuildSettings(message.guildId);
   const config = settings.lucyCounter;
@@ -406,6 +406,9 @@ async function handleMessage(message) {
   const whitelistedChannelIds = config.whitelistedChannelIds || [];
   if (!config.enabled || blacklistedChannelIds.includes(message.channelId)) return;
   if (whitelistedChannelIds.length > 0 && !whitelistedChannelIds.includes(message.channelId)) return;
+  // `lucy pray|curse|battle|hunt` adalah perintah aksi, bukan mention Lucy biasa.
+  // Tanpa ini satu pesan bisa memicu dua pengingat (aksi + Lucy) sekaligus.
+  if (/^\s*lucy\s+(?:pray|curse|battle|hunt)\s*$/i.test(message.content)) return;
   if (!countLucy(message.content)) return;
 
   const currentSettings = getGuildSettings(message.guildId);
@@ -423,6 +426,12 @@ async function handleMessage(message) {
   try { await message.react('✅'); } catch (error) {
     console.warn('[LucyCounter] Gagal memberi reaksi verifikasi:', error.message);
     return;
+  }
+
+  // Kabari modul reminder bahwa pesan Lucy ini terhitung, supaya pengingat
+  // kategori "Lucy" (10 detik) bisa dipasang.
+  if (typeof onCounted === 'function') {
+    try { onCounted(message, displayName); } catch (e) { console.error('[LucyCounter] onCounted:', e.message); }
   }
 
   // Target progress is tracked independently for each person and resets at the start of each cycle.

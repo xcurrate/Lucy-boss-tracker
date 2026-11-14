@@ -9,6 +9,7 @@ const { startDashboard } = require('./dashboard/server');
 const lucyCounter = require('./services/lucyCounter');
 const family100 = require('./services/family100');
 const mathRace = require('./services/mathRace');
+const lucyReminder = require('./services/lucyReminder');
 const bossRewards = require('./services/bossRewardNotifications');
 const animalDex = require('./services/animalDex');
 
@@ -70,7 +71,9 @@ client.once(Events.ClientReady, async c => {
   syncAnimalDexEmojis();
 });
 client.on(Events.MessageCreate, async message => {
-  lucyCounter.handleMessage(message).catch(e => console.error('[LucyCounter]', e));
+  lucyCounter.handleMessage(message, { onCounted: (m, name) => lucyReminder.onLucyCounted(m, name) })
+    .catch(e => console.error('[LucyCounter]', e));
+  lucyReminder.handleMessage(message).catch(e => console.error('[LucyReminder]', e));
   family100.handleMessage(message).catch(e => console.error('[Family100]', e));
   mathRace.handleMessage(message).catch(e => console.error('[MathRace]', e));
   tracker.handleMessage(message).catch(console.error);
@@ -96,6 +99,7 @@ client.on(Events.InteractionCreate, async i => {
     if (i.isButton() && lucyCounter.isLucyNav(i.customId)) { await lucyCounter.handleNavigation(i); return; }
     if (i.isButton() && family100.isF100Nav(i.customId)) { await family100.handleNavigation(i); return; }
     if (i.isButton() && mathRace.isMathNav(i.customId)) { await mathRace.handleNavigation(i); return; }
+    if (i.isButton() && lucyReminder.isReminderNav(i.customId)) { await lucyReminder.handleComponent(i); return; }
     if (i.isButton() || i.isStringSelectMenu()) { await command.handleComponent(i, tracker); return; }
   } catch (e) {
     console.error(e);
