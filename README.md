@@ -72,6 +72,10 @@ battle+hunt (15 detik). Yang menyatu hanya pengingat dan cooldown-nya, sementara
 **penghitungan tetap per aksi** — jadi `d llb pray` dan `d llb curse` tetap
 menunjukkan angka masing-masing, begitu juga battle dan hunt.
 
+Mention boleh disertakan di belakang, mis. `lpray @Lucy`, `lb <@123>`,
+`lucy battle <@123>`. Teks lain di belakang tetap dianggap chat biasa, jadi
+`lb ya nanti` tidak memicu apa pun.
+
 **Pengingat pertama yang menang.** Kalau kamu menulis `lh` lalu `lb`, atau
 `lpray` lalu `lcurse`, yang dihitung adalah aksi yang **lebih dulu**: waktunya
 tidak digeser, dan teks pengingatnya memakai aksi pertama itu. Jadi `lh` lalu

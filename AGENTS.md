@@ -174,6 +174,10 @@
   `<prefix> <alias>`; alias: pray/doa, curse/kutuk, battle/fight/war/b, hunt/catch/h.
   Alias satu huruf (`b`, `h`) HANYA berlaku bentuk bersambung (`lb`), bukan `l b`, supaya
   chat biasa tidak ikut terpicu.
+- Mention pengguna di BELAKANG perintah dibuang sebelum dicocokkan (`lpray @Lucy`,
+  `lb <@123>`, `lucy battle <@!123>`), karena user sering menyertakan mention bot Lucy.
+  Hanya mention yang dibuang; teks lain tetap membuat pesan dianggap chat biasa
+  (`lb ya nanti`, `lpray halo @Lucy`, `lpray @Lucy extra`).
 - **Penting: prefix bot Lucy BUKAN prefix bot kita.** Prefix bot kita (`d`) hanya memanggil
   perintah kita (`d lreminder`, `d llb`). Prefix bot Lucy adalah prefix yang dipakai bot
   Lucy untuk membaca perintah user (`lucy`, `l`, `g`, ...), dan bot kita memantau pesan

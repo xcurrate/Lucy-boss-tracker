@@ -68,14 +68,25 @@ function lucyPrefixes(configured) {
   return [...new Set([...ALWAYS_LUCY_PREFIXES, ...list])];
 }
 
+// Mention pengguna di Discord: `<@123>` atau `<@!123>`. Dipakai untuk membuang
+// mention di belakang perintah, karena user sering menyertakan mention bot Lucy
+// (mis. `lpray @Lucy`). Teks selain mention TIDAK diabaikan, supaya `lb ya nanti`
+// tetap dianggap chat biasa.
+const MENTION_RE = /^<@!?\d+>$/;
+
 // Mengembalikan jenis aksi ('pray'|'curse'|'battle'|'hunt') atau null.
 function matchAction(content, configuredPrefixes) {
   const text = String(content ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
   if (!text) return null;
+  // Buang mention di belakang; sisanya harus tetap persis perintah aksi.
+  const tokens = text.split(' ');
+  while (tokens.length > 1 && MENTION_RE.test(tokens[tokens.length - 1])) tokens.pop();
+  const core = tokens.join(' ');
+
   for (const prefix of lucyPrefixes(configuredPrefixes)) {
     for (const [alias, kind] of Object.entries(ALIAS_TO_KIND)) {
-      if (text === prefix + alias) return kind;
-      if (alias.length >= 2 && text === prefix + ' ' + alias) return kind;
+      if (core === prefix + alias) return kind;
+      if (alias.length >= 2 && core === prefix + ' ' + alias) return kind;
     }
   }
   return null;

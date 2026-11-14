@@ -695,6 +695,31 @@ describe('lucy action triggers (alias + prefix)', () => {
     assert.deepEqual(t.lucyPrefixes('lucy'), ['lucy'], 'duplikat dibuang');
   });
 
+  it('accepts a trailing user mention like `lpray @Lucy`', () => {
+    const t = require('../src/utils/lucyTrigger');
+    const id = '276801656656494602';
+    // Bentuk mention biasa dan mention nickname.
+    assert.equal(t.matchAction('lpray <@' + id + '>', null), 'pray');
+    assert.equal(t.matchAction('lpray <@!' + id + '>', null), 'pray');
+    assert.equal(t.matchAction('lb <@' + id + '>', null), 'battle');
+    assert.equal(t.matchAction('l hunt <@' + id + '>', null), 'hunt');
+    assert.equal(t.matchAction('lcurse <@' + id + '>', null), 'curse');
+    assert.equal(t.matchAction('lucy battle <@' + id + '>', null), 'battle');
+    assert.equal(t.matchAction('lucy pray <@' + id + '>', null), 'pray');
+    // Beberapa mention di belakang juga boleh.
+    assert.equal(t.matchAction('lh <@' + id + '> <@' + id + '>', null), 'hunt');
+  });
+
+  it('still ignores ordinary chat even with a mention', () => {
+    const t = require('../src/utils/lucyTrigger');
+    const id = '276801656656494602';
+    assert.equal(t.matchAction('lb ya nanti', null), null);
+    assert.equal(t.matchAction('lpray halo <@' + id + '>', null), null, 'teks sebelum mention tetap chat');
+    assert.equal(t.matchAction('lpray <@' + id + '> extra', null), null, 'teks setelah mention tetap chat');
+    assert.equal(t.matchAction('<@' + id + '>', null), null, 'mention saja bukan perintah');
+    assert.equal(t.matchAction('lucy', null), null);
+  });
+
   it('validates prefix input', () => {
     const t = require('../src/utils/lucyTrigger');
     assert.equal(t.normalizePrefix('Lucy'), 'lucy');
