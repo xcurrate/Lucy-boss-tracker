@@ -137,8 +137,15 @@
   `test/dashboardFamily100.test.js` (API settings + leaderboard).
 
 ## Pengingat Aksi Lucy (`src/services/lucyReminder.js`)
-- Tiga jenis pengingat, masing-masing dengan perintah prefix dan durasi tunggu sendiri:
-  pray/curse = 5 menit, battle/hunt = 15 detik, lucy = 10 detik. Definisi ada di `KINDS`.
+- Tiga jenis pengingat: pray (5 menit), curse (5 menit), battle (15 detik), lucy (10 detik).
+  Definisi ada di `KINDS`. **battle dan hunt berbagi satu jenis** karena durasinya sama;
+  `TRIGGER_KIND_TO_REMINDER` memetakan aksi (dari lucyTrigger) ke jenis reminder.
+- **Pengingat OFF secara default** (`DEFAULT_PREF = { enabled: false, pingMode: 'tag' }`).
+  Jangan memakai `{ enabled: true }` sebagai fallback di tempat lain — semua pembacaan
+  preferensi harus memakai `DEFAULT_PREF`, termasuk `store.getPref(userId, kind, DEFAULT_PREF)`.
+- `KINDS` TIDAK lagi menyimpan nama aksi (`info.action` sudah dihapus). `handleAction`
+  menerima nama AKSI lalu memetakannya; penghitungan tetap per aksi supaya leaderboard
+  battle dan hunt terpisah, sementara cooldown per jenis (battle/hunt berbagi jendela).
 - Pemicu aksi ada di `src/utils/lucyTrigger.js` (TANPA dependensi, supaya bisa dipakai
   lucyReminder dan lucyCounter tanpa require melingkar). Menerima `<prefix><alias>` dan
   `<prefix> <alias>`; alias: pray/doa, curse/kutuk, battle/fight/war/b, hunt/catch/h.
@@ -178,7 +185,8 @@
   `Nd` (N hari terakhir), `all`, atau tanggal — parser tanggal dipinjam dari `lucyCounter`
   supaya formatnya konsisten (`5 nov`, `5/11/2026`, `2026-11-05`).
 - Balasan kustom digerbangi `settings.lucyReminder.premium`; balasan default ada di `DEFAULT_REPLIES`
-  dengan placeholder `{user}`, `{mention}`, `{kind}`, `{durasi}`.
+  dengan placeholder `{user}`, `{mention}`, `{kind}`, `{durasi}`, dan `{count}` (jumlah aksi
+  hari ini untuk jenis itu — kategori battle mencakup battle + hunt).
 
 ## Cepat Tepat (Matematika)
 - Game hitung cepat terpisah dari Family 100: satu soal aritmetika aktif per server, siapa pun yang

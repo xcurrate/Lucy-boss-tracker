@@ -58,13 +58,16 @@ Tingkat kesulitan naik tiap soal; poin = dasar per level + bonus kecepatan.
 ## Pengingat Aksi Lucy
 Aksi Lucy ditulis `<prefix-lucy> <aksi>`, dengan pengingat otomatis setelah durasi tunggu:
 
-| Jenis | Bentuk yang dikenali | Pengingat |
+| Jenis pengingat | Bentuk aksi yang dikenali | Pengingat |
 |---|---|---|
 | Lucy Pray | `lucy pray`, `lpray` | 5 menit |
 | Lucy Curse | `lucy curse`, `lcurse` | 5 menit |
-| Lucy Battle | `lucy battle`, `lucy fight`, `lucy war`, `lbattle`, `lfight`, `lb` | 15 detik |
-| Lucy Hunt | `lucy hunt`, `lucy catch`, `lhunt`, `lh` | 15 detik |
+| Lucy Battle/Hunt | `lucy battle`, `lucy fight`, `lucy war`, `lbattle`, `lfight`, `lb`, `lucy hunt`, `lucy catch`, `lhunt`, `lh` | 15 detik |
 | Lucy | pesan yang memuat kata "lucy" | 10 detik |
+
+**Semua pengingat OFF secara default.** Anggota menyalakannya sendiri lewat
+`d lreminder`. battle dan hunt berbagi satu pengingat (durasi sama, 15 detik),
+tapi tetap dihitung terpisah untuk leaderboard.
 
 Bentuk berspasi juga jalan: `l fight`, `l hunt`.
 

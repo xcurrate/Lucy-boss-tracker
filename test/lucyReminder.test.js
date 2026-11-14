@@ -89,13 +89,45 @@ describe('lucy action storage', () => {
 });
 
 describe('lucy reminder engine', () => {
-  it('defines the three reminder types with the requested waits', () => {
+  it('defines three reminder types, with battle and hunt sharing one', () => {
     const svc = require('../src/services/lucyReminder');
+    assert.deepEqual(Object.keys(svc.KINDS), ['pray', 'curse', 'battle', 'lucy']);
     assert.equal(svc.KINDS.pray.waitMs, 5 * 60 * 1000);
     assert.equal(svc.KINDS.curse.waitMs, 5 * 60 * 1000);
     assert.equal(svc.KINDS.battle.waitMs, 15 * 1000);
-    assert.equal(svc.KINDS.hunt.waitMs, 15 * 1000);
     assert.equal(svc.KINDS.lucy.waitMs, 10 * 1000);
+    assert.equal(svc.KINDS.hunt, undefined, 'hunt bukan jenis tersendiri');
+    // Baik battle maupun hunt memakai jenis reminder yang sama.
+    assert.equal(svc.TRIGGER_KIND_TO_REMINDER.hunt, 'battle');
+    assert.equal(svc.TRIGGER_KIND_TO_REMINDER.battle, 'battle');
+  });
+
+  it('keeps reminders off by default', () => {
+    const svc = require('../src/services/lucyReminder');
+    assert.deepEqual(svc.DEFAULT_PREF, { enabled: false, pingMode: 'tag' });
+  });
+
+  it('does not send a reminder until the user turns it on', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const sent = [];
+    const client = { channels: { fetch: async () => ({ isTextBased: () => true, send: async p => { sent.push(p); } }) } };
+    await svc.deliverReminder(client, { guildId: 'g', channelId: 'c', userId: 'u1', name: 'Ani', kind: 'battle', messageId: 'm' });
+    assert.equal(sent.length, 0, 'default OFF -> tidak ada pengingat');
+  });
+
+  it('fills {count} from today\'s action counter', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const store = require('../src/utils/lucyActionStorage');
+    const day = svc.dayKey();
+    store.recordAction({ guildId: 'g', userId: 'u1', name: 'Ani', day, action: 'battle' });
+    store.recordAction({ guildId: 'g', userId: 'u1', name: 'Ani', day, action: 'hunt' });
+    store.setPref('u1', 'battle', { enabled: true });
+    const sent = [];
+    const client = { channels: { fetch: async () => ({ isTextBased: () => true, send: async p => { sent.push(p); } }) } };
+    await svc.deliverReminder(client, { guildId: 'g', channelId: 'c', userId: 'u1', name: 'Ani', kind: 'battle', messageId: 'm' });
+    assert.equal(sent.length, 1);
+    // Kategori battle mencakup hunt: 1 battle + 1 hunt = 2.
+    assert.match(sent[0].content, /Ani/);
   });
 
   it('offers tag, reply, both and none ping modes', () => {
@@ -197,6 +229,8 @@ describe('lucy reminder engine', () => {
 
   it('sends a real reminder through the timer using a short kind', async () => {
     const svc = require('../src/services/lucyReminder');
+    const store = require('../src/utils/lucyActionStorage');
+    store.setPref('u1', 'battle', { enabled: true });
     const sent = [];
     const client = { channels: { fetch: async () => ({ isTextBased: () => true, send: async p => { sent.push(p); } }) } };
     svc.scheduleReminder(client, { guildId: 'g', channelId: 'c', userId: 'u1', name: 'Ani', kind: 'battle', messageId: 'm1', waitMs: 20 });
@@ -238,15 +272,16 @@ describe('lucy reminder panel', () => {
     assert.equal(svc.isReminderNav('lcnav:daily'), false);
   });
 
-  it('toggles a reminder on and off from the panel', async () => {
+  it('toggles a reminder on and off from the panel (starts OFF)', async () => {
     const svc = require('../src/services/lucyReminder');
     const store = require('../src/utils/lucyActionStorage');
     const i = makeButton('lrem:toggle:pray');
+    // Default OFF -> klik pertama menyalakan.
     assert.equal(await svc.handleComponent(i), true);
-    assert.equal(store.getPref('user1', 'pray').enabled, false);
+    assert.equal(store.getPref('user1', 'pray').enabled, true);
     assert.equal(i.updates.length, 1);
     await svc.handleComponent(i);
-    assert.equal(store.getPref('user1', 'pray').enabled, true);
+    assert.equal(store.getPref('user1', 'pray').enabled, false);
   });
 
   it('cycles the ping mode through all four options', async () => {
@@ -265,7 +300,7 @@ describe('lucy reminder panel', () => {
     const msg = makeMessage('d lreminder');
     assert.equal(await svc.handleMessage(msg), true);
     const payload = msg.replies[0];
-    assert.equal(payload.components.length, Object.keys(svc.KINDS).length);
+    assert.equal(payload.components.length, 4, 'pray, curse, battle/hunt, lucy');
   });
 });
 
@@ -569,6 +604,7 @@ describe('premium custom replies', () => {
 
     const sent = [];
     const client = { channels: { fetch: async () => ({ isTextBased: () => true, send: async p => { sent.push(p); } }) } };
+    require('../src/utils/lucyActionStorage').setPref('u1', 'pray', { enabled: true });
     await svc.deliverReminder(client, { guildId: 'guild1', channelId: 'c', userId: 'u1', name: 'Ani', kind: 'pray', messageId: 'm' });
     assert.match(sent[0].content, /Doa Ani dikabulkan!/);
   });

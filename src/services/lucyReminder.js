@@ -23,13 +23,22 @@ const PAGE_SIZE = 10;
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 // Definisi jenis reminder. `kind` dipakai sebagai kunci di penyimpanan.
+// `kind` adalah jenis REMINDER, bukan nama aksi. battle dan hunt sengaja
+// digabung jadi satu jenis karena keduanya punya durasi tunggu sama (15 detik),
+// jadi satu tombol mengatur dua-duanya.
 const KINDS = {
-  pray: { action: 'pray', label: 'Lucy Pray', waitMs: 5 * 60 * 1000, emoji: '🙏' },
-  curse: { action: 'curse', label: 'Lucy Curse', waitMs: 5 * 60 * 1000, emoji: '💀' },
-  battle: { action: 'battle', label: 'Lucy Battle', waitMs: 15 * 1000, emoji: '⚔️' },
-  hunt: { action: 'hunt', label: 'Lucy Hunt', waitMs: 15 * 1000, emoji: '🏹' },
-  lucy: { action: null, label: 'Lucy', waitMs: 10 * 1000, emoji: '🐉' }
+  pray: { label: 'Lucy Pray', waitMs: 5 * 60 * 1000, emoji: '🙏' },
+  curse: { label: 'Lucy Curse', waitMs: 5 * 60 * 1000, emoji: '💀' },
+  battle: { label: 'Lucy Battle/Hunt', waitMs: 15 * 1000, emoji: '⚔️' },
+  lucy: { label: 'Lucy', waitMs: 10 * 1000, emoji: '🐉' }
 };
+
+// Aksi yang tercatat (dari lucyTrigger) -> jenis reminder. battle dan hunt tetap
+// tercatat TERPISAH di penghitung/leaderboard, hanya pengingatnya yang sama.
+const TRIGGER_KIND_TO_REMINDER = { pray: 'pray', curse: 'curse', battle: 'battle', hunt: 'battle' };
+
+// Pengingat default OFF: anggota menyalakannya sendiri lewat `lreminder`.
+const DEFAULT_PREF = { enabled: false, pingMode: 'tag' };
 
 // Pemicu aksi ditangani utils/lucyTrigger: `<prefix> <aksi>` dengan prefix yang
 // bisa diatur admin per server (default `lucy`), plus bentuk pendek `l` dan
@@ -41,8 +50,7 @@ const KINDS = {
 const DEFAULT_REPLIES = {
   pray: '🙏 **{user}** memanjatkan doa untuk Lucy. Hasilnya akan diberitahukan.',
   curse: '💀 **{user}** mengutuk Lucy. Tunggu kabarnya...',
-  battle: '⚔️ **{user}** menantang Lucy bertarung!',
-  hunt: '🏹 **{user}** berburu bersama Lucy!',
+  battle: '⚔️ **{user}** menantang Lucy bertarung / berburu!',
   lucy: '🐉 Lucy terdeteksi dari **{user}**.'
 };
 
@@ -151,20 +159,20 @@ function kindRow(kind, pref) {
 function panelEmbed(guildId, userId, name) {
   const prefs = store.getPrefs(userId);
   const lines = Object.entries(KINDS).map(([kind, info]) => {
-    const pref = prefs[kind] || { enabled: true, pingMode: 'tag' };
+    const pref = prefs[kind] || DEFAULT_PREF;
     const mode = PING_MODES[pref.pingMode] || PING_MODES.tag;
     return `${info.emoji} **${info.label}** — ${pref.enabled ? 'ON' : 'OFF'} • ping: **${mode}** • tunggu **${humanDuration(info.waitMs)}**`;
   });
   return new EmbedBuilder()
     .setColor(0x5865F2)
     .setTitle('🔔 Pengingat Aksi Lucy')
-    .setDescription(lines.join('\n') + '\n\nKlik tombol kiri untuk on/off, tombol tengah untuk ganti cara ping.')
+    .setDescription(lines.join('\n') + '\n\nSemua pengingat **OFF** secara default — klik tombol kiri untuk menyalakan. Tombol tengah mengganti cara ping.')
     .setFooter({ text: `Pengaturan pribadi untuk ${name} • berlaku di SEMUA server` });
 }
 
 function panelComponents(guildId, userId) {
   const prefs = store.getPrefs(userId);
-  return Object.entries(KINDS).map(([kind]) => kindRow(kind, prefs[kind] || { enabled: true, pingMode: 'tag' }));
+  return Object.entries(KINDS).map(([kind]) => kindRow(kind, prefs[kind] || DEFAULT_PREF));
 }
 
 function isReminderNav(customId) {
@@ -184,7 +192,7 @@ async function handleComponent(i) {
   if (!KINDS[kind]) return false;
   const guildId = i.guildId;
   const userId = i.user.id;
-  const current = store.getPref(userId, kind);
+  const current = store.getPref(userId, kind, DEFAULT_PREF);
 
   if (verb === 'toggle') {
     store.setPref(userId, kind, { enabled: !current.enabled });
@@ -207,7 +215,7 @@ async function handleComponent(i) {
 // - none  : pesan biasa tanpa keduanya
 async function deliverReminder(client, reminder) {
   const { guildId, channelId, userId, kind, messageId } = reminder;
-  const pref = store.getPref(userId, kind);
+  const pref = store.getPref(userId, kind, DEFAULT_PREF);
   if (!pref.enabled) return;
   const info = KINDS[kind];
   let channel = null;
@@ -218,12 +226,17 @@ async function deliverReminder(client, reminder) {
   }
   if (!channel?.isTextBased?.()) return;
 
+  // {count} = jumlah aksi HARI INI untuk jenis ini (kategori battle mencakup
+  // battle + hunt), supaya balasan bisa menampilkan progres.
+  const today = dayKey();
+  const count = store.userTotal(guildId, userId, today, today, actionsFor(kind)).toLocaleString('id-ID');
+
   const content = renderTemplate(replyTemplate(guildId, kind), {
     user: reminder.name || 'Pemain',
     mention: `<@${userId}>`,
     kind: info.label,
     durasi: humanDuration(info.waitMs),
-    count: ''
+    count
   });
 
   const mention = pref.pingMode === 'tag' || pref.pingMode === 'both';
@@ -409,6 +422,8 @@ function helpText(prefix) {
     `\`${prefix} lucyprefix\` — lihat prefix bot Lucy yang dipantau (admin)`,
     `\`${prefix} lucyprefix add|remove|reset <prefix...>\` — kelola prefix tambahan (admin; \`lucy\` selalu aktif)`,
     `\`${prefix} lreminder\` — kotak interaksi: on/off & cara ping (tag/reply/tanpa keduanya)`,
+    'Pengingat **OFF** secara default — nyalakan sendiri lewat tombol.',
+    'Jenis: pray (5 menit), curse (5 menit), battle/hunt (15 detik, satu tombol), lucy (10 detik).',
     `\`${prefix} lreminder reply <jenis> <teks>\` — balasan kustom (khusus premium)`,
     'Pengaturan reminder berlaku **global di semua server**.',
     '',
@@ -504,18 +519,21 @@ async function handleLucyPrefixCommand(message, prefix, parts) {
   return true;
 }
 
-async function handleAction(message, kind, prefix) {
+// `action` adalah nama aksi yang diketik user (pray/curse/battle/hunt).
+async function handleAction(message, action, prefix) {
+  const kind = TRIGGER_KIND_TO_REMINDER[action] || action;
   const info = KINDS[kind];
+  if (!info) return false;
   const userId = message.author.id;
   const name = message.member?.displayName || message.author?.username || 'Pemain';
   const now = Date.now();
 
-  // Cooldown: aksi sama tidak boleh diulang sebelum jendela tunggu habis. Kalau
-  // diulang, timer lama diganti (bukan ditambah), supaya pengingat tidak menumpuk.
+  // Cooldown per JENIS reminder (battle/hunt berbagi satu jendela), sementara
+  // penghitungan tetap per AKSI supaya leaderboard battle dan hunt terpisah.
   const readyAt = store.getCooldown(message.guildId, userId, kind);
   const replaced = now < readyAt;
 
-  store.recordAction({ guildId: message.guildId, userId, name, day: dayKey(new Date(now)), action: info.action });
+  store.recordAction({ guildId: message.guildId, userId, name, day: dayKey(new Date(now)), action });
   store.setCooldown(message.guildId, userId, kind, now + info.waitMs);
 
   const content = renderTemplate(replyTemplate(message.guildId, kind), {
@@ -569,7 +587,7 @@ async function handleReminderCommand(message, prefix, parts) {
   if (sub === 'status') {
     const prefs = store.getPrefs(message.author.id);
     const lines = Object.entries(KINDS).map(([kind, info]) => {
-      const pref = prefs[kind] || { enabled: true, pingMode: 'tag' };
+      const pref = prefs[kind] || DEFAULT_PREF;
       return `${info.emoji} ${info.label}: ${pref.enabled ? 'ON' : 'OFF'} • ping ${PING_MODES[pref.pingMode] || pref.pingMode}`;
     });
     await message.reply({ content: lines.join('\n') + `\nTerjadwal di server ini: **${scheduledCount(message.guildId)}**`, allowedMentions: { parse: [] } });
@@ -589,7 +607,7 @@ async function handleReminderCommand(message, prefix, parts) {
       return true;
     }
     const kind = (parts[2] || '').toLowerCase();
-    if (!KINDS[kind]) { await message.reply(`Jenis tidak dikenal. Pilih: ${Object.keys(KINDS).join(', ')}.`); return true; }
+    if (!KINDS[kind]) { await message.reply(`Jenis tidak dikenal. Pilih: ${Object.keys(KINDS).join(', ')} (battle sudah mencakup hunt).`); return true; }
     const value = parts.slice(3).join(' ').trim();
     if (!value) { await message.reply(`Format: \`${prefix} lreminder reply ${kind} <teks>\`. Placeholder: {user}, {mention}, {kind}, {durasi}`); return true; }
     if (value.length > 1500) { await message.reply('Balasan maksimal 1500 karakter.'); return true; }
@@ -673,6 +691,7 @@ module.exports = {
   panelEmbed, panelComponents, leaderboardView, parseRange, rangeLabel,
   scheduleReminder, deliverReminder, scheduledCount, renderTemplate, replyTemplate,
   dayKey, shiftDay, humanDuration, KINDS, PING_MODES, CATEGORIES, DEFAULT_REPLIES,
+  DEFAULT_PREF, TRIGGER_KIND_TO_REMINDER,
   handleLucyPrefixCommand, lucyRankingGlobal, rankingFor,
   onLucyCounted, timers
 };
