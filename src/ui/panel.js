@@ -159,12 +159,20 @@ function helpEmbed(prefix, { isAdmin = false } = {}) {
 
     // 👤 Pengguna — padanan prefix, prefix server diambil dari settings.
     { name: '📝 Pengguna — Prefix Command', value: [
-      '`' + prefix + 'boss menu` — panel pengaturan pribadi',
-      '`' + prefix + 'boss notify dm|channel|both` — pilih mode notifikasi',
-      '`' + prefix + 'boss warn <detik>` — peringatan DM (0 = matikan)',
-      '`' + prefix + 'boss on` / `' + prefix + 'boss off` — aktifkan/matikan DM',
-      '`' + prefix + 'boss status` — cek status tracker',
-      '`' + prefix + 'boss help` — panduan ini'
+      '`' + prefix + ' boss menu` — panel pengaturan pribadi',
+      '`' + prefix + ' boss notify dm|channel|both` — pilih mode notifikasi',
+      '`' + prefix + ' boss warn <detik>` — peringatan DM (0 = matikan)',
+      '`' + prefix + ' boss on` / `' + prefix + ' boss off` — aktifkan/matikan DM',
+      '`' + prefix + ' boss status` — cek status tracker',
+      '`' + prefix + ' help` — panduan ini (alias: `' + prefix + '`)',
+      '`' + prefix + ' ping` — cek latency bot (alias: `' + prefix + ' p`)',
+      '`' + prefix + ' dex <nama...> [-c]` — lihat Animal Dex; `-c` = tabel stat ringkas (alias: `' + prefix + ' d`)',
+      '`' + prefix + ' f100` — game Family 100 (tebak jawaban survei)',
+      '`' + prefix + ' math [jumlah]` — game Cepat Tepat matematika (alias: `' + prefix + ' mtk`)',
+      '`lucy battle` / `lb` / `l hunt` — aksi Lucy + pengingat otomatis (prefix bisa diatur admin)',
+      '`' + prefix + ' lreminder` — kotak interaksi pengingat (on/off + cara ping, berlaku global)',
+      '`' + prefix + ' lucyprefix set <prefix>` — atur prefix bot Lucy di server ini (admin)',
+      '`' + prefix + ' llb <pray|curse|battle|hunt|lucy|all> [rentang]` — leaderboard aksi Lucy'
     ].join('\n'), inline: false },
 
     // ⚙️ Admin — daftar perintah slash admin, hanya tampil jika isAdmin.
@@ -178,11 +186,11 @@ function helpEmbed(prefix, { isAdmin = false } = {}) {
 
     // ⚙️ Admin — padanan prefix untuk perintah admin, hanya tampil jika isAdmin.
     { name: '⚙️ Admin — Prefix Command', value: [
-      '`' + prefix + 'boss setup #channel @role` — atur channel & role tag',
-      '`' + prefix + 'boss server on` — aktifkan tracker seluruh server',
-      '`' + prefix + 'boss server off` — matikan tracker server',
-      '`' + prefix + 'boss prefix` — lihat/ubah prefix server',
-      '`' + prefix + 'boss admin-help` — panduan moderator'
+      '`' + prefix + ' boss setup #channel @role` — atur channel & role tag',
+      '`' + prefix + ' boss server on` — aktifkan tracker seluruh server',
+      '`' + prefix + ' boss server off` — matikan tracker server',
+      '`' + prefix + ' prefix` — lihat/ubah prefix server',
+      '`' + prefix + ' boss admin-help` — panduan moderator'
     ].join('\n'), inline: false },
 
     // 🎛️ Panel — menjelaskan elemen interaktif pada panel /boss menu.
