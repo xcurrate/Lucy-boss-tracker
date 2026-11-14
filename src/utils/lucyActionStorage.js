@@ -134,15 +134,6 @@ function getPref(userId, kind, fallback = { enabled: true, pingMode: 'tag' }) {
   return { enabled: Boolean(row.enabled), pingMode: row.ping_mode };
 }
 
-// Apakah anggota sudah pernah mengatur preferensi apa pun. Dipakai untuk
-// menampilkan petunjuk hanya sekali (kepada yang belum tahu), bukan tiap aksi.
-function hasAnyPref(userId) {
-  const row = getDb().prepare(
-    'SELECT 1 AS ada FROM lucy_reminder_prefs_global WHERE user_id = ? LIMIT 1'
-  ).get(String(userId));
-  return Boolean(row);
-}
-
 function setPref(userId, kind, { enabled, pingMode } = {}) {
   const current = getPref(userId, kind);
   const nextEnabled = enabled === undefined ? current.enabled : Boolean(enabled);
@@ -226,6 +217,6 @@ function resetGuild(guildId) {
 }
 
 module.exports = {
-  getDb, recordAction, getCooldown, setCooldown, getPrefs, getPref, setPref, hasAnyPref,
+  getDb, recordAction, getCooldown, setCooldown, getPrefs, getPref, setPref,
   topByDay, topByRange, topAllTime, topByRangeAll, topAllTimeAll, userTotal, resetGuild, ACTIONS, GROUPS
 };

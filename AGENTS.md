@@ -164,6 +164,12 @@
   AKSI pemicu hari itu (bukan seluruh jenis). Reminder `lucy` membacanya dari
   `lucyCounterStorage` (`getGuildData().users[].days[day]`), bukan lucyActionStorage —
   jangan pakai `actionsFor('lucy')` karena hasilnya selalu kosong.
+- **Aksi user TIDAK dibalas sama sekali**, termasuk info "pengingat OFF" untuk anggota
+  yang belum mengatur. Jangan menambahkan pesan ajakan di `handleAction`.
+- Perintah leaderboard: `top`/`t` (utama) dengan alias lama `llb`/`llbboard`/`lboard`.
+  Tanpa kategori, `top` menampilkan leaderboard jumlah LUCY memakai penghitung Lucy
+  yang sudah ada (`lucyCounterStorage`) — jangan bikin penghitung baru. Judul embed
+  mengikuti rentang lewat `rangeTitle` (Harian / N Hari Terakhir / tanggal / All-Time).
 - **Aksi user TIDAK dibalas.** Jangan menambahkan `message.reply(...)` publik di
   `handleAction`: balasannya memakai teks yang sama dengan teks pengingat, sehingga
   satu aksi terlihat menghasilkan dua pesan. Pesan pemicu juga JANGAN dihapus, karena

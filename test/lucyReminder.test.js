@@ -376,15 +376,13 @@ describe('lucy reminder engine', () => {
     for (const t of svc.timers.values()) clearTimeout(t);
   });
 
-  it('tells a newcomer once that the reminder is off, privately', async () => {
+  it('sends nothing at all when the reminder is off, even for a newcomer', async () => {
     const svc = require('../src/services/lucyReminder');
     const msg = makeMessage('lucy battle');
     await svc.handleMessage(msg);
-    // Satu pesan sementara (ephemeral) supaya tidak mengotori channel.
-    assert.equal(msg.sent.length, 1);
-    assert.equal(msg.sent[0].flags, 64, 'ephemeral');
-    assert.match(msg.sent[0].content, /sedang OFF/);
-    assert.doesNotMatch(msg.sent[0].content, /dipasang/);
+    // Tidak ada ajakan menyalakan pengingat, tidak ada info status apa pun.
+    assert.equal(msg.sent.length, 0, 'tidak ada pesan sama sekali');
+    assert.equal(svc.timers.size, 1, 'pengingat tetap terjadwal');
     for (const t of svc.timers.values()) clearTimeout(t);
   });
 
@@ -398,14 +396,20 @@ describe('lucy reminder engine', () => {
     for (const t of svc.timers.values()) clearTimeout(t);
   });
 
-  it('does not repeat the newcomer hint once anything was configured', async () => {
+  it('never mentions the reminder settings in an action reply', async () => {
     const svc = require('../src/services/lucyReminder');
     const store = require('../src/utils/lucyActionStorage');
-    store.setPref('user1', 'battle', { enabled: false });
-    const msg = makeMessage('lucy battle');
-    await svc.handleMessage(msg);
-    assert.match(msg.sent[0].content, /sedang OFF/);
-    assert.doesNotMatch(msg.sent[0].content, /Nyalakan lewat/, 'petunjuk tidak diulang');
+    // Baik sudah diatur maupun belum, aksi tidak boleh membalas apa pun.
+    for (const prefs of [[], [['battle', { enabled: false }]], [['battle', { enabled: true }]]]) {
+      for (const t of svc.timers.values()) clearTimeout(t);
+      svc.timers.clear();
+      svc.reminders.clear();
+      store.getDb().prepare('DELETE FROM lucy_reminder_prefs_global').run();
+      for (const [kind, pref] of prefs) store.setPref('user1', kind, pref);
+      const msg = makeMessage('lucy battle');
+      await svc.handleMessage(msg);
+      assert.equal(msg.sent.length, 0, JSON.stringify(prefs) + ' -> tanpa pesan');
+    }
     for (const t of svc.timers.values()) clearTimeout(t);
   });
 
@@ -820,6 +824,83 @@ describe('lucy prefix admin command', () => {
     const bad = makeMessage('d lucyprefix add ab!', { admin: true });
     await svc.handleMessage(bad);
     assert.match(bad.replies[0], /tidak valid/);
+  });
+});
+
+describe('`top` command', () => {
+  it('defaults to the LUCY count when no category is given', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const lucyStore = require('../src/utils/lucyCounterStorage');
+    const day = svc.dayKey();
+    lucyStore.recordLucy({ guildId: 'guild1', userId: 'u1', name: 'Ani', day, cycleKey: day, targetActive: false, goal: 0 });
+    for (const command of ['d top', 'd t']) {
+      const msg = makeMessage(command);
+      assert.equal(await svc.handleMessage(msg), true, command);
+      assert.match(msg.replies[0].embeds[0].data.title, /Leaderboard Lucy/, command);
+      assert.match(msg.replies[0].embeds[0].data.description, /Ani/, command);
+    }
+  });
+
+  it('reads the same counter as `lcount`, not a new one', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const counter = require('../src/services/lucyCounter');
+    const lucyStore = require('../src/utils/lucyCounterStorage');
+    const day = svc.dayKey();
+    lucyStore.recordLucy({ guildId: 'guild1', userId: 'u1', name: 'Ani', day, cycleKey: day, targetActive: false, goal: 0 });
+    lucyStore.recordLucy({ guildId: 'guild1', userId: 'u1', name: 'Ani', day, cycleKey: day, targetActive: false, goal: 0 });
+    const top = makeMessage('d top');
+    await svc.handleMessage(top);
+    const lcount = makeMessage('d lcount');
+    await counter.handleMessage(lcount, { onCounted: () => {} });
+    const countOf = payload => (payload.embeds[0].data.description.match(/\*\*(\d[\d.]*)\*\*/) || [])[1];
+    assert.equal(countOf(top.replies[0]), countOf(lcount.replies[0]), 'angka harus sama dengan lcount');
+  });
+
+  it('accepts each category token', async () => {
+    const svc = require('../src/services/lucyReminder');
+    for (const [token, expect] of [
+      ['lucy', /Leaderboard Lucy/],
+      ['pray', /Leaderboard Lucy Pray/],
+      ['curse', /Leaderboard Lucy Curse/],
+      ['battle', /Leaderboard Lucy Battle\/Hunt/],
+      ['hunt', /Leaderboard Lucy Battle\/Hunt/],
+      ['all', /Semua Aksi/]
+    ]) {
+      const msg = makeMessage('d top ' + token);
+      assert.equal(await svc.handleMessage(msg), true, token);
+      assert.match(msg.replies[0].embeds[0].data.title, expect, token);
+    }
+  });
+
+  it('still accepts ranges, pages and the global token', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const range = makeMessage('d top 7d');
+    await svc.handleMessage(range);
+    assert.match(range.replies[0].embeds[0].data.title, /7 Hari Terakhir/);
+
+    const glob = makeMessage('d top lucy all global');
+    await svc.handleMessage(glob);
+    assert.match(glob.replies[0].embeds[0].data.footer.text, /Global/);
+    assert.match(glob.replies[0].embeds[0].data.title, /All-Time/);
+  });
+
+  it('keeps the old `llb` spelling working', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const msg = makeMessage('d llb pray');
+    assert.equal(await svc.handleMessage(msg), true);
+    assert.match(msg.replies[0].embeds[0].data.title, /Lucy Pray/);
+  });
+});
+
+describe('leaderboard title matches its content', () => {
+  it('labels daily, range, single date and all-time differently', () => {
+    const svc = require('../src/services/lucyReminder');
+    const title = range => svc.leaderboardView('guild1', 'pray', range).embed.data.title;
+    assert.match(title(svc.parseRange('')), /Harian/);
+    assert.match(title(svc.parseRange('7d')), /7 Hari Terakhir/);
+    assert.match(title(svc.parseRange('all')), /All-Time/);
+    assert.match(title(svc.parseRange('5 nov')), /5 nov 2026/);
+    assert.doesNotMatch(title(svc.parseRange('all')), /Harian/);
   });
 });
 

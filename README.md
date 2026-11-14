@@ -81,6 +81,9 @@ Mention boleh disertakan di belakang, mis. `lpray @Lucy`, `lb <@123>`,
 tidak digeser, dan teks pengingatnya memakai aksi pertama itu. Jadi `lh` lalu
 `lb` tetap dihitung dari `lh`, dan `lpray` lalu `lcurse` tetap dari `lpray`.
 
+**Bot tidak membalas aksi sama sekali.** Termasuk anggota yang belum
+menyalakan pengingat: tidak ada ajakan atau info apa pun. Aksi cukup dipantau.
+
 **Bot tidak membalas aksi.** Aksi cukup dipantau; pengingat dijadwalkan dari
 pesanmu dan dikirim setelah durasi tunggu habis. Jadi satu aksi = satu pesan
 (pengingatnya), bukan balasan lalu pengingat. Anggota yang belum pernah mengatur
