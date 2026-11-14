@@ -69,6 +69,11 @@ Aksi Lucy ditulis `<prefix-lucy> <aksi>`, dengan pengingat otomatis setelah dura
 `d lreminder`. battle dan hunt berbagi satu pengingat (durasi sama, 15 detik),
 tapi tetap dihitung terpisah untuk leaderboard.
 
+**Pengingat pertama yang menang.** Kalau kamu menulis `lh` lalu `lb` (atau
+sebaliknya), yang dihitung adalah aksi yang **lebih dulu**: waktunya tidak
+digeser, dan teks pengingatnya memakai aksi pertama itu. Jadi `lh` lalu `lb`
+tetap dihitung dari `lh`.
+
 **Bot tidak membalas aksi.** Aksi cukup dipantau; pengingat dijadwalkan dari
 pesanmu dan dikirim setelah durasi tunggu habis. Jadi satu aksi = satu pesan
 (pengingatnya), bukan balasan lalu pengingat. Anggota yang belum pernah mengatur

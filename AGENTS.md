@@ -146,6 +146,13 @@
 - `KINDS` TIDAK lagi menyimpan nama aksi (`info.action` sudah dihapus). `handleAction`
   menerima nama AKSI lalu memetakannya; penghitungan tetap per aksi supaya leaderboard
   battle dan hunt terpisah, sementara cooldown per jenis (battle/hunt berbagi jendela).
+- **Pengingat pertama menang** (`lh` lalu `lb` dihitung dari `lh`). Aturan ini ada di
+  dalam `scheduleReminder`: kalau key sudah ada di `timers`, panggilan berikutnya
+  mengembalikan pengingat yang sedang berjalan tanpa menggeser `dueAt`/`scheduledAt`.
+  Jangan menambahkan parameter `replace` kembali. `reminders` (Map sejajar `timers`)
+  menyimpan objek pengingat + `action` pemicu supaya bisa dibaca dan diuji.
+- `ACTION_LABELS` memetakan AKSI -> nama tampilan, dipakai untuk `{kind}` di teks
+  pengingat, supaya `lh` tampil "Lucy Hunt" walau jenis reminder-nya `battle`.
 - **Aksi user TIDAK dibalas.** Jangan menambahkan `message.reply(...)` publik di
   `handleAction`: balasannya memakai teks yang sama dengan teks pengingat, sehingga
   satu aksi terlihat menghasilkan dua pesan. Pesan pemicu juga JANGAN dihapus, karena

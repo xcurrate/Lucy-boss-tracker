@@ -36,6 +36,9 @@ const KINDS = {
 // Aksi yang tercatat (dari lucyTrigger) -> jenis reminder. battle dan hunt tetap
 // tercatat TERPISAH di penghitung/leaderboard, hanya pengingatnya yang sama.
 const TRIGGER_KIND_TO_REMINDER = { pray: 'pray', curse: 'curse', battle: 'battle', hunt: 'battle' };
+// Label per AKSI, dipakai di teks pengingat. Jenis reminder battle dipakai
+// bersama battle/hunt, jadi tanpa ini `lh` akan tampil sebagai "Battle/Hunt".
+const ACTION_LABELS = { pray: 'Lucy Pray', curse: 'Lucy Curse', battle: 'Lucy Battle', hunt: 'Lucy Hunt' };
 
 // Pengingat default OFF: anggota menyalakannya sendiri lewat `lreminder`.
 const DEFAULT_PREF = { enabled: false, pingMode: 'tag' };
@@ -61,6 +64,9 @@ const PING_MODES = { tag: 'Tag', reply: 'Reply', both: 'Tag + Reply', none: 'Tan
 // ini disengaja supaya tidak perlu memulihkan timer lama. Cooldown tetap akurat
 // karena disimpan di SQLite (lihat ready_at).
 const timers = new Map();
+// Objek reminder per key, sejajar dengan `timers`. Dipakai untuk membaca
+// aksi/waktu pengingat yang sedang berjalan (mis. memastikan yang pertama menang).
+const reminders = new Map();
 // Jumlah reminder terjadwal per guild, untuk info `status`.
 const scheduledByGuild = new Map();
 
@@ -218,6 +224,7 @@ async function deliverReminder(client, reminder) {
   const pref = store.getPref(userId, kind, DEFAULT_PREF);
   if (!pref.enabled) return;
   const info = KINDS[kind];
+  const label = ACTION_LABELS[reminder.action] || info.label;
   let channel = null;
   try {
     channel = await client.channels.fetch(channelId);
@@ -234,7 +241,7 @@ async function deliverReminder(client, reminder) {
   const content = renderTemplate(replyTemplate(guildId, kind), {
     user: reminder.name || 'Pemain',
     mention: `<@${userId}>`,
-    kind: info.label,
+    kind: label,
     durasi: humanDuration(info.waitMs),
     count
   });
@@ -254,24 +261,32 @@ async function deliverReminder(client, reminder) {
   }
 }
 
-// Pasang reminder. `replace` = true membuang timer lama untuk jenis yang sama
-// (dipakai saat aksi diulang dalam jendela tunggu).
-function scheduleReminder(client, { guildId, channelId, userId, name, kind, messageId, replace = false, waitMs }) {
+// Pasang reminder. Pengingat pertama untuk satu jenis menang; pemanggilan
+// berikutnya diabaikan (mengembalikan pengingat yang sedang berjalan).
+function scheduleReminder(client, { guildId, channelId, userId, name, kind, action, messageId, waitMs }) {
   const key = timerKey(guildId, userId, kind);
-  if (replace && timers.has(key)) {
-    clearTimeout(timers.get(key));
-    timers.delete(key);
-  }
+  // Pengingat PERTAMA yang menang. Kalau sudah ada pengingat berjalan untuk jenis
+  // ini, aksi berikutnya tidak menggeser waktunya — `lh` lalu `lb` tetap dihitung
+  // dari `lh`, dan teksnya tetap memakai aksi yang lebih dulu.
+  if (timers.has(key)) return reminders.get(key) || null;
   const info = KINDS[kind];
   const wait = Number.isFinite(waitMs) && waitMs >= 0 ? waitMs : info.waitMs;
-  const reminder = { guildId, channelId, userId, name, kind, messageId, dueAt: Date.now() + wait };
+  const reminder = {
+    guildId, channelId, userId, name, kind,
+    action: action || kind,
+    messageId,
+    scheduledAt: Date.now(),
+    dueAt: Date.now() + wait
+  };
   const timer = setTimeout(() => {
     timers.delete(key);
+    reminders.delete(key);
     decrementScheduled(guildId);
     deliverReminder(client, reminder).catch(e => console.error('[LucyReminder]', e.message));
   }, wait);
   timer.unref?.();
   timers.set(key, timer);
+  reminders.set(key, reminder);
   incrementScheduled(guildId);
   return reminder;
 }
@@ -545,10 +560,11 @@ async function handleAction(message, action, prefix) {
     userId,
     name,
     kind,
-    messageId: message.id,
-    replace: true
+    action,
+    messageId: message.id
   };
 
+  // Aturan "pengingat pertama menang" ada di dalam scheduleReminder.
   // Dijadwalkan walau pengingat OFF: deliverReminder memeriksa ulang preferensi
   // saat waktunya tiba, jadi kalau dinyalakan dalam jendela tunggu tetap datang.
   scheduleReminder(message.client, schedule);
@@ -666,14 +682,15 @@ async function sendLeaderboard(message, category, range, pageArg, global = false
 // Dipanggil dari lucyCounter saat pesan Lucy terhitung, untuk memasang
 // pengingat kategori "lucy" (10 detik).
 function onLucyCounted(message, name) {
+  // Aturan sama dengan aksi lain (pengingat pertama menang), ditangani scheduleReminder.
   scheduleReminder(message.client, {
     guildId: message.guildId,
     channelId: message.channelId,
     userId: message.author.id,
     name,
     kind: 'lucy',
-    messageId: message.id,
-    replace: true
+    action: 'lucy',
+    messageId: message.id
   });
 }
 
@@ -692,7 +709,7 @@ module.exports = {
   panelEmbed, panelComponents, leaderboardView, parseRange, rangeLabel,
   scheduleReminder, deliverReminder, scheduledCount, renderTemplate, replyTemplate,
   dayKey, shiftDay, humanDuration, KINDS, PING_MODES, CATEGORIES, DEFAULT_REPLIES,
-  DEFAULT_PREF, TRIGGER_KIND_TO_REMINDER,
+  DEFAULT_PREF, TRIGGER_KIND_TO_REMINDER, ACTION_LABELS,
   handleLucyPrefixCommand, lucyRankingGlobal, rankingFor,
-  onLucyCounted, timers
+  onLucyCounted, timers, reminders
 };
