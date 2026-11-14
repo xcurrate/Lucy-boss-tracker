@@ -38,7 +38,9 @@ function makeMessage(content, { guildId = 'guild1', channelId = 'chan1', userId 
     reply: async payload => { sent.push(payload); replies.push(payload); return { id: 'r' + (++counter) }; },
     channel,
     sent,
-    replies
+    replies,
+    // Pesan yang benar-benar terlihat semua orang (ephemeral tidak dihitung).
+    get publicSent() { return sent.filter(p => !p.flags); }
   };
 }
 
@@ -135,15 +137,42 @@ describe('lucy reminder engine', () => {
     assert.deepEqual(Object.keys(svc.PING_MODES).sort(), ['both', 'none', 'reply', 'tag']);
   });
 
-  it('responds to each action with its own prefix command and schedules a reminder', async () => {
+  it('schedules a reminder for each action without replying publicly', async () => {
     const svc = require('../src/services/lucyReminder');
     for (const command of ['lucy pray', 'lcurse', 'lbattle', 'lhunt']) {
       const msg = makeMessage(command);
       assert.equal(await svc.handleMessage(msg), true, command);
-      assert.equal(msg.replies.length, 1, command);
-      assert.equal(msg.sent.length, 2, 'balasan aksi + catatan pengingat dikirim');
+      assert.equal(msg.publicSent.length, 0, 'tidak ada balasan publik untuk ' + command);
     }
-    assert.equal(svc.scheduledCount('guild1'), 4);
+    assert.equal(svc.scheduledCount('guild1'), 4, 'tiap aksi memasang pengingat');
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('leaves the channel clean: one action produces no message at all', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const msg = makeMessage('lb');
+    await svc.handleMessage(msg);
+    assert.equal(msg.publicSent.length, 0, 'channel tidak mendapat pesan publik');
+    // Pesan pemicu TIDAK dihapus, karena mode ping `reply` membalas pesan ini.
+    assert.equal(msg.deleted, undefined);
+    assert.equal(svc.timers.size, 1, 'pengingat tetap terjadwal');
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('reminds once, and the reminder text is what the user sees', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const store = require('../src/utils/lucyActionStorage');
+    store.setPref('user1', 'battle', { enabled: true });
+    const msg = makeMessage('lb');
+    await svc.handleMessage(msg);
+    // Hanya satu pengingat, dan isinya teks balasan (bukan ganda).
+    const sent = [];
+    const client = { channels: { fetch: async () => ({ isTextBased: () => true, send: async p => { sent.push(p); } }) } };
+    const reminder = [...svc.timers.keys()];
+    assert.deepEqual(reminder, ['guild1:user1:battle']);
+    await svc.deliverReminder(client, { guildId: 'guild1', channelId: 'chan1', userId: 'user1', name: 'melda', kind: 'battle', messageId: msg.id });
+    assert.equal(sent.length, 1, 'tepat satu pengingat');
+    assert.match(sent[0].content, /melda/);
     for (const t of svc.timers.values()) clearTimeout(t);
   });
 
@@ -151,6 +180,39 @@ describe('lucy reminder engine', () => {
     const svc = require('../src/services/lucyReminder');
     const msg = makeMessage('lucy pray');
     assert.equal(await svc.handleMessage(msg), true);
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('tells a newcomer once that the reminder is off, privately', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const msg = makeMessage('lucy battle');
+    await svc.handleMessage(msg);
+    // Satu pesan sementara (ephemeral) supaya tidak mengotori channel.
+    assert.equal(msg.sent.length, 1);
+    assert.equal(msg.sent[0].flags, 64, 'ephemeral');
+    assert.match(msg.sent[0].content, /sedang OFF/);
+    assert.doesNotMatch(msg.sent[0].content, /dipasang/);
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('stays silent for someone who already turned reminders on', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const store = require('../src/utils/lucyActionStorage');
+    store.setPref('user1', 'battle', { enabled: true });
+    const msg = makeMessage('lucy battle');
+    await svc.handleMessage(msg);
+    assert.equal(msg.sent.length, 0, 'tidak ada pesan sama sekali');
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('does not repeat the newcomer hint once anything was configured', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const store = require('../src/utils/lucyActionStorage');
+    store.setPref('user1', 'battle', { enabled: false });
+    const msg = makeMessage('lucy battle');
+    await svc.handleMessage(msg);
+    assert.match(msg.sent[0].content, /sedang OFF/);
+    assert.doesNotMatch(msg.sent[0].content, /Nyalakan lewat/, 'petunjuk tidak diulang');
     for (const t of svc.timers.values()) clearTimeout(t);
   });
 

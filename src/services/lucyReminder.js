@@ -10,7 +10,7 @@
 // aksi itu, memberi balasan, lalu memasang pengingat. Setelah durasi habis, bot
 // mengirim pesan pengingat dan mengarahkan anggota ke kotak interaksi (tombol)
 // untuk memilih: tag, reply, atau tanpa keduanya.
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX, matchPrefix } = require('../utils/storage');
 const store = require('../utils/lucyActionStorage');
 const lucyStore = require('../utils/lucyCounterStorage');
@@ -531,42 +531,43 @@ async function handleAction(message, action, prefix) {
   // Cooldown per JENIS reminder (battle/hunt berbagi satu jendela), sementara
   // penghitungan tetap per AKSI supaya leaderboard battle dan hunt terpisah.
   const readyAt = store.getCooldown(message.guildId, userId, kind);
-  const replaced = now < readyAt;
 
   store.recordAction({ guildId: message.guildId, userId, name, day: dayKey(new Date(now)), action });
   store.setCooldown(message.guildId, userId, kind, now + info.waitMs);
 
-  const content = renderTemplate(replyTemplate(message.guildId, kind), {
-    user: name, mention: `<@${userId}>`, kind: info.label, durasi: humanDuration(info.waitMs), count: ''
-  });
-  const note = replaced
-    ? `Pengingat ${info.label} diatur ulang — kamu akan diingatkan lagi dalam ${humanDuration(info.waitMs)}.`
-    : `Pengingat ${info.label} dipasang — kamu akan diingatkan dalam ${humanDuration(info.waitMs)}.`;
-
-  let replyPayload = null;
-  try {
-    replyPayload = await message.reply({ content, allowedMentions: { parse: [] } });
-  } catch (e) {
-    console.error('[LucyReminder] gagal membalas aksi:', e.message);
-  }
-
-  scheduleReminder(message.client, {
+  // Aksi user TIDAK dibalas. Balasan sebelumnya memakai teks yang sama persis
+  // dengan teks pengingat, sehingga tiap aksi terlihat menghasilkan dua pesan
+  // ("menantang Lucy bertarung!" lalu "Pengingat ... dipasang"). Pengingat sudah
+  // cukup: dipasang dari aksi user, lalu dikirim saat jendela tunggu habis.
+  const schedule = {
     guildId: message.guildId,
     channelId: message.channelId,
     userId,
     name,
     kind,
-    messageId: replyPayload?.id || message.id,
+    messageId: message.id,
     replace: true
-  });
+  };
 
-  try {
-    await message.channel.send({
-      content: `${note} Atur cara ping lewat \`${prefix} lreminder\` (tombol).`,
-      allowedMentions: { parse: [] }
-    });
-  } catch (e) {
-    console.error('[LucyReminder] gagal mengirim catatan:', e.message);
+  // Dijadwalkan walau pengingat OFF: deliverReminder memeriksa ulang preferensi
+  // saat waktunya tiba, jadi kalau dinyalakan dalam jendela tunggu tetap datang.
+  scheduleReminder(message.client, schedule);
+
+  // Status hanya dikirim saat perlu, sebagai pesan sementara: petunjuk untuk
+  // yang belum pernah mengatur, atau info bahwa pengingatnya sedang OFF.
+  const pref = store.getPref(userId, kind, DEFAULT_PREF);
+  let notice = null;
+  if (!pref.enabled && !store.hasAnyPref(userId)) {
+    notice = `Pengingat ${info.label} sedang OFF. Nyalakan lewat \`${prefix} lreminder\`.`;
+  } else if (!pref.enabled) {
+    notice = `Pengingat ${info.label} sedang OFF.`;
+  }
+  if (notice) {
+    try {
+      await message.reply({ content: notice, allowedMentions: { parse: [] }, flags: MessageFlags.Ephemeral });
+    } catch (e) {
+      console.error('[LucyReminder] gagal mengirim status pengingat:', e.message);
+    }
   }
   return true;
 }

@@ -146,6 +146,11 @@
 - `KINDS` TIDAK lagi menyimpan nama aksi (`info.action` sudah dihapus). `handleAction`
   menerima nama AKSI lalu memetakannya; penghitungan tetap per aksi supaya leaderboard
   battle dan hunt terpisah, sementara cooldown per jenis (battle/hunt berbagi jendela).
+- **Aksi user TIDAK dibalas.** Jangan menambahkan `message.reply(...)` publik di
+  `handleAction`: balasannya memakai teks yang sama dengan teks pengingat, sehingga
+  satu aksi terlihat menghasilkan dua pesan. Pesan pemicu juga JANGAN dihapus, karena
+  mode ping `reply` membalas pesan itu. Satu-satunya pesan dari `handleAction` adalah
+  info ephemeral untuk anggota yang belum pernah mengatur dan pengingatnya OFF.
 - Pemicu aksi ada di `src/utils/lucyTrigger.js` (TANPA dependensi, supaya bisa dipakai
   lucyReminder dan lucyCounter tanpa require melingkar). Menerima `<prefix><alias>` dan
   `<prefix> <alias>`; alias: pray/doa, curse/kutuk, battle/fight/war/b, hunt/catch/h.
