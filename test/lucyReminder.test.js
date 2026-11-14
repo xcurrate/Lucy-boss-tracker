@@ -91,17 +91,23 @@ describe('lucy action storage', () => {
 });
 
 describe('lucy reminder engine', () => {
-  it('defines three reminder types, with battle and hunt sharing one', () => {
+  it('has three reminder types, each shared by two actions', () => {
     const svc = require('../src/services/lucyReminder');
-    assert.deepEqual(Object.keys(svc.KINDS), ['pray', 'curse', 'battle', 'lucy']);
+    assert.deepEqual(Object.keys(svc.KINDS), ['pray', 'battle', 'lucy']);
     assert.equal(svc.KINDS.pray.waitMs, 5 * 60 * 1000);
-    assert.equal(svc.KINDS.curse.waitMs, 5 * 60 * 1000);
     assert.equal(svc.KINDS.battle.waitMs, 15 * 1000);
     assert.equal(svc.KINDS.lucy.waitMs, 10 * 1000);
+    assert.equal(svc.KINDS.curse, undefined, 'curse bukan jenis tersendiri');
     assert.equal(svc.KINDS.hunt, undefined, 'hunt bukan jenis tersendiri');
-    // Baik battle maupun hunt memakai jenis reminder yang sama.
-    assert.equal(svc.TRIGGER_KIND_TO_REMINDER.hunt, 'battle');
+    // pray+curse satu jenis; battle+hunt satu jenis.
+    assert.equal(svc.TRIGGER_KIND_TO_REMINDER.pray, 'pray');
+    assert.equal(svc.TRIGGER_KIND_TO_REMINDER.curse, 'pray');
     assert.equal(svc.TRIGGER_KIND_TO_REMINDER.battle, 'battle');
+    assert.equal(svc.TRIGGER_KIND_TO_REMINDER.hunt, 'battle');
+    // Label per aksi tetap membedakan teks pengingatnya.
+    assert.equal(svc.ACTION_LABELS.pray, 'Lucy Pray');
+    assert.equal(svc.ACTION_LABELS.curse, 'Lucy Curse');
+    assert.equal(svc.ACTION_LABELS.hunt, 'Lucy Hunt');
   });
 
   it('keeps reminders off by default', () => {
@@ -117,19 +123,47 @@ describe('lucy reminder engine', () => {
     assert.equal(sent.length, 0, 'default OFF -> tidak ada pengingat');
   });
 
-  it('fills {count} from today\'s action counter', async () => {
+  it('fills {count} from the triggering action, not the shared kind', async () => {
     const svc = require('../src/services/lucyReminder');
     const store = require('../src/utils/lucyActionStorage');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('g', s => ({ ...s, lucyReminder: { ...s.lucyReminder, premium: true, replies: { battle: '{count}', pray: '{count}' } } }));
     const day = svc.dayKey();
     store.recordAction({ guildId: 'g', userId: 'u1', name: 'Ani', day, action: 'battle' });
     store.recordAction({ guildId: 'g', userId: 'u1', name: 'Ani', day, action: 'hunt' });
-    store.setPref('u1', 'battle', { enabled: true });
+    store.recordAction({ guildId: 'g', userId: 'u1', name: 'Ani', day, action: 'hunt' });
+    // pingMode 'none' supaya teksnya bersih tanpa mention.
+    store.setPref('u1', 'battle', { enabled: true, pingMode: 'none' });
+    store.setPref('u1', 'pray', { enabled: true, pingMode: 'none' });
     const sent = [];
     const client = { channels: { fetch: async () => ({ isTextBased: () => true, send: async p => { sent.push(p); } }) } };
-    await svc.deliverReminder(client, { guildId: 'g', channelId: 'c', userId: 'u1', name: 'Ani', kind: 'battle', messageId: 'm' });
-    assert.equal(sent.length, 1);
-    // Kategori battle mencakup hunt: 1 battle + 1 hunt = 2.
-    assert.match(sent[0].content, /Ani/);
+    const deliver = action => svc.deliverReminder(client, { guildId: 'g', channelId: 'c', userId: 'u1', name: 'Ani', kind: svc.TRIGGER_KIND_TO_REMINDER[action], action, messageId: 'm' });
+    await deliver('battle');
+    assert.equal(sent.at(-1).content, '1', 'lb -> hitungan battle saja');
+    await deliver('hunt');
+    assert.equal(sent.at(-1).content, '2', 'lh -> hitungan hunt saja');
+    await deliver('pray');
+    assert.equal(sent.at(-1).content, '0', 'lpray -> hitungan pray saja');
+    await deliver('curse');
+    assert.equal(sent.at(-1).content, '0', 'lcurse -> hitungan curse sendiri, bukan pray');
+  });
+
+  it('uses an action-level custom reply when one is set', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const store = require('../src/utils/lucyActionStorage');
+    const { updateGuildSettings } = require('../src/utils/storage');
+    updateGuildSettings('g', s => ({ ...s, lucyReminder: { ...s.lucyReminder, premium: true, replies: { pray: 'DOA {user}', curse: 'KUTUK {user}' } } }));
+    store.setPref('u1', 'pray', { enabled: true, pingMode: 'none' });
+    const sent = [];
+    const client = { channels: { fetch: async () => ({ isTextBased: () => true, send: async p => { sent.push(p); } }) } };
+    await svc.deliverReminder(client, { guildId: 'g', channelId: 'c', userId: 'u1', name: 'Ani', kind: 'pray', action: 'pray', messageId: 'm' });
+    assert.equal(sent.at(-1).content, 'DOA Ani', 'pray memakai template pray');
+    await svc.deliverReminder(client, { guildId: 'g', channelId: 'c', userId: 'u1', name: 'Ani', kind: 'pray', action: 'curse', messageId: 'm' });
+    assert.equal(sent.at(-1).content, 'KUTUK Ani', 'curse memakai template curse walau jenisnya sama');
+    // Tanpa template curse, curse jatuh ke template jenis (pray).
+    updateGuildSettings('g', s => ({ ...s, lucyReminder: { ...s.lucyReminder, replies: { pray: 'DOA {user}' } } }));
+    await svc.deliverReminder(client, { guildId: 'g', channelId: 'c', userId: 'u1', name: 'Ani', kind: 'pray', action: 'curse', messageId: 'm' });
+    assert.equal(sent.at(-1).content, 'DOA Ani', 'fallback ke template jenis');
   });
 
   it('offers tag, reply, both and none ping modes', () => {
@@ -144,8 +178,8 @@ describe('lucy reminder engine', () => {
       assert.equal(await svc.handleMessage(msg), true, command);
       assert.equal(msg.publicSent.length, 0, 'tidak ada balasan publik untuk ' + command);
     }
-    // battle dan hunt berbagi satu jenis, jadi 3 pengingat (pray, curse, battle/hunt).
-    assert.equal(svc.scheduledCount('guild1'), 3);
+    // pray+curse dan battle+hunt masing-masing berbagi satu jenis, jadi 2 pengingat.
+    assert.equal(svc.scheduledCount('guild1'), 2);
     for (const t of svc.timers.values()) clearTimeout(t);
   });
 
@@ -211,6 +245,88 @@ describe('lucy reminder engine', () => {
     assert.equal(svc.timers.size, 2, 'pray dan battle/hunt masing-masing satu');
     assert.equal(svc.reminders.get('guild1:user1:pray').action, 'pray');
     assert.equal(svc.reminders.get('guild1:user1:battle').action, 'hunt');
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('pray and curse share one reminder: `lpray` then `lcurse` keeps `lpray`', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const key = 'guild1:user1:pray';
+    await svc.handleMessage(makeMessage('lpray'));
+    const before = { ...svc.reminders.get(key) };
+    assert.equal(before.action, 'pray');
+    assert.equal(svc.timers.size, 1);
+
+    await new Promise(r => setTimeout(r, 25));
+    await svc.handleMessage(makeMessage('lcurse'));
+    const after = svc.reminders.get(key);
+
+    assert.equal(svc.timers.size, 1, 'tetap satu pengingat untuk pray/curse');
+    assert.equal(after.action, 'pray', 'aksi pertama (pray) dipertahankan');
+    assert.equal(after.dueAt, before.dueAt, 'jatuh tempo dari lpray');
+    assert.equal(after.scheduledAt, before.scheduledAt, 'waktu pasang tidak digeser');
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('`lcurse` then `lpray` keeps `lcurse`', async () => {
+    const svc = require('../src/services/lucyReminder');
+    const key = 'guild1:user1:pray';
+    await svc.handleMessage(makeMessage('lcurse'));
+    const before = { ...svc.reminders.get(key) };
+    assert.equal(before.action, 'curse');
+    await new Promise(r => setTimeout(r, 25));
+    await svc.handleMessage(makeMessage('lpray'));
+    const after = svc.reminders.get(key);
+    assert.equal(after.action, 'curse', 'aksi pertama (curse) dipertahankan');
+    assert.equal(after.dueAt, before.dueAt);
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('applies the first-wins rule to every reminder kind', async () => {
+    const svc = require('../src/services/lucyReminder');
+    // Setiap jenis diuji dengan dua aksi berbeda yang memetakan ke jenis itu.
+    for (const [kind, first, second] of [
+      ['pray', 'lpray', 'lucy pray'],
+      ['pray', 'lcurse', 'lucy curse'],
+      ['battle', 'lh', 'lb'],
+      ['battle', 'lb', 'lh']
+    ]) {
+      for (const t of svc.timers.values()) clearTimeout(t);
+      svc.timers.clear();
+      svc.reminders.clear();
+
+      await svc.handleMessage(makeMessage(first));
+      const key = 'guild1:user1:' + kind;
+      const before = { ...svc.reminders.get(key) };
+      await new Promise(r => setTimeout(r, 25));
+      await svc.handleMessage(makeMessage(second));
+      const after = svc.reminders.get(key);
+
+      assert.equal(svc.timers.size, 1, `${first} lalu ${second}: satu pengingat`);
+      assert.equal(after.action, before.action, `${first} lalu ${second}: aksi pertama dipertahankan`);
+      assert.equal(after.dueAt, before.dueAt, `${first} lalu ${second}: jatuh tempo dari aksi pertama`);
+    }
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('keeps pray/curse separate from battle/hunt', async () => {
+    const svc = require('../src/services/lucyReminder');
+    await svc.handleMessage(makeMessage('lpray'));
+    await svc.handleMessage(makeMessage('lh'));
+    // Jenis berbeda -> masing-masing punya pengingat sendiri.
+    assert.deepEqual([...svc.timers.keys()].sort(), ['guild1:user1:battle', 'guild1:user1:pray']);
+    assert.equal(svc.reminders.get('guild1:user1:pray').action, 'pray');
+    assert.equal(svc.reminders.get('guild1:user1:battle').action, 'hunt');
+    for (const t of svc.timers.values()) clearTimeout(t);
+  });
+
+  it('does not let a second kind reset the first kind timer', async () => {
+    const svc = require('../src/services/lucyReminder');
+    await svc.handleMessage(makeMessage('lpray'));
+    const prayBefore = { ...svc.reminders.get('guild1:user1:pray') };
+    await new Promise(r => setTimeout(r, 25));
+    await svc.handleMessage(makeMessage('lpray'));
+    const prayAfter = svc.reminders.get('guild1:user1:pray');
+    assert.equal(prayAfter.dueAt, prayBefore.dueAt, 'pray berulang tidak menggeser waktunya');
     for (const t of svc.timers.values()) clearTimeout(t);
   });
 
@@ -439,7 +555,7 @@ describe('lucy reminder panel', () => {
     const msg = makeMessage('d lreminder');
     assert.equal(await svc.handleMessage(msg), true);
     const payload = msg.replies[0];
-    assert.equal(payload.components.length, 4, 'pray, curse, battle/hunt, lucy');
+    assert.equal(payload.components.length, 3, 'pray/curse, battle/hunt, lucy');
   });
 });
 

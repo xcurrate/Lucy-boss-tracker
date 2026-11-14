@@ -1,15 +1,18 @@
 // Reminder aksi Lucy + penghitung/leaderboard per jenis.
 //
-// Tiga jenis reminder, masing-masing punya perintah prefix sendiri dan durasi
-// tunggu sendiri:
+// Tiga jenis reminder, masing-masing dengan durasi tunggu sendiri:
 //   1. pray / curse  -> 5 menit
 //   2. battle / hunt -> 15 detik
 //   3. say lucy      -> 10 detik
 //
+// Beberapa aksi berbagi satu jenis (pray/curse dan battle/hunt) karena durasinya
+// sama; yang menyatu hanya pengingat dan cooldown-nya, sementara penghitungan
+// tetap per aksi sehingga leaderboard tetap terpisah.
+//
 // Cara kerja: saat anggota memakai aksi (mis. menulis `lucy pray`), bot mencatat
-// aksi itu, memberi balasan, lalu memasang pengingat. Setelah durasi habis, bot
-// mengirim pesan pengingat dan mengarahkan anggota ke kotak interaksi (tombol)
-// untuk memilih: tag, reply, atau tanpa keduanya.
+// aksi itu, lalu memasang pengingat. Setelah durasi habis, bot mengirim pesan
+// pengingat. Anggota mengatur cara ping (tag/reply/tanpa keduanya) lewat kotak
+// interaksi `lreminder`.
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const { getGuildSettings, updateGuildSettings, DEFAULT_PREFIX, matchPrefix } = require('../utils/storage');
 const store = require('../utils/lucyActionStorage');
@@ -27,15 +30,14 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 // digabung jadi satu jenis karena keduanya punya durasi tunggu sama (15 detik),
 // jadi satu tombol mengatur dua-duanya.
 const KINDS = {
-  pray: { label: 'Lucy Pray', waitMs: 5 * 60 * 1000, emoji: '🙏' },
-  curse: { label: 'Lucy Curse', waitMs: 5 * 60 * 1000, emoji: '💀' },
+  pray: { label: 'Lucy Pray/Curse', waitMs: 5 * 60 * 1000, emoji: '🙏' },
   battle: { label: 'Lucy Battle/Hunt', waitMs: 15 * 1000, emoji: '⚔️' },
   lucy: { label: 'Lucy', waitMs: 10 * 1000, emoji: '🐉' }
 };
 
-// Aksi yang tercatat (dari lucyTrigger) -> jenis reminder. battle dan hunt tetap
-// tercatat TERPISAH di penghitung/leaderboard, hanya pengingatnya yang sama.
-const TRIGGER_KIND_TO_REMINDER = { pray: 'pray', curse: 'curse', battle: 'battle', hunt: 'battle' };
+// Aksi yang tercatat (dari lucyTrigger) -> jenis reminder. Aksi tetap tercatat
+// TERPISAH di penghitung/leaderboard; hanya pengingatnya yang berbagi jenis.
+const TRIGGER_KIND_TO_REMINDER = { pray: 'pray', curse: 'pray', battle: 'battle', hunt: 'battle' };
 // Label per AKSI, dipakai di teks pengingat. Jenis reminder battle dipakai
 // bersama battle/hunt, jadi tanpa ini `lh` akan tampil sebagai "Battle/Hunt".
 const ACTION_LABELS = { pray: 'Lucy Pray', curse: 'Lucy Curse', battle: 'Lucy Battle', hunt: 'Lucy Hunt' };
@@ -56,6 +58,15 @@ const DEFAULT_REPLIES = {
   battle: '⚔️ **{user}** menantang Lucy bertarung / berburu!',
   lucy: '🐉 Lucy terdeteksi dari **{user}**.'
 };
+
+// Balasan kustom dipilih per AKSI bila ada (mis. `curse`), kalau tidak ada pakai
+// balasan JENIS reminder-nya (mis. `pray` untuk pray/curse). Ini supaya doa dan
+// kutukan tetap bisa dibedakan teksnya walau jenis reminder-nya sama.
+function replyKindFor(guildId, kind, action) {
+  const replies = guildConfig(guildId).replies || {};
+  if (action && action !== kind && replies[action]) return action;
+  return kind;
+}
 
 // Ping mode yang valid. `none` = tanpa tag dan tanpa reply.
 const PING_MODES = { tag: 'Tag', reply: 'Reply', both: 'Tag + Reply', none: 'Tanpa keduanya' };
@@ -109,8 +120,8 @@ const CATEGORIES = {
   curse: { label: 'Lucy Curse', groups: ['curse'] },
   battle: { label: 'Lucy Battle/Hunt', groups: ['battle'] },
   hunt: { label: 'Lucy Battle/Hunt', groups: ['battle'] },
-  lucy: { label: 'Lucy', groups: [] },
-  all: { label: 'Semua Aksi (Pray/Curse/Battle/Lucy)', groups: [] }
+  lucy: { label: 'Lucy', groups: [], counter: true },
+  all: { label: 'Semua Aksi (Pray/Curse/Battle/Lucy)', groups: [], counter: true }
 };
 // Alias kategori -> kategori kanonik.
 const CATEGORY_ALIASES = {
@@ -130,6 +141,16 @@ function actionsFor(category) {
 // Mendukung placeholder {user}, {mention}, {kind}, {durasi}, {count}.
 function renderTemplate(template, vars) {
   return String(template).replace(/\{(user|mention|kind|durasi|count)\}/g, (_, key) => (vars[key] ?? ''));
+}
+
+// Jumlah aksi seorang anggota pada satu hari. `lucy` dibaca dari penghitung
+// mention Lucy (tabel berbeda), sisanya dari penghitung aksi.
+function actionCount(guildId, userId, day, action) {
+  if (action === 'lucy') {
+    const days = lucyStore.getGuildData(guildId)?.users?.[userId]?.days || {};
+    return Number(days[day]) || 0;
+  }
+  return store.userTotal(guildId, userId, day, day, [action]);
 }
 
 function replyTemplate(guildId, kind) {
@@ -224,7 +245,8 @@ async function deliverReminder(client, reminder) {
   const pref = store.getPref(userId, kind, DEFAULT_PREF);
   if (!pref.enabled) return;
   const info = KINDS[kind];
-  const label = ACTION_LABELS[reminder.action] || info.label;
+  const action = reminder.action || kind;
+  const label = ACTION_LABELS[action] || info.label;
   let channel = null;
   try {
     channel = await client.channels.fetch(channelId);
@@ -233,12 +255,13 @@ async function deliverReminder(client, reminder) {
   }
   if (!channel?.isTextBased?.()) return;
 
-  // {count} = jumlah aksi HARI INI untuk jenis ini (kategori battle mencakup
-  // battle + hunt), supaya balasan bisa menampilkan progres.
+  // {count} = jumlah HARI INI untuk AKSI pemicunya (bukan seluruh jenis), supaya
+  // doa tidak tercampur angka kutukan, dan hunt tidak tercampur angka battle.
+  // Reminder "lucy" membacanya dari penghitung mention Lucy.
   const today = dayKey();
-  const count = store.userTotal(guildId, userId, today, today, actionsFor(kind)).toLocaleString('id-ID');
+  const count = actionCount(guildId, userId, today, action).toLocaleString('id-ID');
 
-  const content = renderTemplate(replyTemplate(guildId, kind), {
+  const content = renderTemplate(replyTemplate(guildId, replyKindFor(guildId, kind, action)), {
     user: reminder.name || 'Pemain',
     mention: `<@${userId}>`,
     kind: label,
@@ -438,7 +461,7 @@ function helpText(prefix) {
     `\`${prefix} lucyprefix add|remove|reset <prefix...>\` — kelola prefix tambahan (admin; \`lucy\` selalu aktif)`,
     `\`${prefix} lreminder\` — kotak interaksi: on/off & cara ping (tag/reply/tanpa keduanya)`,
     'Pengingat **OFF** secara default — nyalakan sendiri lewat tombol.',
-    'Jenis: pray (5 menit), curse (5 menit), battle/hunt (15 detik, satu tombol), lucy (10 detik).',
+    'Jenis: pray/curse (5 menit, satu tombol), battle/hunt (15 detik, satu tombol), lucy (10 detik).',
     `\`${prefix} lreminder reply <jenis> <teks>\` — balasan kustom (khusus premium)`,
     'Pengaturan reminder berlaku **global di semua server**.',
     '',
@@ -624,12 +647,18 @@ async function handleReminderCommand(message, prefix, parts) {
       return true;
     }
     const kind = (parts[2] || '').toLowerCase();
-    if (!KINDS[kind]) { await message.reply(`Jenis tidak dikenal. Pilih: ${Object.keys(KINDS).join(', ')} (battle sudah mencakup hunt).`); return true; }
+    // Terima nama JENIS reminder (pray, battle, lucy) maupun nama AKSI (curse,
+    // hunt), karena pray/curse dan battle/hunt berbagi jenis tapi bisa dibedakan.
+    const validKinds = [...Object.keys(KINDS), ...Object.keys(ACTION_LABELS)];
+    if (!validKinds.includes(kind)) {
+      await message.reply(`Jenis tidak dikenal. Pilih: ${[...new Set(validKinds)].join(', ')}.`);
+      return true;
+    }
     const value = parts.slice(3).join(' ').trim();
-    if (!value) { await message.reply(`Format: \`${prefix} lreminder reply ${kind} <teks>\`. Placeholder: {user}, {mention}, {kind}, {durasi}`); return true; }
+    if (!value) { await message.reply(`Format: \`${prefix} lreminder reply ${kind} <teks>\`. Placeholder: {user}, {mention}, {kind}, {durasi}, {count}`); return true; }
     if (value.length > 1500) { await message.reply('Balasan maksimal 1500 karakter.'); return true; }
     updateGuildSettings(message.guildId, s => ({ ...s, lucyReminder: { ...s.lucyReminder, replies: { ...(s.lucyReminder?.replies || {}), [kind]: value } } }));
-    await message.reply(`Balasan kustom ${KINDS[kind].label} disimpan.`);
+    await message.reply(`Balasan kustom ${ACTION_LABELS[kind] || KINDS[kind].label} disimpan.`);
     return true;
   }
 

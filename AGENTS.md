@@ -137,9 +137,10 @@
   `test/dashboardFamily100.test.js` (API settings + leaderboard).
 
 ## Pengingat Aksi Lucy (`src/services/lucyReminder.js`)
-- Tiga jenis pengingat: pray (5 menit), curse (5 menit), battle (15 detik), lucy (10 detik).
-  Definisi ada di `KINDS`. **battle dan hunt berbagi satu jenis** karena durasinya sama;
-  `TRIGGER_KIND_TO_REMINDER` memetakan aksi (dari lucyTrigger) ke jenis reminder.
+- Tiga jenis pengingat: pray (5 menit, dipakai pray+curse), battle (15 detik, dipakai
+  battle+hunt), lucy (10 detik). Definisi ada di `KINDS`. `TRIGGER_KIND_TO_REMINDER`
+  memetakan AKSI (dari lucyTrigger) ke jenis reminder. Jenis = satuan pengingat dan
+  cooldown; penghitungan dan leaderboard tetap per AKSI.
 - **Pengingat OFF secara default** (`DEFAULT_PREF = { enabled: false, pingMode: 'tag' }`).
   Jangan memakai `{ enabled: true }` sebagai fallback di tempat lain — semua pembacaan
   preferensi harus memakai `DEFAULT_PREF`, termasuk `store.getPref(userId, kind, DEFAULT_PREF)`.
@@ -152,7 +153,13 @@
   Jangan menambahkan parameter `replace` kembali. `reminders` (Map sejajar `timers`)
   menyimpan objek pengingat + `action` pemicu supaya bisa dibaca dan diuji.
 - `ACTION_LABELS` memetakan AKSI -> nama tampilan, dipakai untuk `{kind}` di teks
-  pengingat, supaya `lh` tampil "Lucy Hunt" walau jenis reminder-nya `battle`.
+  pengingat, supaya `lh` tampil "Lucy Hunt" dan `lcurse` tampil "Lucy Curse" walau
+  jenis reminder-nya `battle`/`pray`.
+- Balasan kustom dicari per AKSI dulu (`replies.curse`), baru per JENIS
+  (`replies.pray`). Lihat `replyKindFor`. `{count}` diisi `actionCount(...)` = jumlah
+  AKSI pemicu hari itu (bukan seluruh jenis). Reminder `lucy` membacanya dari
+  `lucyCounterStorage` (`getGuildData().users[].days[day]`), bukan lucyActionStorage —
+  jangan pakai `actionsFor('lucy')` karena hasilnya selalu kosong.
 - **Aksi user TIDAK dibalas.** Jangan menambahkan `message.reply(...)` publik di
   `handleAction`: balasannya memakai teks yang sama dengan teks pengingat, sehingga
   satu aksi terlihat menghasilkan dua pesan. Pesan pemicu juga JANGAN dihapus, karena

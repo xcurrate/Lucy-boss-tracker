@@ -60,19 +60,22 @@ Aksi Lucy ditulis `<prefix-lucy> <aksi>`, dengan pengingat otomatis setelah dura
 
 | Jenis pengingat | Bentuk aksi yang dikenali | Pengingat |
 |---|---|---|
-| Lucy Pray | `lucy pray`, `lpray` | 5 menit |
-| Lucy Curse | `lucy curse`, `lcurse` | 5 menit |
+| Lucy Pray/Curse | `lucy pray`, `lpray`, `lucy curse`, `lcurse` | 5 menit |
 | Lucy Battle/Hunt | `lucy battle`, `lucy fight`, `lucy war`, `lbattle`, `lfight`, `lb`, `lucy hunt`, `lucy catch`, `lhunt`, `lh` | 15 detik |
 | Lucy | pesan yang memuat kata "lucy" | 10 detik |
 
 **Semua pengingat OFF secara default.** Anggota menyalakannya sendiri lewat
-`d lreminder`. battle dan hunt berbagi satu pengingat (durasi sama, 15 detik),
-tapi tetap dihitung terpisah untuk leaderboard.
+`d lreminder`.
 
-**Pengingat pertama yang menang.** Kalau kamu menulis `lh` lalu `lb` (atau
-sebaliknya), yang dihitung adalah aksi yang **lebih dulu**: waktunya tidak
-digeser, dan teks pengingatnya memakai aksi pertama itu. Jadi `lh` lalu `lb`
-tetap dihitung dari `lh`.
+Aksi yang durasinya sama berbagi satu pengingat: pray+curse (5 menit) dan
+battle+hunt (15 detik). Yang menyatu hanya pengingat dan cooldown-nya, sementara
+**penghitungan tetap per aksi** — jadi `d llb pray` dan `d llb curse` tetap
+menunjukkan angka masing-masing, begitu juga battle dan hunt.
+
+**Pengingat pertama yang menang.** Kalau kamu menulis `lh` lalu `lb`, atau
+`lpray` lalu `lcurse`, yang dihitung adalah aksi yang **lebih dulu**: waktunya
+tidak digeser, dan teks pengingatnya memakai aksi pertama itu. Jadi `lh` lalu
+`lb` tetap dihitung dari `lh`, dan `lpray` lalu `lcurse` tetap dari `lpray`.
 
 **Bot tidak membalas aksi.** Aksi cukup dipantau; pengingat dijadwalkan dari
 pesanmu dan dikirim setelah durasi tunggu habis. Jadi satu aksi = satu pesan
