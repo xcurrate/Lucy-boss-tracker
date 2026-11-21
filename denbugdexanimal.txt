@@ -1,0 +1,113 @@
+[
+  {
+    "capturedAt": "2026-11-06T10:40:03.814Z",
+    "messageType": "components",
+    "message": {
+      "id": "1568213370740674642",
+      "content": "",
+      "author": {
+        "id": "1438615298012872817",
+        "bot": true,
+        "system": false,
+        "flags": 65536,
+        "username": "Lucy",
+        "globalName": null,
+        "discriminator": "3614",
+        "avatar": "fbb822548bfc77dbd5412f8d60c907b0",
+        "avatarDecorationData": null,
+        "primaryGuild": null,
+        "collectibles": null,
+        "createdTimestamp": 1763063015226,
+        "defaultAvatarURL": "https://cdn.discordapp.com/embed/avatars/4.png",
+        "tag": "Lucy#3614",
+        "avatarURL": "https://cdn.discordapp.com/avatars/1438615298012872817/fbb822548bfc77dbd5412f8d60c907b0.webp",
+        "displayAvatarURL": "https://cdn.discordapp.com/avatars/1438615298012872817/fbb822548bfc77dbd5412f8d60c907b0.webp",
+        "guildTagBadgeURL": null
+      },
+      "channelId": "1554454351957721099",
+      "guildId": "1554454222416646145",
+      "embeds": [],
+      "components": [
+        {
+          "type": 17,
+          "components": [
+            {
+              "type": 9,
+              "components": [
+                {
+                  "type": 10,
+                  "content": "## <a:lawliet:1557672128059539466> lawliet\n*Requested by <@1515658233174294569>*"
+                }
+              ],
+              "accessory": {
+                "type": 11,
+                "media": {
+                  "url": "https://cdn.discordapp.com/emojis/1557672128059539466.gif",
+                  "proxy_url": "https://images-ext-1.discordapp.net/external/B28j3BNg3Bo7Oil2mm41s-1z2YkpBmGchBEiOlXGjfc/https/cdn.discordapp.com/emojis/1557672128059539466.gif",
+                  "loading_state": 1,
+                  "id": "1568213370740674643"
+                },
+                "description": "lawliet",
+                "spoiler": false
+              }
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "- **Informasi animal:**\n  - **Nickname:** 'DM ME'\n  - **Jumlah:** 0/1\n  - **Rank:** <a:cpatreon:1541932219772313661> cpatreon\n  - **Alias:** lawliet, lawliet\n  - **Points:** 25000\n  - **Sell:** ???\n  - **Sacrifice:** 25000 Essence | 1 killed"
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "## <:hp:1541928276165922906> `2` <:att:1541928417069375498> `0` <:pr:1541928475454079077> `1`\n## <:wp:1523723591194120354> `3` <:mg:1523723618016563210> `14` <:mr:1523723644243804281> `2`"
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "- **Role**\n  * <:balanced:1551271654712152254> Hybrid — Balanced"
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "- **Rekomendasi Weapon**\n  * <:fstithe:1550633888559145021> <:fascept:1541851395240497164> <:fbgaze:1550294886463438896> + more"
+            },
+            {
+              "type": 14,
+              "spacing": 1,
+              "divider": true
+            },
+            {
+              "type": 10,
+              "content": "-# Kelangkaan: <a:cpatreon:1541932219772313661> cpatreon • 8 total ditangkap"
+            }
+          ],
+          "spoiler": false
+        }
+      ],
+      "attachments": []
+
+
+
+
+
+
+      note: maksudku aku nanti mau buat fitur dex animal di bot discord ku, cara memperbarui hewan yang belum masuk ke database adalah menangkap pesan pesan yang seperti tadi yang aku kirim dalam bentuk raw json dari bot yang sudah ku atur lalu menyimpan nya ke database bot ku, lalu juga menyediakan command prefix khusus untuk menampilkan dex hewannya, misal [prefix] dex/d <nama hewan atau bisa query>, nanti bisa deh keluar informasinya dari bot discord ku
+    }
+  }
+]

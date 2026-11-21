@@ -1,0 +1,601 @@
+# MASTER PROMPT — DRAGNEEL CUSTOM REMINDER SYSTEM
+
+## 0. ROLE, OBJECTIVE, AND IMPLEMENTATION RULES
+
+You are a senior Node.js Discord bot engineer. Extend the existing Dragneel Discord bot with a complete Custom Reminder system and server-level reminder message settings.
+
+The goal is to reproduce the useful Custom Reminder and inventory capabilities shown in the supplied Reaction Bot references, while preserving Dragneel's existing architecture and behavior.
+
+This prompt is the complete implementation specification. Follow every applicable requirement. If the repository's actual implementation differs from an assumption in this prompt, inspect the code first, preserve working behavior, and report the discrepancy rather than inventing APIs or silently removing functionality.
+
+Mandatory workflow:
+1. Inspect the repository, entry points, command framework, event handlers, storage/database, permission helpers, prefix resolver, reminder engine, embed utilities, media utilities, and tests before editing.
+2. Identify the exact existing integration points and produce a concise implementation plan.
+3. Implement incrementally using existing conventions. Avoid unrelated refactoring or rewriting whole modules.
+4. Preserve existing bot features and backward compatibility.
+5. Add or update tests, run the relevant test suite, and report actual results. Never claim a test or feature succeeded unless it was actually run and verified.
+6. If a requirement cannot be implemented safely because a necessary existing hook or API is absent, explain the limitation and do not fabricate behavior.
+
+## 1. EXISTING DRAGNEEL PROJECT CONTEXT
+
+- Bot name: Dragneel.
+- Current default command prefix: `d`.
+- Prefix is configurable independently for each Discord server (guild).
+- All new commands MUST use the existing per-guild dynamic prefix resolver. Never hardcode `d` in command parsing or help output.
+- Dragneel already has an existing Developer ID authorization system. Reuse it; do not create a second developer ID system or duplicate developer configuration.
+- Dragneel already provides reminder functionality for the relevant existing actions, including Pray, Curse, Hunt, and Battle. Preserve the actual existing Lucy-related behavior after inspecting the repository.
+- Dragneel's current reminder engine, action detection, triggers, timing, cooldowns, and delivery flow must be reused. Do not build a second reminder scheduler or duplicate activity listeners.
+- Existing media-link support includes Tenor and Klipy, according to the current project context. Inspect the implementation and preserve both integrations.
+- The initial Custom Reminder distribution method is manual developer distribution to giveaway winners. Giveaway winner selection happens outside this module. The developer manually grants the reminder to the winner.
+- Do not implement voting, supporter tiers, subscriptions, payment systems, or automatic giveaway integration in this version.
+
+## 2. CORE ARCHITECTURE: EXISTING ENGINE, CONFIGURATION LAYERS
+
+Dragneel already has reminder delivery for the relevant actions. Extend the message/configuration resolution layer of that existing engine; do not rebuild the engine.
+
+Keep these configuration scopes separate:
+
+A. Built-in Dragneel default messages — the original fallback behavior shipped with the bot.
+B. Per-guild Server Default Reminder settings — configured by that server's administrators and applied to members without an applicable active Custom Reminder.
+C. Per-user Owned Custom Reminders — personal reminders obtained by redeeming a developer-issued claim.
+D. Global Developer Templates — source templates used to issue Custom Reminders.
+E. Pending Developer Awards / Claims — one-time grants assigned to specific recipients before redemption.
+
+Never store personal Custom Reminder edits in server settings. Never store server settings in global templates. Never mutate a global template when a user edits an owned copy. Redeeming a claim must create an independent owned instance initialized from its template.
+
+## 3. REMINDER CATEGORIES AND FORMATS
+
+The Custom Reminder system must support exactly these three predefined categories in this version:
+
+1. `PRAY_CURSE` — Pray / Curse Reminder.
+2. `HUNT_BATTLE` — Hunt / Battle Reminder.
+3. `LUCY` — Lucy Reminder.
+
+Each category supports two distinct message formats:
+
+- `NORMAL`: ordinary Discord message content.
+- `EMBED`: a configurable Discord rich embed.
+
+The six supported category-format combinations are:
+- Pray/Curse Normal.
+- Pray/Curse Embed.
+- Hunt/Battle Normal.
+- Hunt/Battle Embed.
+- Lucy Normal.
+- Lucy Embed.
+
+Important distinctions:
+- Category describes WHAT the reminder is associated with.
+- Format describes HOW the reminder is displayed.
+- Store category and format as separate properties.
+- Do not model Normal and Embed as separate categories.
+- Do not hardcode category-specific message content in the runtime engine.
+- Developers must be able to create templates for all six combinations.
+- A user may own multiple reminders, including multiple reminders of the same category and different formats. Each owned reminder has its own ID and status.
+- Preserve category and format when a reminder is awarded, redeemed, edited, shared, or transferred.
+- Do not add a fourth `DAILY` category merely because Daily Reminder appeared as an illustrative inventory label in an earlier example. The supported categories for this version are the three listed above. Keep the data model reasonably extensible without exposing unsupported categories.
+
+### 3.1 Lucy semantics — important
+
+`LUCY` means **Say Lucy**: the reminder sends/says the configured Lucy content.
+
+It does NOT mean a generic reminder for Lucy activity, Lucy hunt, Lucy battle, or an assumed Lucy event. Do not invent Lucy event hooks. Inspect the existing Dragneel Lucy-related command/action and reminder behavior, then connect the Say Lucy reminder to the real existing behavior where applicable. If the repository does not expose a suitable trigger, report that and do not fabricate one.
+
+## 4. SERVER DEFAULT REMINDER SETTINGS — EXISTING `s` SETTINGS NAMESPACE
+
+Server default reminder messages are configured through Dragneel's existing server Settings namespace, whose subcommand is `s`.
+
+**Do not create a separate `d r server` namespace or redundant server-reminder command group.** The `r` namespace is for personal Custom Reminder commands; the existing `s` namespace is for server settings.
+
+Use this command convention, with the actual guild prefix resolved dynamically:
+
+- `<PREFIX> s pray set text <MESSAGE>`
+- `<PREFIX> s pray reset`
+- `<PREFIX> s curse set text <MESSAGE>`
+- `<PREFIX> s curse reset`
+- `<PREFIX> s hunt set text <MESSAGE>`
+- `<PREFIX> s hunt reset`
+- `<PREFIX> s battle set text <MESSAGE>`
+- `<PREFIX> s battle reset`
+- `<PREFIX> s lucy set text <MESSAGE>`
+- `<PREFIX> s lucy reset`
+
+These examples express the intended command structure. Inspect the existing Settings command registration and preserve the real category names, aliases, argument parsing, help conventions, and existing embed-setting syntax. Do not break existing commands.
+
+The combined Custom Reminder categories do not require combined server-setting keys. Preserve independent server settings for individual actions when the existing bot exposes them. For example, `s hunt` and `s battle` may have separate server-default message settings even though both belong to the `HUNT_BATTLE` Custom Reminder category. Likewise, Pray and Curse may retain separate settings. Map each existing action to the appropriate Custom Reminder category without merging settings that are currently independent.
+
+For EMBED server settings, reuse an existing settings-command pattern if one exists. Do not invent an incompatible command syntax. If server defaults currently support only text, preserve that behavior and report whether server-default embeds are supported; Custom Reminder embeds remain required.
+
+### 4.1 Server-settings permissions
+
+- Only the Discord server owner or authorized server administrators may modify that guild's server-default reminder settings.
+- Check permissions in the target guild and use Dragneel's existing server permission conventions.
+- If the repository has no suitable convention, require Discord Administrator permission by default; the guild owner must also be allowed.
+- Do not grant server-settings access merely because someone is a Dragneel developer or has a Developer ID.
+- Reject unauthorized attempts with a clear message such as: `Only server admins & owners can change this setting.`
+- Ordinary users may view help or public settings information if permitted by existing bot conventions, but cannot modify settings.
+- Settings are isolated per guild and persist after restarts.
+- Reset restores the original built-in Dragneel default for the selected action/category. It must not delete or modify any user's owned Custom Reminder.
+- A change in one guild must never affect another guild.
+
+## 5. CUSTOM REMINDER RESOLUTION AND FALLBACK
+
+When the existing Dragneel reminder engine is about to deliver a reminder, resolve the message configuration for the target guild, user, and actual action.
+
+Required precedence:
+1. If the user owns an applicable, valid, active Custom Reminder for the relevant category/action, use that user's personalized configuration.
+2. If the applicable Custom Reminder is disabled, unavailable, or otherwise not eligible, fall back to that guild's Server Default Reminder configuration.
+3. If the guild has no custom server setting for that action, preserve the original built-in Dragneel default behavior.
+
+The fallback behavior is FINAL: **when a user disables a Custom Reminder, that user automatically returns to the Server Default Reminder** for the corresponding category/action. No additional command or new redemption is required.
+
+Additional rules:
+- The override is personal. It must not change messages delivered to other members.
+- An admin changing server defaults must not overwrite a member's Custom Reminder.
+- Editing a Custom Reminder must never modify server defaults.
+- The fallback is category/action-specific. Disabling Hunt/Battle must not disable Pray/Curse or Lucy reminders.
+- Do not let a reminder for one category override an unrelated category.
+- Resolve ownership using Discord user IDs and the relevant guild context where applicable.
+- Preserve existing reminder triggers, timing, cooldowns, grinding behavior, and delivery semantics.
+- Prevent duplicate reminder delivery and respect Discord rate limits.
+- If users can own multiple reminders in the same category, preserve all of them in inventory. Inspect existing intended runtime semantics and implement deterministic selection/delivery without accidental duplicate spam. Do not silently discard or merge owned reminders. Document the resulting behavior.
+
+## 6. DEVELOPER TEMPLATES AND MANUAL GIVEAWAY DISTRIBUTION
+
+Distribution is controlled by the existing Dragneel Developer ID authorization system.
+
+The giveaway winner is selected manually outside this feature. A developer then issues the reminder to the winner. Do not build automatic giveaway detection or integration.
+
+Developer-only operations should support:
+- `<PREFIX> r create` — create a reminder template.
+- `<PREFIX> r templates` — list available templates.
+- `<PREFIX> r give @USER <TEMPLATE_ID>` — award a template to a specific user.
+- `<PREFIX> r awards` — inspect issued awards and their statuses.
+- `<PREFIX> r revoke <CLAIM_ID>` — revoke an unredeemed pending claim.
+
+Inspect existing command conventions and adapt syntax only when necessary to avoid conflicts. Authorization must use the existing Developer ID system.
+
+### 6.1 Award workflow
+
+1. The developer determines the giveaway winner outside this module.
+2. The developer selects a template and issues it to the winner.
+3. Verify developer authorization using the existing Developer ID implementation.
+4. Validate recipient and template.
+5. Create a unique pending claim assigned to that exact Discord user ID.
+6. Record issuing developer, template, source/reason (for example, giveaway), creation time, and optional expiry.
+7. Send the claim ID and redemption instructions to the recipient via DM.
+8. If DM delivery fails, inform the developer and display the claim ID so it can be delivered manually.
+9. The assigned winner redeems with `<PREFIX> r redeem <CLAIM_ID>`.
+10. Verify recipient ownership, claim validity, expiry, and status.
+11. Create a new owned reminder with its own unique reminder ID, initialized from the template.
+12. Mark the claim redeemed atomically.
+13. Prevent duplicate redemption, unauthorized redemption, and duplicate processing.
+
+Keep these identifiers strictly distinct:
+- Template ID: identifies a global developer template.
+- Claim ID: identifies a pending award assigned to a recipient.
+- Owned Reminder ID: identifies the reminder in a user's inventory.
+
+The inventory must list owned reminder IDs, never template IDs or pending claim IDs.
+
+## 7. USER COMMANDS FOR OWNED CUSTOM REMINDERS
+
+All commands use the existing dynamic per-guild prefix resolver and the existing `r` command namespace where compatible.
+
+### 7.1 Inventory and inspection
+
+- `<PREFIX> r inventory` — list all reminders owned by the invoking user.
+- `<PREFIX> r view <REMINDER_ID>` — preview the reminder message/embed.
+- `<PREFIX> r info <REMINDER_ID>` — show reminder details.
+- `<PREFIX> r active` — list active owned reminders.
+- `<PREFIX> r redeem <CLAIM_ID>` — redeem an assigned claim.
+
+Inventory must display, at minimum:
+- Owned Reminder ID.
+- Display name.
+- Category.
+- Format (Normal or Embed).
+- Active status.
+- Shareable status.
+
+Use Discord embeds consistent with Dragneel's existing design conventions. Show a useful empty-inventory response when the user owns no reminders. Never expose another user's private inventory unless an explicitly authorized developer/admin operation requests it.
+
+### 7.2 Customization
+
+- `<PREFIX> r update <REMINDER_ID> <MESSAGE>` — update a Normal message.
+- `<PREFIX> r embed <REMINDER_ID> <JSON>` — configure an Embed reminder using validated JSON.
+- `<PREFIX> r setcollectible <REMINDER_ID> <COLLECTIBLE>` — set the collectible type, if compatible with the existing collectible system.
+- `<PREFIX> r reset <REMINDER_ID>` — restore that owned reminder's template defaults, with confirmation.
+
+Customization must not change the reminder ID, category, format, owner, source template, server defaults, or another reminder.
+
+### 7.3 Activation
+
+- `<PREFIX> r enable <REMINDER_ID>` — activate one owned reminder.
+- `<PREFIX> r disable <REMINDER_ID>` — deactivate one owned reminder.
+
+Activation is independent for each owned reminder. An inactive reminder remains editable unless revoked or otherwise restricted. Active status and shareable permission are separate properties.
+
+When a Custom Reminder is disabled, the runtime automatically uses the corresponding Server Default Reminder, then the built-in default if no server override exists.
+
+### 7.4 Sharing and transfer
+
+- `<PREFIX> r send @USER <REMINDER_ID>` — gift/transfer a reminder, following the existing intended ownership model.
+- Require explicit confirmation.
+- Only reminders marked shareable may be transferred.
+- Record transfer history.
+- On successful transfer, invalidate the previous owner's permissions and update ownership atomically.
+- Do not confuse sharing a preview/message with transferring ownership. If the existing design supports both, keep them as separate operations and document them.
+- Validate the new owner and all ownership relationships.
+
+### 7.5 Utilities and help
+
+- `<PREFIX> r tenor <URL>` — resolve or validate a Tenor URL using existing Dragneel support.
+- Support Klipy URLs using existing Dragneel support as well; do not remove or bypass the existing Klipy integration.
+- `<PREFIX> r help` — display user-facing documentation.
+
+## 8. CUSTOM REMINDER INVENTORY REQUIREMENTS
+
+Implement a user-owned Custom Reminder Inventory inspired by the supplied Reaction Bot screenshot.
+
+1. Each user can own multiple reminders simultaneously.
+2. Each reminder must have a unique, human-readable ID, preferably 5-character alphanumeric IDs using uppercase letters and digits. Ensure collision checking and uniqueness.
+3. Each reminder must have a display name/category, such as Pray/Curse Reminder, Hunt/Battle Reminder, or Lucy Reminder.
+4. Provide `<PREFIX> r inventory` and display all reminders owned by the invoking user, including ID, name, category, format, and status.
+5. Support independent activation and deactivation for every reminder.
+6. Display a status legend representing Active, Shareable, and Not active but updatable. Use clear labels/icons consistent with Dragneel's design.
+7. Active status and shareable permission are separate properties. A reminder can be active without being shareable.
+8. Inactive reminders remain editable unless revoked or otherwise restricted.
+9. Support multiple reminders of the same category if they have different IDs.
+10. Reminder IDs remain stable when the user edits message, embed, or collectible settings.
+11. Inventory is persistent and survives bot restarts.
+12. Add ownership validation to every inventory action.
+13. Show a useful empty-inventory response.
+14. Use existing Dragneel embed design conventions.
+15. Never expose another user's private inventory without an explicitly authorized developer/admin operation.
+16. Preserve the distinction between template IDs, pending claim IDs, and owned reminder IDs.
+
+Example inventory presentation:
+
+Dragneel's Custom Reminders
+
+✅ 9BZMS — Pray/Curse Reminder (Normal)
+🎉 AW5YT — Hunt/Battle Reminder (Embed)
+❌ 7KLM2 — Lucy Reminder (Normal)
+
+Legend:
+- Active: reminder is enabled.
+- Shareable: reminder may be transferred/shared according to the ownership rules.
+- Not active, but updatable: reminder is disabled but can still be edited.
+
+Do not imply that every active reminder is shareable. Show the two properties independently.
+
+## 9. MESSAGE VARIABLES
+
+Implement a centralized variable registry and interpolation engine. Support the variables below, based on the supplied Reaction Bot reference:
+
+USER:
+- `{USER}` — user mention or username, depending on the existing/configurable setting.
+- `{USER_ID}` — Discord user ID.
+- `{USER_MENTION}` — user mention.
+- `{USER_NAME}` — username.
+- `{USER_DISPLAYNAME}` — display name.
+- `{USER_NICKNAME}` — user's server nickname.
+- `{USER_AVATAR}` — user avatar URL.
+- `{USER_SERVERAVATAR}` — user server-specific avatar URL.
+
+GOAL:
+- `{GOAL}` — goal, with formatting.
+- `{GOAL_PROGRESS}` — goal progress.
+- `{GOAL_PROGRESS_INVERTED}` — inverted goal progress.
+- `{GOAL_END}` — goal end.
+
+RANDOM:
+- `{EMOJI}` — random emoji.
+- `{FLAG}` — random flag.
+- `{CAT}` — random cat.
+- `{DOG}` — random dog.
+
+TIME / DAILY RESET:
+- `{DAILY}` — timestamp for today's daily reset.
+- `{DAILY_TOMORROW}` — timestamp for tomorrow's daily reset.
+- `{DAILY_YESTERDAY}` — timestamp for yesterday's daily reset.
+- `{TIME}` — current timestamp.
+- Discord relative-time example: `<t:{DAILY_TOMORROW}:R>`.
+
+SERVER:
+- `{SERVER_NAME}` — server name.
+- `{SERVER_ICON}` — server icon URL.
+
+Implementation requirements:
+- Resolve variables using the correct user and guild context.
+- Reuse actual Dragneel goal, progress, and daily-reset implementations where available.
+- Never invent goal values, reset schedules, or user/server metadata.
+- Gracefully handle unavailable data.
+- Prevent recursive interpolation.
+- Support variables in Normal message content and supported Embed fields.
+- Avoid unnecessary repeated randomization within one rendered message; resolve each variable consistently for that render.
+- Add tests for every variable.
+
+## 10. EMBED SYSTEM
+
+Allow users to customize Embed reminders using validated JSON.
+
+Support Discord embed properties where supported by the existing Discord library/API:
+- title
+- description
+- color
+- URL
+- timestamp
+- author
+- footer
+- thumbnail
+- image
+- fields
+
+Requirements:
+- Validate JSON syntax and Discord embed limits before saving and before sending.
+- Return useful errors for malformed JSON or unsupported properties.
+- Sanitize mentions and enforce allowed mention permissions.
+- Prevent arbitrary code execution and unsafe external actions.
+- Reuse existing Dragneel embed utilities.
+- Support the documented variables in compatible embed text fields.
+- Preserve Tenor and Klipy compatibility for media fields when the returned/resolved URL is supported by Discord.
+
+## 11. TENOR AND KLIPY MEDIA COMPATIBILITY
+
+The existing Dragneel implementation supports or is expected to support Tenor and Klipy media links. Inspect the current code and preserve both integrations.
+
+Requirements:
+1. Continue supporting Tenor URLs.
+2. Continue supporting Klipy URLs.
+3. Identify how existing URLs are parsed, resolved, validated, stored, and rendered.
+4. Reuse existing media utilities and API integrations where possible.
+5. Do not replace working Tenor/Klipy implementations without a technical reason.
+6. Validate URLs and handle invalid, unavailable, or unsupported media gracefully.
+7. Support media in Normal messages and compatible Embed image/thumbnail properties.
+8. Do not assume a webpage URL is a direct GIF/media URL; use the existing resolver when needed.
+9. Respect Discord message/embed limits and safe URL handling.
+10. Never execute arbitrary URL content.
+11. Do not remove existing media functionality during refactoring.
+12. Test both providers and report any provider-specific limitations honestly.
+
+## 12. COLLECTIBLE SYSTEM
+
+Inspect Dragneel's existing collectible system before implementing collectible customization.
+
+If a compatible system exists, reuse it and preserve its validation rules.
+
+If no compatible system exists:
+- Create a small configurable collectible registry only if necessary for the feature.
+- Validate allowed values.
+- Provide helpful errors for unsupported collectible types.
+- Do not invent undocumented collectible tiers or reward behavior.
+
+## 13. STORAGE AND DATA MODEL
+
+Use the existing database/storage abstraction and migration conventions. All data must persist across restarts.
+
+Keep the following entities logically separate:
+
+### A. Global Reminder Template
+- template ID.
+- category.
+- format.
+- display name.
+- default Normal message, when applicable.
+- default Embed JSON, when applicable.
+- default collectible type, when applicable.
+- creator Developer ID.
+- creation timestamp.
+- availability/status.
+
+### B. Pending Reminder Award / Claim
+- unique claim ID.
+- template ID.
+- recipient Discord user ID.
+- issuing Developer ID.
+- source/reason (for example, giveaway).
+- creation timestamp.
+- optional expiration timestamp.
+- status: pending, redeemed, revoked, or expired.
+
+### C. Owned Custom Reminder
+- unique owned reminder ID.
+- owner Discord user ID.
+- source template ID.
+- category.
+- format.
+- display name.
+- customized Normal message.
+- customized Embed JSON.
+- collectible type, if supported.
+- active status.
+- shareable status.
+- creation timestamp.
+- update timestamp.
+- transfer/ownership history as appropriate.
+
+### D. Per-Guild Server Default Settings
+- guild ID.
+- action/category setting key matching the existing reminder action granularity.
+- configured Normal message or supported Embed configuration.
+- metadata such as updated-by user ID and updated timestamp.
+
+### E. Built-in Defaults
+Preserve the original Dragneel defaults and use them whenever no applicable guild setting or active personal override exists.
+
+Storage requirements:
+- Ensure unique IDs with collision checking and database constraints where supported.
+- Use atomic operations for redemption, transfer, and claim status changes.
+- Add migrations safely and preserve existing data.
+- Do not store personal settings in a shared guild config field.
+- Do not store guild settings in a user's inventory record.
+- Do not mutate templates when creating or editing owned reminders.
+
+## 14. SECURITY AND PERMISSIONS
+
+- Reuse the existing Developer ID authorization for global template creation, distribution, global award inspection, and pending-claim revocation.
+- Only server owners/authorized administrators can edit that guild's default reminder settings.
+- Developer ID does not automatically grant guild-admin permission.
+- Normal users can inspect and manage only their own owned reminders and claims assigned to them.
+- Claims can only be redeemed by their assigned recipient.
+- Transfers require confirmation and ownership validation.
+- Validate every ID, category, format, URL, JSON payload, and ownership relationship.
+- Apply cooldowns and rate limits.
+- Prevent mass mentions or unsafe mention payloads unless explicitly supported and authorized.
+- Do not allow users to gain permissions through usernames, display names, server roles not authorized by the existing policy, or prefix manipulation.
+- Do not expose private inventories or claim information to unauthorized users.
+
+## 15. PREFIX AND COMMAND COMPATIBILITY
+
+- Reuse the existing per-guild prefix resolver for every new command and generated help message.
+- The default prefix is currently `d`, but it can be changed independently per guild.
+- Examples: Guild A may use `d`, Guild B may use `!`, and Guild C may use `.`.
+- A prefix change in one guild must not affect another guild.
+- Do not hardcode `d` in command parsing, command examples generated at runtime, or permission checks.
+- Preserve existing command aliases, argument parsing, and Settings namespace conventions.
+- `s` remains the server Settings namespace; `r` remains the personal Custom Reminder namespace. Do not create `r server` commands.
+
+## 16. EXISTING REMINDER ENGINE INTEGRATION
+
+Inspect the existing reminder engine and its action-to-message mapping.
+
+- Add a configuration/message resolution layer rather than a new action detection system.
+- Preserve existing Pray, Curse, Hunt, and Battle reminder triggers and behavior.
+- Connect the `LUCY` Custom Reminder to Say Lucy behavior only, using an actual existing trigger if present.
+- Do not connect Lucy Custom Reminder to Lucy activity events or invent a Lucy activity listener.
+- Preserve trigger timing, cooldowns, grinding behavior, event handling, and existing message delivery.
+- Avoid duplicate messages and duplicate schedulers.
+- If a required hook is unavailable, implement only a clean adapter if appropriate and report the missing integration; do not fabricate behavior.
+- Ensure message selection uses the correct guild, user, and action context.
+
+## 17. REQUIRED TESTS
+
+Use the repository's existing test framework and Discord mocks/stubs. Add tests covering at least:
+
+### Existing architecture and prefix
+1. Default prefix `d` works.
+2. Different prefixes work across different guilds.
+3. Prefix changes do not leak across guilds.
+4. Existing command registration and aliases remain functional.
+
+### Developer distribution and claims
+5. Existing Developer ID authorization is reused.
+6. Unauthorized users cannot create templates or issue awards.
+7. Developer can create all six category-format combinations.
+8. Manual award issuance to a specific recipient works.
+9. Invalid template IDs are rejected.
+10. Wrong-user claim redemption is rejected.
+11. Duplicate redemption is prevented atomically.
+12. Revoked and expired claims cannot be redeemed.
+13. DM delivery failure is handled without losing the claim.
+
+### Inventory and ownership
+14. Multiple reminders can be owned simultaneously.
+15. Multiple reminders of the same category can coexist with different IDs.
+16. Owned reminder IDs are unique and collision-checked.
+17. IDs remain stable after edits.
+18. Inventory lists owned reminder IDs, not template or claim IDs.
+19. Empty inventory response works.
+20. Users cannot view or edit another user's private reminders.
+21. Active and shareable statuses are independent.
+22. Inactive reminders remain editable.
+23. Transfer requires confirmation and updates ownership safely.
+
+### Categories, formats, and customization
+24. All six category-format combinations work.
+25. Category and format remain separate properties.
+26. Normal message rendering works.
+27. Embed JSON validation and Discord limits work.
+28. Variables work in Normal messages and supported Embed fields.
+29. Lucy means Say Lucy and does not rely on invented activity events.
+30. Collectible validation follows the existing system.
+
+### Server settings and resolution
+31. Server owner/admin can edit server defaults in their own guild.
+32. Unauthorized members cannot edit server defaults.
+33. Developer ID alone does not grant server-admin permission.
+34. Guild A settings cannot affect Guild B.
+35. Server default changes affect members without an applicable active Custom Reminder.
+36. Server default changes do not affect members with an applicable active Custom Reminder.
+37. Custom Reminder edits do not change server defaults.
+38. Custom Reminder edits do not affect other users.
+39. Different categories/actions have independent overrides.
+40. Disabling a Custom Reminder falls back to the server default.
+41. If no guild setting exists, the built-in Dragneel default is used.
+42. Reset restores built-in defaults without deleting owned Custom Reminders.
+43. Existing reminder triggers and timing remain unchanged.
+44. No duplicate reminder delivery is introduced.
+
+### Media and persistence
+45. Tenor URL compatibility.
+46. Klipy URL compatibility.
+47. Invalid/unavailable media URL handling.
+48. Normal message media rendering.
+49. Embed media rendering where supported.
+50. All reminder, inventory, claim, and guild settings persist after restart.
+
+## 18. DOCUMENTATION
+
+Provide or update documentation for:
+- Developer template creation and management.
+- Manual giveaway winner award procedure.
+- Claim delivery and redemption.
+- User inventory and ownership.
+- All three categories and six category-format combinations.
+- Lucy Say semantics.
+- Normal and Embed customization.
+- All supported variables and examples.
+- Server Settings commands using `<PREFIX> s ...`.
+- Server-admin permission requirements.
+- Custom Reminder override and automatic fallback behavior.
+- Tenor and Klipy support and any limitations.
+- Collectible configuration, if applicable.
+- Prefix compatibility.
+- Storage schema and migration instructions.
+
+## 19. NON-REGRESSION REQUIREMENTS
+
+1. Inspect before modifying.
+2. Do not rebuild or replace the existing reminder engine.
+3. Do not create a second scheduler or duplicate activity listeners.
+4. Do not remove existing Pray, Curse, Hunt, or Battle reminder behavior.
+5. Do not invent Lucy activity events; Lucy Custom Reminder means Say Lucy.
+6. Do not remove existing Tenor or Klipy support.
+7. Do not merge user-owned Custom Reminder settings with server default settings.
+8. Do not let developers' global templates mutate when users customize owned reminders.
+9. Do not create a redundant `d r server` namespace. Use existing `s` Settings commands for guild defaults.
+10. Do not hardcode the default prefix.
+11. Do not overwrite owned Custom Reminders when an administrator changes or resets server defaults.
+12. Do not overwrite server defaults when a user edits or disables a Custom Reminder.
+13. Preserve existing commands and behavior unless a change is necessary and documented.
+14. Do not introduce voting, payment, supporter tiers, or automatic giveaway integration in this version.
+15. Test before declaring completion and report unsupported integrations honestly.
+
+## 20. FINAL DELIVERABLE AND IMPLEMENTATION REPORT
+
+Implement the feature directly in the existing repository. At completion, report:
+
+- Repository architecture inspected and relevant integration points.
+- Files created and modified.
+- Existing reminder engine components reused.
+- Developer template and manual distribution workflow.
+- Claim and redemption workflow.
+- User commands and inventory behavior.
+- The three categories and six formats.
+- Lucy Say implementation details and any actual trigger limitation.
+- Server Settings command structure using `s` and permission checks.
+- Server default storage structure.
+- User-owned Custom Reminder storage/override structure.
+- Exact reminder resolution precedence and disabled-reminder fallback.
+- Variables supported.
+- Embed functionality and validation.
+- Tenor and Klipy integration details.
+- Collectible integration details, if applicable.
+- Database changes and migration instructions.
+- Prefix compatibility.
+- Tests actually executed and their results.
+- Remaining limitations or unsupported behavior.
+
+Prioritize maintainability, security, data isolation, and compatibility with the existing Dragneel architecture. Do not invent repository APIs or assume features exist before inspecting the source code.

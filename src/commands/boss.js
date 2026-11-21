@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, EmbedBuilder } = require('discord.js');
-const { getGuildSettings, updateGuildSettings, setUserMode, setUserWarnSeconds } = require('../utils/storage');
+const { getGuildSettings, updateGuildSettings, setUserMode, setUserWarnSeconds, DEFAULT_PREFIX } = require('../utils/storage');
 const {
   IDS, MODE_VALUES, WARN_VALUES, modeLabel, warnLabel, personalPanel, statusEmbed, statusText, helpEmbed, parseCustomId
 } = require('../ui/panel');
@@ -32,7 +32,7 @@ const data = new SlashCommandBuilder()
   .addSubcommand(s => s.setName('server-on').setDescription('Aktifkan tracker untuk seluruh server'))
   .addSubcommand(s => s.setName('server-off').setDescription('Matikan tracker untuk seluruh server'))
   .addSubcommand(s => s.setName('prefix').setDescription('Lihat atau ubah prefix perintah server')
-    .addStringOption(o => o.setName('nilai').setDescription('Prefix baru, 1–5 karakter tanpa spasi').setRequired(false).setMaxLength(5)))
+    .addStringOption(o => o.setName('nilai').setDescription('Prefix baru, 1–10 karakter tanpa spasi').setRequired(false).setMaxLength(10)))
   .addSubcommand(s => s.setName('admin-help').setDescription('Panduan pengaturan khusus moderator/admin'));
 
 function isAdmin(i) {
@@ -54,23 +54,23 @@ function adminHelpEmbed(prefix) {
       { name: '/boss setup channel:#channel role:@role', value: 'Pilih channel notifikasi dan role yang akan ditag.', inline: false },
       { name: '/boss server-on', value: 'Aktifkan tracker untuk semua anggota server.', inline: false },
       { name: '/boss server-off', value: 'Matikan notifikasi server tanpa menghapus konfigurasi.', inline: false },
-      { name: '/boss prefix', value: 'Lihat atau ubah prefix server (1–5 karakter tanpa spasi).', inline: false },
-      { name: prefix + 'boss setup #channel @role', value: 'Contoh pengaturan melalui prefix.', inline: false },
-      { name: prefix + 'boss server-on', value: 'Aktifkan tracker untuk semua anggota server.', inline: false },
-      { name: prefix + 'boss server-off', value: 'Matikan tracker server.', inline: false },
-      { name: prefix + 'boss prefix ?', value: 'Lihat prefix; tambahkan nilai baru untuk mengubahnya.', inline: false }
+      { name: '/boss prefix', value: 'Lihat atau ubah prefix server (1–10 karakter tanpa spasi).', inline: false },
+      { name: prefix + ' boss setup #channel @role', value: 'Contoh pengaturan melalui prefix.', inline: false },
+      { name: prefix + ' boss server-on', value: 'Aktifkan tracker untuk semua anggota server.', inline: false },
+      { name: prefix + ' boss server-off', value: 'Matikan tracker server.', inline: false },
+      { name: prefix + ' prefix [nilai]', value: 'Lihat prefix; tambahkan nilai baru untuk mengubahnya.', inline: false }
     );
 }
 
 function validPrefix(value) {
-  return typeof value === 'string' && value.length >= 1 && value.length <= 5 && !/\s/.test(value);
+  return typeof value === 'string' && value.length >= 1 && value.length <= 10 && !/\s/.test(value);
 }
 
 async function execute(i, tracker) {
   if (!i.guildId) return i.reply({ content: 'Gunakan perintah ini di server.', flags: MessageFlags.Ephemeral });
   const sub = i.options.getSubcommand();
   const settings = getGuildSettings(i.guildId);
-  const prefix = settings.prefix || '!';
+  const prefix = settings.prefix || DEFAULT_PREFIX;
 
   if (sub === 'help') return i.reply({
     embeds: [helpEmbed(prefix, { isAdmin: isAdmin(i) })],
@@ -152,11 +152,12 @@ async function execute(i, tracker) {
 
   if (sub === 'prefix') {
     const value = i.options.getString('nilai');
-    const current = getGuildSettings(i.guildId).prefix || '!';
+    const current = getGuildSettings(i.guildId).prefix || DEFAULT_PREFIX;
     if (value === null) return i.reply({ content: 'Prefix server saat ini: `' + current + '`', flags: MessageFlags.Ephemeral });
-    if (!validPrefix(value)) return i.reply({ content: 'Prefix harus 1–5 karakter dan tidak boleh mengandung spasi.', flags: MessageFlags.Ephemeral });
-    updateGuildSettings(i.guildId, s => ({ ...s, prefix: value }));
-    return i.reply({ content: '✅ Prefix server diubah menjadi `' + value + '`. Contoh: `' + value + 'boss help`', flags: MessageFlags.Ephemeral });
+    if (!validPrefix(value)) return i.reply({ content: 'Prefix harus 1–10 karakter dan tidak boleh mengandung spasi.', flags: MessageFlags.Ephemeral });
+    const normalized = normalizePrefix(value);
+    updateGuildSettings(i.guildId, s => ({ ...s, prefix: normalized }));
+    return i.reply({ content: '✅ Prefix server diubah menjadi `' + normalized + '`. Contoh: `' + normalized + ' boss status`', flags: MessageFlags.Ephemeral });
   }
 
   return i.reply({ content: 'Subcommand tidak dikenali.', flags: MessageFlags.Ephemeral });
@@ -175,7 +176,7 @@ function refreshView(i, extra = {}) {
 async function handleComponent(i, tracker) {
   if (!i.guildId) return i.reply({ content: 'Gunakan perintah ini di server.', flags: MessageFlags.Ephemeral });
   const settings = getGuildSettings(i.guildId);
-  const prefix = settings.prefix || '!';
+  const prefix = settings.prefix || DEFAULT_PREFIX;
 
   // Setiap komponen panel di-scope ke pemiliknya (customId berisi userId).
   const p = parseCustomId(i.customId);

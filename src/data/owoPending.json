@@ -1,0 +1,177 @@
+{
+  "note": "Senjata dan pasif yang sudah ada nama/alias/emoji-nya tetapi mekaniknya belum dibaca dari sumber OwO. Disimpan di sini supaya alias tetap dikenali dan pesan errornya jelas, bukan 'tidak dikenal'. Pindahkan ke owoBattle.json / owoPassives.json setelah qualityList, ability, dan hook-nya terverifikasi.",
+  "source": "Daftar resmi OwO (emoji + alias) dari pengguna bot.",
+  "weapons": [
+    {
+      "id": 23,
+      "name": "Cursed Staff",
+      "emojis": [
+        "<:cstaff:1464684674684162080>"
+      ],
+      "aliases": [],
+      "aliasNotes": [
+        "Alias `cstaff` dipindah ke Staff of Corruption (id 125) sesuai deskripsi live."
+      ]
+    },
+    {
+      "id": 24,
+      "name": "Soul Tithe",
+      "emojis": [
+        "<:stithe:1464696399223324713>"
+      ],
+      "aliases": [
+        "stithe",
+        "soul",
+        "tithe"
+      ]
+    },
+    {
+      "id": 25,
+      "name": "Blood Harvest Staff",
+      "emojis": [
+        "<:bhstaff:1464696336409559173>"
+      ],
+      "aliases": [
+        "bhstaff"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "Abyssal Edge",
+      "emojis": [
+        "<:aedge:1464695939452113168>"
+      ],
+      "aliases": [
+        "aedge",
+        "edge"
+      ]
+    },
+    {
+      "id": 27,
+      "name": "Wound Bringer",
+      "emojis": [
+        "<:woundb:1478937799175573596>"
+      ],
+      "aliases": [
+        "woundb",
+        "crossbow",
+        "wbow",
+        "wcbow",
+        "xbow"
+      ]
+    },
+    {
+      "id": 28,
+      "name": "Burning Gaze",
+      "emojis": [
+        "<:bgaz:1478938043338592451>"
+      ],
+      "aliases": [
+        "bgaz",
+        "gaze"
+      ],
+      "aliasNotes": [
+        "Alias `bgaze` dipindah ke Bleeding Gaze (id 123) sesuai deskripsi live."
+      ]
+    },
+    {
+      "id": 29,
+      "name": "Cursed Claw",
+      "emojis": [
+        "<:cclaw:1480316577478869043>"
+      ],
+      "aliases": [
+        "claw"
+      ],
+      "aliasNotes": [
+        "Alias `cclaw` dipindah ke Conduit Claw (id 124) sesuai deskripsi live."
+      ]
+    }
+  ],
+  "passives": [
+    {
+      "id": 28,
+      "name": "Giant Slayer",
+      "emojis": [
+        "<:fgslayer:1552764472253358132>",
+        "<:gslay:1462495687940767950>"
+      ],
+      "aliases": [
+        "gslay",
+        "slay",
+        "slayer",
+        "gslayer",
+        "giantslayer"
+      ],
+      "category": "offense",
+      "summary": "Damage ke boss +10-25%.",
+      "sourceText": "Deal +**10-25%** more damage to bosses. Aliases: gslay, slay, slayer, gslayer",
+      "qualityList": [
+        [
+          10,
+          25
+        ]
+      ],
+      "note": "Hanya berlaku bila sasaran bertanda boss (ctx.isBoss). Battle PvP/mirror tidak terpengaruh karena lawan bukan boss."
+    },
+    {
+      "id": 24,
+      "name": "Resonance",
+      "emojis": [
+        "<:resonance:1462495812297691368>"
+      ],
+      "aliases": [
+        "resonance",
+        "res",
+        "reso"
+      ]
+    },
+    {
+      "id": 25,
+      "name": "Swarm",
+      "emojis": [
+        "<:swarm:1462495891893256365>"
+      ],
+      "aliases": [
+        "swarm",
+        "hive",
+        "lhive"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "Lone Wolf",
+      "emojis": [
+        "<:lwolf:1478938455143616566>"
+      ],
+      "aliases": [
+        "lwolf",
+        "wolf"
+      ]
+    },
+    {
+      "id": 27,
+      "name": "Deep Strike",
+      "emojis": [
+        "<:dstrike:1478938519769452616>"
+      ],
+      "aliases": [
+        "dstrike",
+        "strike",
+        "ds"
+      ]
+    },
+    {
+      "id": 28,
+      "name": "Frozen Armor",
+      "emojis": [
+        "<:frarm:1478938639286272012>"
+      ],
+      "aliases": [
+        "frarm",
+        "armor",
+        "fr"
+      ]
+    }
+  ]
+}

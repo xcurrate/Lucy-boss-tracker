@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const { parsePrefixInput, ALIASES } = require('../src/commands/prefix');
+const { parsePrefixInput, parsePingInput, parseDexInput, ALIASES } = require('../src/commands/prefix');
 
 describe('prefix aliases', () => {
   it('maps aliases to canonical subcommands', () => {
@@ -14,12 +14,12 @@ describe('prefix aliases', () => {
   });
 
   it('parses canonical help', () => {
-    const out = parsePrefixInput('!boss help', '!');
+    const out = parsePrefixInput('! help', '!');
     assert.strictEqual(out.sub, 'help');
   });
 
   it('parses Indonesian alias for help', () => {
-    const out = parsePrefixInput('!boss bantuan', '!');
+    const out = parsePrefixInput('! bantuan', '!');
     assert.strictEqual(out.sub, 'help');
   });
 
@@ -46,9 +46,33 @@ describe('prefix aliases', () => {
     assert.strictEqual(out.sub, 'server-on');
   });
 
-  it('parses unknown sub as raw', () => {
-    const out = parsePrefixInput('!boss somethingelse foo', '!');
-    assert.strictEqual(out.sub, 'somethingelse');
+  it('ignores unknown subs instead of replying', () => {
+    assert.strictEqual(parsePrefixInput('!boss somethingelse foo', '!'), null);
+  });
+
+  it('keeps the boss category prefix for boss features', () => {
+    const out = parsePrefixInput('d boss status', 'd');
+    assert.strictEqual(out.sub, 'status');
+    assert.deepStrictEqual(out.args, []);
+    assert.strictEqual(parsePrefixInput('d boss prefix dragneel', 'd').sub, 'prefix');
+  });
+
+  it('puts bot-level commands at the top level, without the boss category', () => {
+    assert.strictEqual(parsePrefixInput('d prefix', 'd').sub, 'prefix');
+    assert.deepStrictEqual(parsePrefixInput('d prefix dragneel', 'd').args, ['dragneel']);
+    assert.strictEqual(parsePrefixInput('d help', 'd').sub, 'help');
+    // `d status` bukan perintah bot-level: status ada di bawah kategori boss.
+    assert.strictEqual(parsePrefixInput('d status', 'd'), null);
+  });
+
+  it('ignores ordinary chat that merely starts with the prefix', () => {
+    for (const text of ['duh', 'dah', 'dulu aku pergi', 'dong', 'dadu']) {
+      assert.strictEqual(parsePrefixInput(text, 'd'), null, text + ' harus diabaikan');
+    }
+  });
+
+  it('treats a bare prefix as help', () => {
+    assert.strictEqual(parsePrefixInput('d', 'd').sub, 'help');
   });
 
   it('returns null for messages without prefix or root', () => {
@@ -59,7 +83,58 @@ describe('prefix aliases', () => {
   });
 
   it('respects custom prefix', () => {
-    const out = parsePrefixInput('?boss cek', '?');
+    const out = parsePrefixInput('? boss cek', '?');
     assert.strictEqual(out.sub, 'status');
+  });
+});
+
+describe('case-insensitive input', () => {
+  it('accepts uppercase prefix and subcommands', () => {
+    assert.strictEqual(parsePrefixInput('D BOSS STATUS', 'd').sub, 'status');
+    assert.strictEqual(parsePrefixInput('d BOSS status', 'd').sub, 'status');
+    assert.strictEqual(parsePrefixInput('D Boss Menu', 'd').sub, 'menu');
+    assert.deepStrictEqual(parsePrefixInput('D BOSS WARN 60', 'd').args, ['60']);
+  });
+
+  it('accepts uppercase bot-level commands', () => {
+    assert.strictEqual(parsePrefixInput('D HELP', 'd').sub, 'help');
+    assert.strictEqual(parsePrefixInput('D PREFIX', 'd').sub, 'prefix');
+    assert.deepStrictEqual(parsePrefixInput('D PREFIX DRAGNEEL', 'd').args, ['DRAGNEEL']);
+  });
+
+  it('accepts uppercase prefix and ping/dex', () => {
+    assert.deepStrictEqual(parsePingInput('D PING', 'd'), { args: [] });
+    assert.deepStrictEqual(parseDexInput('D DEX lawliet', 'd'), { args: ['lawliet'] });
+    assert.deepStrictEqual(parsePrefixInput('D BOsS cEk', 'd').args, []);
+  });
+
+  it('matches a prefix stored with different case', () => {
+    assert.strictEqual(parsePrefixInput('d boss status', 'D').sub, 'status');
+    assert.strictEqual(parsePrefixInput('DRAGNEEL BOSS STATUS', 'dragneel').sub, 'status');
+  });
+
+  it('still ignores ordinary chat regardless of case', () => {
+    assert.strictEqual(parsePrefixInput('Duh', 'd'), null);
+    assert.strictEqual(parsePrefixInput('DAH', 'd'), null);
+    assert.strictEqual(parsePrefixInput('D', 'd').sub, 'help');
+  });
+});
+
+describe('ping command parser', () => {
+  it('parses ping and its short alias', () => {
+    assert.deepStrictEqual(parsePingInput('!ping', '!'), { args: [] });
+    assert.deepStrictEqual(parsePingInput('!p', '!'), { args: [] });
+  });
+
+  it('respects custom prefix', () => {
+    assert.ok(parsePingInput('?ping', '?'));
+    assert.strictEqual(parsePingInput('!ping', '?'), null);
+  });
+
+  it('ignores other commands and empty input', () => {
+    assert.strictEqual(parsePingInput('!boss help', '!'), null);
+    assert.strictEqual(parsePingInput('!pong', '!'), null);
+    assert.strictEqual(parsePingInput('ping', '!'), null);
+    assert.strictEqual(parsePingInput(null, '!'), null);
   });
 });

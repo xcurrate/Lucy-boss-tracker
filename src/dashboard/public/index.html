@@ -16,6 +16,9 @@
       <a class="nav" href="#boss">🐉 <span>Boss Tracker</span></a>
       <a class="nav" href="#rep">🧵 <span>Auto Thread Rep</span></a>
       <a class="nav" href="#lucy-counter">🔢 <span>Lucy Counter</span></a>
+      <a class="nav" href="#family100">📺 <span>Family 100</span></a>
+      <a class="nav" href="#boss-rewards">🎁 <span>Boss Reward Reminder</span></a>
+      <a class="nav" href="#notes">📝 <span>Notes</span></a>
       <a class="nav" href="#logs">▤ <span>System Logs</span></a>
       <div class="sidebar-bottom"><span class="live-dot"></span> Local runtime monitor <span class="muted">●</span></div>
     </aside>
@@ -48,7 +51,7 @@
           <div class="form-grid">
             <div class="field"><label for="channel-id">CHANNEL NOTIFIKASI</label><select id="channel-id"></select><small>Channel teks tujuan pengumuman boss.</small></div>
             <div class="field"><label for="role-id">ROLE YANG DI-TAG</label><select id="role-id"></select><small>Role yang disebut saat boss muncul.</small></div>
-            <div class="field"><label for="prefix">PREFIX PERINTAH</label><input id="prefix" maxlength="5" value="!"><small>1–5 karakter, tanpa spasi.</small></div>
+            <div class="field"><label for="prefix">PREFIX PERINTAH</label><input id="prefix" maxlength="10" value="d" placeholder="d"><small>1–10 karakter, tanpa spasi. Default: d.</small></div>
             <div class="field"><label>WAKTU BOSS BERIKUTNYA</label><div class="readout" id="next-boss">Belum terdeteksi</div><small>Terbaca otomatis dari pesan Lucy.</small></div>
           </div>
         </section>
@@ -66,7 +69,32 @@
             <div class="field"><label for="lucy-target-start">MULAI TARGET (WIB)</label><input id="lucy-target-start" type="time" value="12:00" required><small>Awal siklus baru; progres target direset pada jam ini.</small></div>
             <div class="field"><label for="lucy-target-stop">BERHENTI TARGET (WIB)</label><input id="lucy-target-stop" type="time" value="10:00" required><small>Jam berhenti di hari berikutnya jika lebih awal dari waktu mulai.</small></div>
 </div>
-          <p>Leaderboard: <code>[prefix]lcountd</code> (hari ini), <code>[prefix]lcountall</code> (sepanjang masa), <code>[prefix]lucytarget status</code> (status target).</p>
+          <p>Leaderboard: <code>[prefix]lcount</code> (harian), <code>[prefix]ltarget</code> (target), <code>[prefix]lservers</code> (per server), <code>[prefix]lcountall</code> (sepanjang masa). Semua bisa difilter tanggal, mis. <code>[prefix]lcount 5 nov</code>.</p>
+        </section>
+        <section class="panel" id="family100">
+          <div class="panel-heading"><div><div class="eyebrow">CATEGORY 03B / COMMUNITY</div><h2>📺 Family 100</h2><p>Game tebak jawaban tersembunyi. Satu ronde aktif per server, terikat channel tempat <code>[prefix]f100</code> dijalankan.</p></div></div>
+          <p>Bot menampilkan satu soal dan sejumlah slot jawaban tertutup. Pemain mengetik jawaban di channel ronde; jawaban benar membuka slot dan memberi poin. Total tiap soal 100 poin: jawaban paling populer dapat poin terbesar. Tidak ada bonus penutup ronde. Pesan berawalan prefix (perintah) tidak pernah dihitung sebagai jawaban. Bank soal berisi 1767 soal, dapat diperbarui dengan mengganti <code>src/data/family100.json</code>.</p>
+          <div class="form-grid">
+            <div class="field"><label for="family100-enabled">FAMILY 100 SERVER ON/OFF</label><label class="switch"><input id="family100-enabled" type="checkbox"><span></span></label><small>Aktif/nonaktif hanya untuk server yang sedang dipilih di atas.</small></div>
+            <div class="field"><label for="family100-channel">CHANNEL RONDE</label><select id="family100-channel"></select><small>Jika diisi, ronde hanya boleh dimulai di channel ini. Kosong = channel mana pun.</small></div>
+            <div class="field"><label for="family100-duration">DURASI RONDE (DETIK)</label><input id="family100-duration" type="number" min="0" max="86400" step="1" value="0"><small>0 = tanpa batas waktu. Jika diisi, ronde otomatis ditutup setelah durasi ini.</small></div>
+          </div>
+          <p>Perintah: <code>[prefix]f100</code> (mulai / tampilkan ulang soal), <code>[prefix]f100 soal</code>, <code>[prefix]f100 clue</code> (buka 1 huruf depan, jatah 3× per pemain, semua orang), <code>[prefix]f100 skip</code> (semua orang), <code>[prefix]f100 stop</code> &amp; <code>[prefix]f100 on|off</code> (moderator/developer), <code>[prefix]f100 lb [all]</code>.</p>
+          <div class="field"><label for="family100-scope">TABEL POIN</label><select id="family100-scope"><option value="weekly">Mingguan (Senin–Minggu, WIB)</option><option value="alltime">Sepanjang masa</option></select><small>Peringkat pemain berdasarkan poin yang sudah terbuka dari jawaban benar.</small></div>
+          <div class="table-wrap"><table id="family100-board"><thead><tr><th>#</th><th>PEMAIN</th><th>POIN</th></tr></thead><tbody><tr><td colspan="3" class="muted">Pilih server untuk memuat data.</td></tr></tbody></table></div>
+        </section>
+        <section class="panel" id="boss-rewards">
+          <div class="panel-heading"><div><div class="eyebrow">CATEGORY 04 / REWARD ALERTS</div><h2>🎁 Boss Reward Reminder</h2><p>Notifikasi role server saat jumlah reward pada gambar Lucy mencapai target. Pengaturan ini tersedia melalui dashboard developer.</p></div><label class="switch"><input id="reward-enabled" type="checkbox"><span></span></label></div>
+          <div class="form-grid">
+            <div class="field"><label for="reward-channel">CHANNEL NOTIFIKASI REWARD</label><select id="reward-channel"></select><small>Channel teks untuk pengumuman saat target reward tercapai.</small></div>
+            <div class="field"><label for="reward-role">ROLE YANG DI-TAG</label><select id="reward-role"></select><small>Role server yang menerima pengingat.</small></div>
+            <div class="field"><label for="reward-ws">WEAPON SHARDS TARGET</label><input id="reward-ws" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"><small>Kosongkan untuk tidak memantau kategori ini.</small></div>
+            <div class="field"><label for="reward-wc">WEAPON CRATE TARGET</label><input id="reward-wc" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"></div>
+            <div class="field"><label for="reward-flb">FABLED LOOTBOX TARGET</label><input id="reward-flb" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"></div>
+            <div class="field"><label for="reward-xp">EXPERIENCE TARGET</label><input id="reward-xp" type="number" min="1" step="1" placeholder="Nonaktifkan kategori"></div>
+          </div>
+          <p>Target server menggunakan operator minimal (≥). Setelah notifikasi berhasil dikirim, kategori yang terpenuhi otomatis dihapus dari target server. Target personal anggota tetap dikelola melalui perintah chat.</p>
+          <div class="savebar"><span>Konfigurasi reward server terpisah dari Boss Tracker.</span><button id="reward-save" class="primary">Simpan pengaturan reward <span>→</span></button></div>
         </section>
         <section class="panel" id="rep">
           <div class="panel-heading"><div><div class="eyebrow">CATEGORY 02 / AUTOMATION</div><h2>🧵 Auto Thread Rep</h2><p>Buat thread otomatis dari pesan *rep dengan mention target yang benar.</p></div><label class="switch"><input id="rep-enabled" type="checkbox"><span></span></label></div>
@@ -77,6 +105,20 @@
             <div class="field"><label for="thread-prefix">AWALAN NAMA THREAD</label><input id="thread-prefix" maxlength="40" placeholder="Rep"><small>Nama thread menjadi awalan + nama pengirim.</small></div>
             <div class="field"><label for="archive-duration">AUTO-ARCHIVE</label><select id="archive-duration"><option value="60">1 jam</option><option value="1440">24 jam</option><option value="4320">3 hari</option><option value="10080">7 hari</option></select><small>Durasi arsip otomatis thread.</small></div>
           </div>
+        </section>
+        <section class="panel" id="notes">
+          <div class="panel-heading"><div><div class="eyebrow">CATEGORY 05 / CATATAN</div><h2>📝 Notes</h2><p>Catatan bebas per server, tersimpan lokal di dashboard.</p></div></div>
+          <div class="form-grid">
+            <div class="field"><label for="note-title">JUDUL NOTE</label><input id="note-title" maxlength="120" placeholder="Judul singkat"><small>Opsional bila isi note diisi.</small></div>
+            <div class="field"><label for="note-body">ISI NOTE</label><textarea id="note-body" maxlength="4000" rows="5" placeholder="Tulis catatan di sini…"></textarea><small>Maksimal 4000 karakter.</small></div>
+          </div>
+          <div class="note-actions">
+            <button id="note-save" class="primary">Tambah note <span>→</span></button>
+            <button id="note-cancel" class="ghost hidden">Batal edit</button>
+            <span id="note-status" role="status" aria-live="polite"></span>
+          </div>
+          <div class="note-toolbar"><span>DAFTAR NOTE (<span id="note-count">0</span>)</span></div>
+          <div id="note-list" class="note-list"><div class="empty-log">Belum ada note untuk server ini.</div></div>
         </section>
         <section class="panel logs-panel" id="logs">
           <div class="panel-heading"><div><div class="eyebrow">CATEGORY 03 / DIAGNOSTICS</div><h2>▤ System logs</h2><p>Log runtime terbaru, diperbarui otomatis.</p></div><button id="clear-logs" class="ghost">Bersihkan tampilan</button></div>

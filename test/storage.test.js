@@ -23,7 +23,7 @@ describe('storage', () => {
     const { getGuildSettings } = require('../src/utils/storage');
     const s = getGuildSettings('guild1');
     assert.strictEqual(s.enabled, false);
-    assert.strictEqual(s.prefix, '!');
+    assert.strictEqual(s.prefix, 'd');
     assert.deepStrictEqual(s.dmUsers, []);
     assert.deepStrictEqual(s.userModes, {});
     assert.deepStrictEqual(s.userWarnSeconds, {});

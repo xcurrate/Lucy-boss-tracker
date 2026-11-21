@@ -1,0 +1,689 @@
+{
+  "source": "https://github.com/ChristopherBThai/Discord-OwO-Bot",
+  "sourceLicense": "CC BY-NC-SA 4.0",
+  "note": "Data mentah hasil pembacaan kode passives/ dan divalidasi dengan menjalankan class aslinya (quality 0/50/100). Bukan data resmi OwO; angka bisa berubah bila upstream berubah.",
+  "formula": {
+    "stat": "stat = min + (max - min) * quality / 100",
+    "quality": "quality 0-100, di-roll acak per stat saat senjata dibuat"
+  },
+  "categories": {
+    "stat": "Menambah stat saat persiapan battle",
+    "damage": "Menambah damage serangan",
+    "sustain": "Memulihkan diri sendiri",
+    "heal": "Berinteraksi dengan heal",
+    "defense": "Mengurangi damage masuk",
+    "reflect": "Membalas damage",
+    "mana": "Bermain dengan WP",
+    "onDeath": "Berefek saat mati",
+    "utility": "Di luar battle"
+  },
+  "passives": [
+    {
+      "id": 1,
+      "name": "Strength",
+      "emojis": [
+        "<:catt:535290412143738880>",
+        "<:uatt:535290420822016010>",
+        "<:ratt:535290420255522855>",
+        "<:eatt:535290419722977280>",
+        "<:matt:535290420150665216>",
+        "<:latt:535290420029030400>",
+        "<:fatt:535290419903463436>"
+      ],
+      "category": "stat",
+      "summary": "Menambah STR sebesar persen dari STR dasar.",
+      "sourceText": "Increases your STR by **?%**",
+      "qualityList": [
+        [
+          5,
+          20
+        ]
+      ],
+      "hooks": [
+        "alterStats"
+      ],
+      "aliases": [
+        "str"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Magic",
+      "emojis": [
+        "<:cmag:535290422340222987>",
+        "<:umag:535290422969499668>",
+        "<:rmag:535290422973562920>",
+        "<:emag:535290422940139520>",
+        "<:mmag:535290422923231247>",
+        "<:lmag:535290422893871114>",
+        "<:fmag:535290422852059138>"
+      ],
+      "category": "stat",
+      "summary": "Menambah MAG sebesar persen dari MAG dasar.",
+      "sourceText": "Increases your MAG by **?%**",
+      "qualityList": [
+        [
+          5,
+          20
+        ]
+      ],
+      "hooks": [
+        "alterStats"
+      ],
+      "aliases": []
+    },
+    {
+      "id": 3,
+      "name": "Health Point",
+      "emojis": [
+        "<:chp:535290421467807755>",
+        "<:uhp:535290422721904640>",
+        "<:rhp:535290422709321748>",
+        "<:ehp:535290421740568577>",
+        "<:mhp:535290421769928716>",
+        "<:lhp:535290422147153930>",
+        "<:fhp:535290422306799616>"
+      ],
+      "category": "stat",
+      "summary": "Menambah HP maksimum sebesar persen dari HP dasar.",
+      "sourceText": "Increases your HP by **?%**",
+      "qualityList": [
+        [
+          5,
+          20
+        ]
+      ],
+      "hooks": [
+        "alterStats"
+      ],
+      "aliases": [
+        "hp"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Weapon Point",
+      "emojis": [
+        "<:cwp:535290421207629825>",
+        "<:uwp:535290422151610369>",
+        "<:rwp:535290422335897600>",
+        "<:ewp:535290421593636874>",
+        "<:mwp:535290421807415297>",
+        "<:lwp:535290421887369216>",
+        "<:fwp:535290421237252107>"
+      ],
+      "category": "stat",
+      "summary": "Menambah WP maksimum sebesar persen dari WP dasar.",
+      "sourceText": "Increases your WP by **?%**",
+      "qualityList": [
+        [
+          10,
+          30
+        ]
+      ],
+      "hooks": [
+        "alterStats"
+      ],
+      "aliases": [
+        "wp"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Physical Resistance",
+      "emojis": [
+        "<:cpr:535290422730162177>",
+        "<:upr:535290423023763461>",
+        "<:rpr:535290422902390789>",
+        "<:epr:535290422738681884>",
+        "<:mpr:535290422910779411>",
+        "<:lpr:535290422554001410>",
+        "<:fpr:535290422793338880>"
+      ],
+      "category": "stat",
+      "summary": "Menambah PR sebesar persen dari PR dasar.",
+      "sourceText": "Increases your PR by **?%**",
+      "qualityList": [
+        [
+          15,
+          35
+        ]
+      ],
+      "hooks": [
+        "alterStats"
+      ],
+      "aliases": [
+        "pr"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Magical Resistance",
+      "emojis": [
+        "<:cmr:535290422503800832>",
+        "<:umr:535290422919036938>",
+        "<:rmr:535290422810116097>",
+        "<:emr:535290422226845697>",
+        "<:mmr:535290422243622913>",
+        "<:lmr:535290422688219146>",
+        "<:fmr:535290422252273675>"
+      ],
+      "category": "stat",
+      "summary": "Menambah MR sebesar persen dari MR dasar.",
+      "sourceText": "Increases your MR by **?%**",
+      "qualityList": [
+        [
+          15,
+          35
+        ]
+      ],
+      "hooks": [
+        "alterStats"
+      ],
+      "aliases": [
+        "mr"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Lifesteal",
+      "emojis": [
+        "<:clifesteal:548729308038955018>",
+        "<:ulifesteal:548729400477089793>",
+        "<:rlifesteal:548729400493867018>",
+        "<:elifesteal:548729398644178944>",
+        "<:mlifesteal:548729400078893057>",
+        "<:llifesteal:548729400447729664>",
+        "<:flifesteal:548729400473026560>"
+      ],
+      "category": "sustain",
+      "summary": "Setiap damage yang diberikan menyerap HP sebesar persen dari damage itu.",
+      "sourceText": "All damage you deal heals you for **?%** of the damage dealt!",
+      "qualityList": [
+        [
+          15,
+          35
+        ]
+      ],
+      "hooks": [
+        "postAttack"
+      ],
+      "aliases": [
+        "ls"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "Thorns",
+      "emojis": [
+        "<:cthorns:548729308030566426>",
+        "<:uthorns:548729400661639168>",
+        "<:rthorns:548729400628346900>",
+        "<:ethorns:548729400632410122>",
+        "<:mthorns:548729400607113216>",
+        "<:lthorns:548729400649187338>",
+        "<:fthorns:548729400468963329>"
+      ],
+      "category": "reflect",
+      "summary": "Membalas persen damage yang diterima sebagai TRUE damage (tembus resistensi).",
+      "sourceText": "Reflect **?**% of the damage dealt to you as true damage",
+      "qualityList": [
+        [
+          15,
+          35
+        ]
+      ],
+      "hooks": [
+        "postAttacked"
+      ],
+      "aliases": [
+        "th"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "Mana Tap",
+      "emojis": [
+        "<:cmanatap:562175424742948865>",
+        "<:umanatap:562175425028292618>",
+        "<:rmanatap:562175424902332446>",
+        "<:emanatap:562175424814120970>",
+        "<:mmanatap:562175424918978580>",
+        "<:lmanatap:562175425175093279>",
+        "<:fmanatap:562175424403079199>"
+      ],
+      "category": "sustain",
+      "summary": "Setiap damage yang diberikan mengisi WP sebesar persen dari damage itu.",
+      "sourceText": "All damage you deal replenishes yourWPWP for **?%** of the damage dealt!",
+      "qualityList": [
+        [
+          15,
+          30
+        ]
+      ],
+      "hooks": [
+        "postAttack"
+      ],
+      "aliases": [
+        "mtap",
+        "manatap"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Absolve",
+      "emojis": [
+        "<:cabsolve:562175422343938059>",
+        "<:uabsolve:562175424604536843>",
+        "<:rabsolve:562175425556774912>",
+        "<:eabsolve:562175424969310227>",
+        "<:mabsolve:562175424625639435>",
+        "<:labsolve:562175424747143209>",
+        "<:fabsolve:562175424965115914>"
+      ],
+      "category": "heal",
+      "summary": "Saat menerima heal, menyerang satu musuh acak sebesar persen dari jumlah heal, sebagai MAG.",
+      "sourceText": "When healed, deal **?%** of the healed amount to a random enemy as MAG damage",
+      "qualityList": [
+        [
+          60,
+          80
+        ]
+      ],
+      "hooks": [
+        "postHealed"
+      ],
+      "aliases": [
+        "absv"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Safeguard",
+      "emojis": [
+        "<:csafeguard:562175426026405913>",
+        "<:usafeguard:562175424852000788>",
+        "<:rsafeguard:562175425112178688>",
+        "<:esafeguard:562175424701136917>",
+        "<:msafeguard:562175425112047626>",
+        "<:lsafeguard:562175425061715978>",
+        "<:fsafeguard:562175424793411586>"
+      ],
+      "category": "defense",
+      "summary": "Membatalkan persen damage masuk dengan membakar WP sebanyak itu (WP habis = batal sebagian).",
+      "sourceText": "Negate **?**% of the damage dealt to you with WP",
+      "qualityList": [
+        [
+          20,
+          40
+        ]
+      ],
+      "hooks": [
+        "attacked"
+      ],
+      "aliases": [
+        "sg"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Critical",
+      "emojis": [
+        "<:ccritical:572285184251002912>",
+        "<:ucritical:572285186322989057>",
+        "<:rcritical:572285186293628939>",
+        "<:ecritical:572285186209742848>",
+        "<:mcritical:572285186398617600>",
+        "<:lcritical:572285186407137290>",
+        "<:fcritical:572285186226782211>"
+      ],
+      "category": "damage",
+      "summary": "Setiap serangan punya persen peluang menambah persen damage. Juga berlaku untuk heal.",
+      "sourceText": "Every attack has a **?%** chance to deal **?%** more damage. This can apply to heals.",
+      "qualityList": [
+        [
+          10,
+          30
+        ],
+        [
+          25,
+          50
+        ]
+      ],
+      "hooks": [
+        "attack",
+        "heal"
+      ],
+      "aliases": [
+        "crit"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "Discharge",
+      "emojis": [
+        "<:cdischarge:572285186864185344>",
+        "<:udischarge:572285186897739777>",
+        "<:rdischarge:572285186599944204>",
+        "<:edischarge:572285187044671489>",
+        "<:mdischarge:572285187048734722>",
+        "<:ldischarge:572285187023699988>",
+        "<:fdischarge:572285187002466364>"
+      ],
+      "category": "mana",
+      "summary": "Saat WP terisi, menyerang satu musuh acak sebesar persen dari jumlah WP yang terisi, sebagai MAG.",
+      "sourceText": "When WP is replenished, deal **?%** of the replenished amount to a random enemy as MAG damage",
+      "qualityList": [
+        [
+          100,
+          140
+        ]
+      ],
+      "hooks": [
+        "postReplenished"
+      ],
+      "aliases": [
+        "dc"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "Kamikaze",
+      "emojis": [
+        "<:ckkaze:619835003664072711>",
+        "<:ukkaze:619834825486106624>",
+        "<:rkkaze:619834825330655242>",
+        "<:ekkaze:619834825293168650>",
+        "<:mkkaze:619834825309814786>",
+        "<:lkkaze:619834825699754004>",
+        "<:fkkaze:619834825217671168>"
+      ],
+      "category": "onDeath",
+      "summary": "Saat mati, menyerang pembunuhnya sebesar persen HP maksimum sebagai MAG.",
+      "sourceText": "When the animal dies, deal **?%** of its max HP as MAG dmg to the attacker",
+      "qualityList": [
+        [
+          50,
+          75
+        ]
+      ],
+      "hooks": [
+        "postAttacked"
+      ],
+      "aliases": [
+        "kkaze",
+        "kamikaze",
+        "kk"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "Regeneration",
+      "emojis": [
+        "<:chgen:621558017967652875>",
+        "<:uhgen:621558018420637696>",
+        "<:rhgen:621558017984299019>",
+        "<:ehgen:621558017791623178>",
+        "<:mhgen:621558018366111744>",
+        "<:lhgen:621558018265579530>",
+        "<:fhgen:621558018286419979>"
+      ],
+      "category": "sustain",
+      "summary": "Memulihkan persen HP maksimum setiap akhir turn.",
+      "sourceText": "Heal **?%** of your maxHPHP after every turn",
+      "qualityList": [
+        [
+          5,
+          10
+        ]
+      ],
+      "hooks": [
+        "postTurn"
+      ],
+      "aliases": [
+        "hgen",
+        "regen",
+        "regeneration"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "Energize",
+      "emojis": [
+        "<:cwgen:621558018357854208>",
+        "<:uwgen:621558018177368075>",
+        "<:rwgen:621558018529689600>",
+        "<:ewgen:621558018365980712>",
+        "<:mwgen:621558018500329482>",
+        "<:lwgen:621558018017853441>",
+        "<:fwgen:621558018424700948>"
+      ],
+      "category": "mana",
+      "summary": "Mengisi WP sejumlah nilai tetap setiap akhir turn.",
+      "sourceText": "Replenish **?** WP after every turn",
+      "qualityList": [
+        [
+          20,
+          40
+        ]
+      ],
+      "hooks": [
+        "postTurn"
+      ],
+      "aliases": [
+        "wgen",
+        "energ",
+        "energize"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "Sprout",
+      "emojis": [
+        "<:csprout:621558018492071936>",
+        "<:usprout:621558018643066910>",
+        "<:rsprout:621558018496004097>",
+        "<:esprout:621558018378825729>",
+        "<:msprout:621558018626289664>",
+        "<:lsprout:621558018546335754>",
+        "<:fsprout:621558018424832022>"
+      ],
+      "category": "heal",
+      "summary": "Semua heal yang diterima bertambah persen.",
+      "sourceText": "Increase all incoming healing by **?%**",
+      "qualityList": [
+        [
+          20,
+          40
+        ]
+      ],
+      "hooks": [
+        "healed"
+      ],
+      "aliases": [
+        "sprt"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "Enrage",
+      "emojis": [
+        "<:cenrage:621558016927596577>",
+        "<:uenrage:621558017887830017>",
+        "<:renrage:621558018210922527>",
+        "<:eenrage:621558017933967360>",
+        "<:menrage:621558018034761758>",
+        "<:lenrage:621558017996881930>",
+        "<:fenrage:621558017569062933>"
+      ],
+      "category": "damage",
+      "summary": "Setiap 10% HP yang hilang memberi tambahan persen damage.",
+      "sourceText": "Every 10% of missing health gives**?%** damage",
+      "qualityList": [
+        [
+          1,
+          4
+        ]
+      ],
+      "hooks": [
+        "attack"
+      ],
+      "aliases": [
+        "enra"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "Sacrifice",
+      "emojis": [
+        "<:csac:1107928491527249980>",
+        "<:usac:1107928527300460545>",
+        "<:rsac:1107928523110367253>",
+        "<:esac:1107928494329040968>",
+        "<:msac:1107928502893826098>",
+        "<:lsac:1107928500230426654>",
+        "<:fsac:1107928498103930901>"
+      ],
+      "category": "onDeath",
+      "summary": "Saat mati, menyembuhkan rekan tim persen HP maks dan mengisi persen WP maks mereka.",
+      "sourceText": "When this animal dies, heal your teammates for **?%** of its Max HP and replenish for **?%** of its Max WP",
+      "qualityList": [
+        [
+          50,
+          75
+        ],
+        [
+          50,
+          75
+        ]
+      ],
+      "hooks": [
+        "postAttacked"
+      ],
+      "aliases": [
+        "sac",
+        "sacrifice"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Snail",
+      "emojis": [
+        "<:csnail:1107928492668104734>",
+        "<:usnail:1107928528760094743>",
+        "<:rsnail:1107928524112805950>",
+        "<:esnail:1107928496187133992>",
+        "<:msnail:1107928521130643466>",
+        "<:lsnail:1107928501148975125>",
+        "<:fsnail:1107928499202818118>"
+      ],
+      "category": "damage",
+      "summary": "Setiap menyerang, siput memukul musuh acak sebesar persen damage yang diberikan (abaikan resistensi).",
+      "sourceText": "Your pet snail fights with you. Whenever you attack an animal, snail will slap a random enemy for **?%** of the damage dealt.",
+      "qualityList": [
+        [
+          5,
+          15
+        ]
+      ],
+      "hooks": [
+        "postAttack"
+      ],
+      "aliases": []
+    },
+    {
+      "id": 21,
+      "name": "Knowledge",
+      "emojis": [
+        "<:ckno:1155427304663691294>",
+        "<:ukno:1155427316000886794>",
+        "<:rkno:1155427313857605652>",
+        "<:ekno:1155427306437873848>",
+        "<:mkno:1155427312234418236>",
+        "<:lkno:1155427310355353610>",
+        "<:fkno:1155427308480503808>"
+      ],
+      "category": "utility",
+      "summary": "Tidak berefek di battle. Memberi persen XP ekstra setelah battle.",
+      "sourceText": "This passive does not do anything in battle. However, it will give this animal **?%** extra xp after each battle.",
+      "qualityList": [
+        [
+          5,
+          15
+        ]
+      ],
+      "hooks": [],
+      "aliases": [
+        "kno",
+        "knowledge",
+        "n"
+      ]
+    },
+    {
+      "id": 22,
+      "name": "Giant Slayer",
+      "emojis": [
+        "<:cgslayer:1552764277339717642>",
+        "<:ugslayer:1552764314266632263>",
+        "<:rgslayer:1552764345308549263>",
+        "<:egslayer:1552764381601726575>",
+        "<:mgslayer:1552764408227303436>",
+        "<:lgslayer:1552764447796494337>",
+        "<:fgslayer:1552764472253358132>"
+      ],
+      "aliases": [
+        "gslay",
+        "slay",
+        "slayer",
+        "gslayer",
+        "giantslayer"
+      ],
+      "category": "damage",
+      "summary": "Damage ke boss +10-25% (tidak berefek pada lawan non-boss).",
+      "sourceText": "Deal +**10-25%** more damage to bosses. Aliases: gslay, slay, slayer, gslayer",
+      "qualityList": [
+        [
+          10,
+          25
+        ]
+      ],
+      "note": "Hanya berlaku bila sasaran bertanda boss (ctx.isBoss). Battle PvP/mirror tidak terpengaruh karena lawan bukan boss.",
+      "emojiNote": "7 token rank (c/u/r/e/m/l/f) dari emoji guild: gslayer.",
+      "hooks": [
+        "attack"
+      ]
+    },
+    {
+      "id": 27,
+      "name": "Adaptation",
+      "emojis": [
+        "<:cadapt:1552783018379190432>",
+        "<:uadapt:1552783051044561037>",
+        "<:radapt:1552783088549888021>",
+        "<:eadapt:1552783112541442178>",
+        "<:madapt:1552783142773989457>",
+        "<:ladapt:1552783165964423218>",
+        "<:fadapt:1552783186038227086>"
+      ],
+      "emojiNote": "7 token rank (c/u/r/e/m/l/f) dari emoji guild: adapt.",
+      "category": "defense",
+      "summary": "Resistensi terhadap tipe damage terakhir: Physical memberi Stoneskin, Magical memberi Spellskin, 5-10% per stack, maksimal 5 stack. Menerima tipe lain menghapus semua stack.",
+      "sourceText": "Gains resistance against the last damage type received. Physical hits grant **Stoneskin**, while Magical hits grant **Spellskin**. Reduces incoming damage of that type by **5-10%** per stack. Remove all stacks upon taking damage of other types. Stack Limit: cannot exceed 5 stacks.",
+      "qualityList": [
+        [
+          5,
+          10
+        ]
+      ],
+      "hooks": [
+        "attacked"
+      ],
+      "aliases": [
+        "adapt",
+        "adaptation"
+      ],
+      "stackLimit": 5,
+      "stackRule": "Satu pool stack (bukan dua). Diamage tipe lain menghapus SEMUA stack; damage TRUE juga menghapus karena bukan Physical/Magical."
+    }
+  ]
+}
